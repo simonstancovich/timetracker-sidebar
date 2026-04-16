@@ -32,6 +32,56 @@ Status: `open` / `in progress` / `fixed` / `wontfix`.
 | 15 | "Save failed" toast has no detail | fixed | `api-call` in main.js now strips HTML from non-2xx responses and propagates a 120-char snippet (`http_500: Internal Server Error — could not load…`). Toast shows it verbatim. |
 | 18 | No global hotkey to expand/toggle sidebar | fixed | `Ctrl+Shift+T` toggles full ↔ pill from anywhere via `globalShortcut`; expands + focuses when collapsed, collapses to pill when full. Unregistered on `will-quit`. |
 
+## `main.js` code review (2026-04-16) — improvements to reach 10/10
+
+Current rating: **8/10**. Thoughtful code that handles real edge cases (IP-lock, display-metrics focus revocation, CORS bypass, BOM). Items below are the gap to 10/10.
+
+### Real bugs
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 40 | `probeAuthenticated` uses UTC date → wrong-day query near midnight | P1 | open | `main.js:264` calls `new Date().toISOString().slice(0,10)`. Same UTC bug as BUGS #36 in `api.ts` (already fixed there). Works today *by accident* (empty rows still parses as array) but if the probe ever grows stricter, it breaks. Fix: reuse `api.ts::formatDate` or inline the local-tz formatter. |
+| 41 | `net.request` has no timeout — hung connection freezes renderer IPC forever | P1 | open | VPN drop or server stall leaves the promise pending; renderer's `apiCall` await never resolves. Fix: `req.setTimeout(15000, () => { req.abort(); resolve({ error: 'timeout' }) })` inside the shared request helper (see #44). |
+
+### Dead / stale code
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 42 | `probeUserEndpoints` + `probe-user` IPC + `preload.js:probeUser` are dead code | P2 | open | Comment at `main.js:247` admits scan is done; strategy is now "infer from `time.load` + resolve in `user.load`". Delete the function (211-245), the handler (208), and the preload export. |
+| 43 | `store.get('loggedIn')` is set but never read | P2 | open | Written at `main.js:111`, deleted at `156`, no readers. Either use it as a startup fast-path to skip `probeAuthenticated` on relaunch, or drop it. |
+
+### Duplication
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 44 | Three near-identical `net.request` blocks | P2 | open | `api-call` (161), `probeAuthenticated` (253), `probeUserEndpoints` (221). Same session, headers, BOM strip. Extract `function request({ c, m, query, body })` so the timeout fix (#41), BOM handling, and header contract have one source of truth. Cuts ~60 lines. |
+
+### Smaller polish
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 45 | Empty `window-all-closed` handler (`main.js:358`) | P2 | open | Handler exists with "stay in tray" comment but does nothing. Either wire tray click → re-create window (BUGS #33), or remove the empty handler (Electron's default is fine for Windows tray apps). |
+| 46 | Window-mode inference from current height uses magic numbers (`main.js:330`) | P2 | open | `h >= height - 20 ? 'full' : (h <= SQUARE_SIZE + 10 ? 'square' : 'pill')`. Brittle. Persist the current mode in a module-scope var (`let currentMode = 'full'`) and update it inside `setWindowSize`; `onDisplayChange` reads that instead of guessing from bounds. |
+| 47 | No process-level error handlers | P2 | open | An `unhandledRejection` or `uncaughtException` inside a `net.request` callback crashes silently. Add `process.on('unhandledRejection', ...)` + `process.on('uncaughtException', ...)` that log (ideally via electron-log) and notify renderer. |
+| 48 | No production logging — only `console.log` visible in dev terminal | P2 | open | Packaged users have no log file, so field bug reports are blind. Add `electron-log` (`npm i electron-log`), replace `console.log` with `log.info/warn/error`. Log file lands at `%APPDATA%/DevCore TimeTracker/logs/main.log`. |
+| 49 | IPC input not shape-checked | P2 | open | `api-call` trusts `params.c` / `params.m` exist. A renderer typo produces a malformed URL, not a clear error. Add a 3-line guard in the shared request helper (#44). |
+
+### Structural
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 50 | `main.js` is 364 lines doing 6 jobs (window, tray, auth, API, IPC, lifecycle) | P2 | open | Fine at this size. At ~500 lines, split into `src/main/{window,auth,api,tray,ipc,store}.js` each exporting its public surface; `main.js` becomes the composition root. |
+
+### Recommended fix order (to hit 10/10)
+
+1. #40 — UTC date (5 min)
+2. #41 — request timeout (10 min, lands inside #44)
+3. #42, #43, #45 — delete dead code (5 min)
+4. #44 — extract shared `request()` helper (30 min)
+5. #47, #48 — error handlers + electron-log (20 min)
+
+---
+
 ## P2 — Polish / code quality
 
 | # | Title | Status | Notes |
