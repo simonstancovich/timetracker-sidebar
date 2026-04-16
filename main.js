@@ -13,6 +13,18 @@ const {
 const path = require("path");
 const fs = require("fs");
 const Store = require("electron-store");
+const log = require("electron-log/main");
+
+log.initialize();
+log.transports.file.level = "info";
+log.transports.console.level = "info";
+
+process.on("unhandledRejection", (reason) => {
+  log.error("[unhandledRejection]", reason);
+});
+process.on("uncaughtException", (err) => {
+  log.error("[uncaughtException]", err);
+});
 
 const store = new Store();
 const BASE_URL = "https://timetracker.devcore.se";
@@ -125,7 +137,7 @@ function createAuthWindow() {
   const tryVerify = async (source) => {
     if (verified || !authWindow) return;
     const authed = await probeAuthenticated();
-    console.log(`[auth] probe (${source}) →`, authed);
+    log.info(`[auth] probe (${source}) →`, authed);
     if (!authed || verified || !authWindow) return;
     verified = true;
     clearInterval(pollId);
@@ -223,25 +235,30 @@ function apiRequest({ c, m, query, body }) {
   });
 }
 
-ipcMain.handle("api-call", async (event, { params, body }) => {
+ipcMain.handle("api-call", async (event, payload) => {
+  const { params, body } = payload || {};
+  if (!params || !params.c || !params.m) {
+    log.warn("[api] invalid_params:", payload);
+    return { error: "invalid_params" };
+  }
   const { c, m, ...query } = params;
   const res = await apiRequest({ c, m, query, body });
   const label = `${c}.${m}`;
 
   if (res.timedOut) {
-    console.log(`[api] ${label} → timeout after ${REQUEST_TIMEOUT_MS}ms`);
+    log.warn(`[api] ${label} → timeout after ${REQUEST_TIMEOUT_MS}ms`);
     return { error: "timeout" };
   }
   if (res.networkError) {
-    console.log(`[api] ${label} → error: ${res.networkError}`);
+    log.warn(`[api] ${label} → error: ${res.networkError}`);
     return { error: res.networkError };
   }
   if (res.status >= 300 && res.status < 400) {
-    console.log(`[api] ${label} → redirect ${res.status}`);
+    log.warn(`[api] ${label} → redirect ${res.status}`);
     return { error: "not_authenticated" };
   }
 
-  console.log(`[api] ${label} (${res.status}) ${res.body.slice(0, 300)}`);
+  log.info(`[api] ${label} (${res.status}) ${res.body.slice(0, 300)}`);
   try {
     return { data: JSON.parse(res.body) };
   } catch {
@@ -253,6 +270,7 @@ ipcMain.handle("api-call", async (event, { params, body }) => {
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 120);
+    log.warn(`[api] ${label} non-JSON ${res.status}: ${snippet}`);
     return { error: `http_${res.status}${snippet ? ": " + snippet : ""}` };
   }
 });
@@ -267,22 +285,22 @@ async function probeAuthenticated() {
   });
 
   if (res.timedOut) {
-    console.log(`[auth] probe timed out after ${REQUEST_TIMEOUT_MS}ms`);
+    log.warn(`[auth] probe timed out after ${REQUEST_TIMEOUT_MS}ms`);
     return false;
   }
   if (res.networkError) {
-    console.log("[auth] probe error:", res.networkError);
+    log.warn("[auth] probe error:", res.networkError);
     return false;
   }
   if (res.status >= 300 && res.status < 400) {
-    console.log("[auth] probe got redirect", res.status);
+    log.info("[auth] probe got redirect", res.status);
     return false;
   }
   try {
     const json = JSON.parse(res.body);
     return Array.isArray(json.rows);
   } catch {
-    console.log(
+    log.warn(
       "[auth] probe got non-JSON (first 200 chars):",
       res.body.slice(0, 200),
     );
@@ -347,7 +365,7 @@ app.whenReady().then(() => {
       mainWindow.focus();
     }
   });
-  if (!ok) console.log(`[hotkey] failed to register ${HOTKEY}`);
+  if (!ok) log.warn(`[hotkey] failed to register ${HOTKEY}`);
 });
 
 app.on("will-quit", () => globalShortcut.unregisterAll());
