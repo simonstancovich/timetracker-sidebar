@@ -2,6 +2,8 @@
 
 Windows sidebar app for logging time to timetracker.devcore.se.
 
+> **Full context:** see [ARCHITECTURE.md](./ARCHITECTURE.md) for product goals, auth flow, API contracts, window modes, persistent state, and gotchas. See [BUGS.md](./BUGS.md) for the open work queue.
+
 ## Setup
 
 ```bash
