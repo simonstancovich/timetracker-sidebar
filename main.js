@@ -21,6 +21,7 @@ const isDev = !app.isPackaged;
 let mainWindow = null;
 let authWindow = null;
 let tray = null;
+let currentMode = "full";
 
 const SIDEBAR_WIDTH = 380;
 
@@ -69,9 +70,8 @@ function createMainWindow() {
   mainWindow.on("blur", () => {
     if (!mainWindow) return;
     if (Date.now() < displayChangeSilenceUntil) return;
-    const [, h] = mainWindow.getSize();
     if (mainWindow.webContents.isDevToolsFocused()) return;
-    if (h > SQUARE_SIZE + 30) {
+    if (currentMode === "full") {
       setWindowSize("pill");
       mainWindow.webContents.send("forced-size", "pill");
     }
@@ -80,6 +80,7 @@ function createMainWindow() {
 
 function setWindowSize(size) {
   if (!mainWindow) return;
+  currentMode = size;
   const { height, width } = screen.getPrimaryDisplay().workAreaSize;
   const wasResizable = mainWindow.isResizable();
   if (!wasResizable) mainWindow.setResizable(true);
@@ -128,7 +129,6 @@ function createAuthWindow() {
     if (!authed || verified || !authWindow) return;
     verified = true;
     clearInterval(pollId);
-    store.set("loggedIn", true);
     authWindow.close();
     authWindow = null;
     if (mainWindow) mainWindow.webContents.send("auth-success");
@@ -171,7 +171,6 @@ function createTray() {
 
 async function signOut() {
   await session.fromPartition("persist:timetracker").clearStorageData();
-  store.delete("loggedIn");
   mainWindow?.webContents.send("signed-out");
 }
 
@@ -327,11 +326,7 @@ app.whenReady().then(() => {
   const onDisplayChange = () => {
     displayChangeSilenceUntil = Date.now() + 2500;
     if (!mainWindow) return;
-    const { height } = screen.getPrimaryDisplay().workAreaSize;
-    const [, h] = mainWindow.getSize();
-    const current =
-      h >= height - 20 ? "full" : h <= SQUARE_SIZE + 10 ? "square" : "pill";
-    setWindowSize(current);
+    setWindowSize(currentMode);
   };
   screen.on("display-metrics-changed", onDisplayChange);
   screen.on("display-added", onDisplayChange);
@@ -343,10 +338,7 @@ app.whenReady().then(() => {
       createMainWindow();
       return;
     }
-    const [, h] = mainWindow.getSize();
-    const workArea = screen.getPrimaryDisplay().workAreaSize;
-    const isFull = h >= workArea.height - 2;
-    if (isFull) {
+    if (currentMode === "full") {
       setWindowSize("pill");
       mainWindow.webContents.send("forced-size", "pill");
     } else {
@@ -360,7 +352,4 @@ app.whenReady().then(() => {
 
 app.on("will-quit", () => globalShortcut.unregisterAll());
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-  }
-});
+app.on("window-all-closed", () => {});

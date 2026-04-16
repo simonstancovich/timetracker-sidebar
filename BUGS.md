@@ -48,7 +48,7 @@ Current rating: **8/10**. Thoughtful code that handles real edge cases (IP-lock,
 | # | Title | Severity | Status | Notes |
 |---|---|---|---|---|
 | 42 | `probeUserEndpoints` + `probe-user` IPC + `preload.js:probeUser` are dead code | P2 | fixed | Deleted the 35-line scan function, the IPC handler, and the preload export. Left a one-line comment above `probeAuthenticated` explaining the current-user strategy (no separate API — infer from `time.load` + resolve in `user.load`). |
-| 43 | `store.get('loggedIn')` is set but never read | P2 | open | Written at `main.js:111`, deleted at `156`, no readers. Either use it as a startup fast-path to skip `probeAuthenticated` on relaunch, or drop it. |
+| 43 | `store.get('loggedIn')` is set but never read | P2 | fixed | Dropped both the `store.set("loggedIn", true)` after auth and the `store.delete("loggedIn")` in `signOut`. `probeAuthenticated` is the single source of truth for session state; a cached flag would only have risked showing the logged-in UI against a server-expired session. `store` instance still used by the `store-get`/`store-set` IPC handlers. |
 
 ### Duplication
 
@@ -60,8 +60,8 @@ Current rating: **8/10**. Thoughtful code that handles real edge cases (IP-lock,
 
 | # | Title | Severity | Status | Notes |
 |---|---|---|---|---|
-| 45 | Empty `window-all-closed` handler (`main.js:358`) | P2 | open | Handler exists with "stay in tray" comment but does nothing. Either wire tray click → re-create window (BUGS #33), or remove the empty handler (Electron's default is fine for Windows tray apps). |
-| 46 | Window-mode inference from current height uses magic numbers (`main.js:330`) | P2 | open | `h >= height - 20 ? 'full' : (h <= SQUARE_SIZE + 10 ? 'square' : 'pill')`. Brittle. Persist the current mode in a module-scope var (`let currentMode = 'full'`) and update it inside `setWindowSize`; `onDisplayChange` reads that instead of guessing from bounds. |
+| 45 | Empty `window-all-closed` handler (`main.js:358`) | P2 | fixed | Collapsed `() => { if (process.platform !== "darwin") {} }` to `() => {}`. The registration itself is the load-bearing part — it overrides Electron's default "quit when all windows close" so the app keeps running in the tray on Windows. The platform check was noise (macOS default is also "don't quit"). |
+| 46 | Window-mode inference from current height uses magic numbers (`main.js:330`) | P2 | fixed | Added `let currentMode = "full"` in module scope; `setWindowSize(size)` updates it. The blur handler (`currentMode === "full"`), `onDisplayChange` (`setWindowSize(currentMode)`), and global hotkey (`isFull = currentMode === "full"`) now read the mode directly instead of reverse-engineering from pixel bounds. Removed 3 magic-number comparisons and 3 `getSize()`/`workAreaSize` reads. |
 | 47 | No process-level error handlers | P2 | open | An `unhandledRejection` or `uncaughtException` inside a `net.request` callback crashes silently. Add `process.on('unhandledRejection', ...)` + `process.on('uncaughtException', ...)` that log (ideally via electron-log) and notify renderer. |
 | 48 | No production logging — only `console.log` visible in dev terminal | P2 | open | Packaged users have no log file, so field bug reports are blind. Add `electron-log` (`npm i electron-log`), replace `console.log` with `log.info/warn/error`. Log file lands at `%APPDATA%/DevCore TimeTracker/logs/main.log`. |
 | 49 | IPC input not shape-checked | P2 | open | `api-call` trusts `params.c` / `params.m` exist. A renderer typo produces a malformed URL, not a clear error. Add a 3-line guard in the shared request helper (#44). |
