@@ -269,6 +269,7 @@ export default function App() {
     window.electronAPI.checkAuth().then(setAuthed)
     window.electronAPI.onAuthSuccess(() => setAuthed(true))
     window.electronAPI.onSignedOut(() => setAuthed(false))
+    window.electronAPI.onSessionLost(() => setAuthed(false))
     window.electronAPI.onForcedSize((s) => {
       setWindowSize(s)
       expandLockUntil.current = Date.now() + 1500
@@ -362,7 +363,7 @@ export default function App() {
   // ─── Load companies once authed ────────────────────────────────────────
   useEffect(() => {
     if (!authed) return
-    loadCompanies().then(setCompanies).catch(() => setAuthed(false))
+    loadCompanies().then(setCompanies).catch(() => {})
   }, [authed])
 
   // ─── Resolve current user (prefer cache; else infer from entries + user.load) ─

@@ -82,6 +82,12 @@ Current rating: **8/10**. Thoughtful code that handles real edge cases (IP-lock,
 
 ---
 
+## Post-review bugs
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 51 | Cookie expiry mid-session → blank screen instead of LoginScreen | P0 | fixed | Root cause: only 2 of ~8 API call sites caught `NOT_AUTHENTICATED` (others silent-swallowed or re-threw) and there's no React error boundary, so an uncaught throw unmounted the whole tree. Fix at the transport layer: `main.js` `api-call` handler now sends a `session-lost` IPC event alongside `{ error: 'not_authenticated' }` whenever the server returns a 3xx redirect. Renderer subscribes once (same effect as other auth listeners) → `setAuthed(false)` → existing render guard at `App.tsx:598` shows `<LoginScreen>`. Individual call-site catches can keep their silent-swallow semantics for transient errors without masking auth loss. Also softened `loadCompanies().catch(() => setAuthed(false))` to `.catch(() => {})` — transient errors (500/network) no longer bounce to login, only real auth loss does. |
+
 ## P2 — Polish / code quality
 
 | # | Title | Status | Notes |

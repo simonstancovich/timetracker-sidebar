@@ -254,7 +254,8 @@ ipcMain.handle("api-call", async (event, payload) => {
     return { error: res.networkError };
   }
   if (res.status >= 300 && res.status < 400) {
-    log.warn(`[api] ${label} → redirect ${res.status}`);
+    log.warn(`[api] ${label} → redirect ${res.status} (session lost)`);
+    mainWindow?.webContents.send("session-lost");
     return { error: "not_authenticated" };
   }
 

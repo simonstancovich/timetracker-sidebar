@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   signOut: () => ipcRenderer.invoke('sign-out'),
   onAuthSuccess: (cb) => ipcRenderer.on('auth-success', cb),
   onSignedOut: (cb) => ipcRenderer.on('signed-out', cb),
+  onSessionLost: (cb) => ipcRenderer.on('session-lost', cb),
 
   // API proxy — all calls go through main process (inherits session cookies)
   apiCall: (params, body) => ipcRenderer.invoke('api-call', { params, body }),
