@@ -321,6 +321,14 @@ export default function App() {
   }, [authed])
 
   useEffect(() => { window.electronAPI.storeSet('mode', mode) }, [mode])
+
+  useEffect(() => {
+    const r = document.documentElement.style
+    r.setProperty('--rec-color', M.pk)
+    r.setProperty('--scrollbar-thumb', M.b1)
+    r.setProperty('--select-bg', M.bg)
+    r.setProperty('--select-fg', M.t1)
+  }, [M])
   useEffect(() => { if (authed) window.electronAPI.storeSet('xp', xp) }, [xp, authed])
   useEffect(() => { if (authed) window.electronAPI.storeSet('unlocked', unlocked) }, [unlocked, authed])
   useEffect(() => { if (authed) window.electronAPI.storeSet('streak', streak) }, [streak, authed])
@@ -1234,20 +1242,6 @@ export default function App() {
         onClick={() => { if (Date.now() < expandLockUntil.current) return; goSize('full') }}
         style={{ height: '100vh', width: '100vw', background: 'transparent', cursor: 'pointer', fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif" }}
       >
-        <style>{`
-          @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-          @keyframes marquee{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
-          @keyframes runEdge{to{offset-distance:100%;}}
-          .pill-marquee{overflow:hidden;position:relative;}
-          .pill-marquee-track{display:inline-block;white-space:nowrap;animation:marquee 18s linear infinite;padding-right:40px;}
-          .rec-runner::after{
-            content:'';position:absolute;width:8px;height:8px;border-radius:50%;
-            background:${M.pk};box-shadow:0 0 10px ${M.pk}, 0 0 4px ${M.pk};
-            offset-path:inset(0);offset-distance:0%;
-            animation:runEdge 7s linear infinite;
-            pointer-events:none;z-index:10;
-          }
-        `}</style>
         <div
           className={tRun ? 'rec-runner' : ''}
           style={{
@@ -1310,17 +1304,6 @@ export default function App() {
   if (size === 'square') {
     return (
       <div style={{ height: '100vh', width: '100vw', background: 'transparent', fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif" }}>
-        <style>{`
-          @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-          @keyframes runEdge{to{offset-distance:100%;}}
-          .rec-runner-sq::after{
-            content:'';position:absolute;width:7px;height:7px;border-radius:50%;
-            background:${M.pk};box-shadow:0 0 10px ${M.pk}, 0 0 4px ${M.pk};
-            offset-path:inset(0);offset-distance:0%;
-            animation:runEdge 5s linear infinite;
-            pointer-events:none;z-index:10;
-          }
-        `}</style>
         <div
           className={tRun ? 'rec-runner-sq' : ''}
           style={{
@@ -1357,16 +1340,6 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: M.bg, fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif", color: M.t1, position: 'relative', overflow: 'hidden' }}>
-      <style>{`
-        @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-        @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1);}70%{opacity:1;transform:translateY(-52px) scale(1.06);}100%{opacity:0;transform:translateY(-85px) scale(.9);}}
-        @keyframes achIn{0%{opacity:0;transform:translateY(18px) scale(.95);}100%{opacity:1;transform:translateY(0) scale(1);}}
-        *{box-sizing:border-box;} textarea,input,select{font-family:inherit;}
-        select option{background:${M.bg};color:${M.t1};}
-        ::-webkit-scrollbar{width:6px;}
-        ::-webkit-scrollbar-thumb{background:${M.b1};border-radius:3px;}
-      `}</style>
-
       {hdr}
       <div style={{ height: 'calc(100vh - 124px)', overflowY: 'auto' }}>
         {views[tab]}
