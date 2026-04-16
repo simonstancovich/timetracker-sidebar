@@ -82,6 +82,63 @@ Current rating: **8/10**. Thoughtful code that handles real edge cases (IP-lock,
 
 ---
 
+## `App.tsx` code review (2026-04-16) — improvements toward a maintainable 10/10
+
+Current rating: **6/10**. The UX is thoughtful, crash-safety is correct, focus/display-change handling is real-world-tested. The problem is shape: it's one 1434-line component holding ~40 `useState`s, four views as IIFEs, two full alternate renders (pill + square), inline styles on every element, and several duplicated pieces. Everything below is structural — no behavior changes, just making the code tell you what it does without you having to trace 900 lines of rendering.
+
+### Structure — the big ones
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 52 | File is one component doing 6 jobs (1434 lines) | P2 | open | Split at the natural seams. Target: `src/App.tsx` drops to ~150 lines (composition + auth gate + shell), everything else moves to `src/views/{TodayView,TimerView,LogView,XpView}.tsx`, `src/layouts/{PillBar,SquareBar}.tsx`, `src/components/{Header,ProgressBar,Footer,FloatToast,AchievementToast,ConfirmDialog}.tsx`. The IIFE `todayView`/`timerView`/etc. pattern currently computes all four tabs on every render even when inactive — components with `{tab === 'x' && <X />}` are strictly better (free, clearer, and naturally lazy). |
+| 53 | ~40 `useState`s in a single component, state concerns not separated | P2 | open | Bucket into custom hooks: `useTimerState()` (tCo/tPr/tD/tNote/tInv/tSec/tRun/draftId + reset + persistence), `useLogForm()` (fCo/fPr/fH/fD/fNote/fInv/fHInput/editingId), `useGamification()` (xp/unlocked/streak/achievement toast), `useWindowMode()` (size/expandLockUntil/goSize). `App.tsx` then reads each via `const timer = useTimerState()`. Makes it trivial to see what belongs to which feature and unblocks per-hook unit testing later. |
+| 54 | `usePersistedState<T>(key, initial)` would collapse 6 useEffects | P2 | open | Lines 323-326 and the manual load/save pairs for `mode`/`xp`/`unlocked`/`streak`/`timer`/`logForm`/`currentUser` are the same pattern 7 times: load once on mount, write on change, gated by `authed`. One 20-line hook replaces all of them; state declarations become `const [xp, setXp] = usePersistedState('xp', 0)`. |
+
+### Duplication
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 55 | `SaveEntryPayload` built identically in `saveNewEntry` and `autoSaveDraft` | P1 | open | Lines 477-493 and 552-568 are near-verbatim duplicates: same `(currentUser \|\| FALLBACK_USER)` fallback, same `.toFixed(2)`, same `invoice ? '1' : 'false'`, same `_company_id/_project_id` copies. Extract `buildSavePayload({ company, project, hours, description, internalNote, invoice, user, entryDate, existingId })`. Two drift points become one. Every bug in this shape (see BUGS #6 invoice coercion) only needs to be fixed once. |
+| 56 | Timer reset logic inlined in three places | P2 | open | `setTRun(false); setTSec(0); setTCo(''); setTPr(''); setTD(''); setTNote(''); setTInv(true); setDraftId(null); draftIdRef.current = null` appears at lines 203, 824, and partially in switchTask helpers. Extract `resetTimer()`; use it. |
+| 57 | `fmtDateISO` in App.tsx, `formatDate` in api.ts, `formatLocalDate` in main.js — three copies of the same 4-line function | P2 | open | All three avoid the UTC bug the same way. Pick one location (`src/lib/date.ts`) and import from both renderer files; main.js keeps its own copy (no shared tsconfig path). Commit the contract as a module. |
+| 58 | Inline styles everywhere, palette tokens repeated hundreds of times | P2 | open | BUGS #21 called this out already. Highest-leverage extraction: `Card`, `SectionLabel`, `Pill`, `ToggleSwitch`, `CircleIconButton`, `Divider`, `MonoText`, `InputField`. Even a naive pass (one component per 5+ style occurrences) shrinks the file 30-40%. Keep inline styles only for layout-one-off values (widths, grid-templates). |
+| 59 | `<style>` keyframe blocks copy-pasted three times (full / pill / square renders) | P2 | open | `@keyframes pulse`, `marquee`, `runEdge`, `floatUp`, `achIn` plus global resets are declared inside three separate `<style>` blocks. Move to `src/App.css` (already exists, partially used) — loaded once, no duplication. |
+| 60 | `weekH.reduce((s, h) => s + h, 0)` in three places without memo | P2 | open | Lines ~700 (Today), 1202, 1203 (XP). Add `const weekTotal = useMemo(() => weekH.reduce(...), [weekH])`. Same pattern for `parseFloat(e.hour \|\| '0')` in the entries accumulator. |
+| 61 | `(currentUser \|\| FALLBACK_USER)` repeated 4×; `currentUser: null` is always transient | P2 | open | `FALLBACK_USER` is the initial value already — make it so. Type `currentUser` as `{ _user_id; username }` (no null), seed it with `FALLBACK_USER`, remove every `\|\| FALLBACK_USER` chain. When the real user resolves, it replaces the fallback. UI still works during the brief startup gap. |
+
+### State-machine / control-flow clarity
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 62 | `switchTaskGuarded` bundles 4 outcomes in nested inline ifs | P2 | open | Lines 208-253. The decision — "running+has-unsaved → confirm, paused+has-unsaved → save-silent, empty → apply" — is data, not control flow. Split: `const decision = computeSwitchAction({ tRun, canSaveCurrent })` returning `'confirm' \| 'save-silent' \| 'apply'`. Then `switch(decision)`. The confirm/apply/save handlers are already separated; just lift the dispatch. |
+| 63 | Achievement checks inlined 2× in `saveNewEntry`, one `if` per badge | P2 | open | Lines 527-538. Every new achievement adds another copy/paste. Replace with a predicate table: `const ACH_TRIGGERS: { id: string; when: (ctx: AchCtx) => boolean }[] = [...]`. Loop and unlock. Also unblocks BUGS #5 (backfill achievements from history) since you can run the same predicates over past entries. |
+
+### Smaller polish
+
+| # | Title | Severity | Status | Notes |
+|---|---|---|---|---|
+| 64 | `views[tab]` dict pretends to route but evaluates all four views every render | P2 | open | Line 1225. Replace with `{tab === 'today' && <TodayView {...} />}` etc. Inactive tabs stop rendering entirely — real lazy render, no `useMemo` needed. Directly addresses #52's IIFE perf smell. |
+| 65 | `height: 'calc(100vh - 124px)'` — 124 is a magic constant (header 72 + footer 40 + border 12) | P2 | open | Silent breakage if either chrome piece changes. Use flexbox: outer `display: flex, flexDirection: column, height: 100vh`, header+footer `flex: 0`, content `flex: 1, overflowY: auto`. No more number to maintain. |
+| 66 | `err: any` at every catch site | P2 | open | Renderer's `api.ts::call` throws `Error('NOT_AUTHENTICATED')` — a real typed `ApiError` class with a discriminator would let call sites do `err instanceof ApiError && err.kind === 'not_authenticated'` instead of string-compare. Low value today but lets #67 (error boundary) be typed too. |
+| 67 | No React error boundary | P2 | open | BUGS #34 — already tracked. Low effort, high value: one bad render no longer white-screens. With #51 (session-lost) handling transport errors and this handling render errors, recovery is complete. |
+| 68 | `autoSaveRef.current = autoSaveDraft` on every render (no dep list) | P2 | open | Line 574. Works — re-assigns the ref on each render so the setInterval callback reads fresh state. But the mechanism is non-obvious and the effect has no `[dep]` array. Wrap in `useEffect(() => { autoSaveRef.current = autoSaveDraft })` (bare effect runs every render, same semantics) or explicitly `useEffect(..., [autoSaveDraft])` for clarity. Better: `useLatestCallback` hook. |
+| 69 | Orphan files `src/components/{Timer,NewEntryForm,EntryList}.tsx` | P2 | open | BUGS #20 already tracked. Natural home for the extractions in #52 — either resurrect them as the real components or delete them when the new components land. |
+
+### Recommended fix order (biggest legibility win per unit of work)
+
+1. **#59** (keyframes → App.css) — 5 min, one file is shorter by 45 lines.
+2. **#55** (`buildSavePayload`) — 20 min, deletes 20 lines, closes a drift surface.
+3. **#56, #60, #61** (resetTimer, memoize week total, drop FALLBACK_USER coalesce) — 15 min together, small but clean.
+4. **#54** (`usePersistedState`) — 30 min, collapses 7 effect blocks into one hook call per slice.
+5. **#52 + #64** (extract views as components, real lazy render) — 2-3 h, biggest single legibility win. Do this as one PR; half-extractions are messier than the original.
+6. **#58** (styled primitives) — 2-3 h on top of #52. Order matters: extract components first, then the styling refactor touches fewer files.
+7. **#53** (state into custom hooks) — 1-2 h once views are extracted; the seams are obvious by then.
+8. **Remaining items** — opportunistic, during normal work.
+
+Post-refactor target: `App.tsx` ≤ 200 lines, each view file ≤ 250 lines, zero keyframe duplication, one payload builder, one date formatter shared main↔renderer.
+
+---
+
 ## Post-review bugs
 
 | # | Title | Severity | Status | Notes |
