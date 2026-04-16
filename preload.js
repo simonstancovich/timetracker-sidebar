@@ -18,7 +18,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Window
   setSize: (size) => ipcRenderer.invoke('set-size', size),
   onForcedSize: (cb) => ipcRenderer.on('forced-size', (_e, s) => cb(s)),
-
-  // Debug
-  probeUser: () => ipcRenderer.invoke('probe-user'),
 })

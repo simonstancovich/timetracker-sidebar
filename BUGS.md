@@ -40,14 +40,14 @@ Current rating: **8/10**. Thoughtful code that handles real edge cases (IP-lock,
 
 | # | Title | Severity | Status | Notes |
 |---|---|---|---|---|
-| 40 | `probeAuthenticated` uses UTC date → wrong-day query near midnight | P1 | open | `main.js:264` calls `new Date().toISOString().slice(0,10)`. Same UTC bug as BUGS #36 in `api.ts` (already fixed there). Works today *by accident* (empty rows still parses as array) but if the probe ever grows stricter, it breaks. Fix: reuse `api.ts::formatDate` or inline the local-tz formatter. |
-| 41 | `net.request` has no timeout — hung connection freezes renderer IPC forever | P1 | open | VPN drop or server stall leaves the promise pending; renderer's `apiCall` await never resolves. Fix: `req.setTimeout(15000, () => { req.abort(); resolve({ error: 'timeout' }) })` inside the shared request helper (see #44). |
+| 40 | `probeAuthenticated` uses UTC date → wrong-day query near midnight | P1 | fixed | Added `formatLocalDate(date)` helper at top of `main.js`, mirrors `api.ts::formatDate`. `probeAuthenticated` now calls `formatLocalDate(new Date())` instead of `toISOString().slice(0,10)`. |
+| 41 | `net.request` has no timeout — hung connection freezes renderer IPC forever | P1 | fixed | Added `REQUEST_TIMEOUT_MS = 15000` + a `done()` single-resolve guard pattern to both `api-call` and `probeAuthenticated`. On timeout: `req.abort()` and resolve with `{ error: 'timeout' }` (or `false` for the probe). Subsequent `'error'` events from the aborted request are silently dropped by the `settled` flag. |
 
 ### Dead / stale code
 
 | # | Title | Severity | Status | Notes |
 |---|---|---|---|---|
-| 42 | `probeUserEndpoints` + `probe-user` IPC + `preload.js:probeUser` are dead code | P2 | open | Comment at `main.js:247` admits scan is done; strategy is now "infer from `time.load` + resolve in `user.load`". Delete the function (211-245), the handler (208), and the preload export. |
+| 42 | `probeUserEndpoints` + `probe-user` IPC + `preload.js:probeUser` are dead code | P2 | fixed | Deleted the 35-line scan function, the IPC handler, and the preload export. Left a one-line comment above `probeAuthenticated` explaining the current-user strategy (no separate API — infer from `time.load` + resolve in `user.load`). |
 | 43 | `store.get('loggedIn')` is set but never read | P2 | open | Written at `main.js:111`, deleted at `156`, no readers. Either use it as a startup fast-path to skip `probeAuthenticated` on relaunch, or drop it. |
 
 ### Duplication

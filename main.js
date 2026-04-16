@@ -21,6 +21,14 @@ let displayChangeSilenceUntil = 0
 const PILL_WIDTH = 360
 const PILL_HEIGHT = 68
 const SQUARE_SIZE = 72
+const REQUEST_TIMEOUT_MS = 15000
+
+// Local-tz YYYY-MM-DD. toISOString() is UTC and near midnight in Stockholm
+// would query the wrong day — mirror api.ts's formatDate so main/renderer agree.
+function formatLocalDate(date) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
 
 // ─── Main sidebar window ──────────────────────────────────────────────────────
 function createMainWindow() {
@@ -163,6 +171,15 @@ ipcMain.handle('api-call', async (event, { params, body }) => {
   const url = `${BASE_URL}/index.php?${qs}`
 
   return new Promise((resolve) => {
+    // Single-resolve guard — a timed-out request will also emit 'error' after abort().
+    let settled = false
+    let timeoutId
+    const done = (result) => {
+      if (settled) return
+      settled = true
+      if (timeoutId) clearTimeout(timeoutId)
+      resolve(result)
+    }
     const req = net.request({
       method: 'POST',
       url,
@@ -172,32 +189,38 @@ ipcMain.handle('api-call', async (event, { params, body }) => {
     })
     req.setHeader('Content-Type', 'application/x-www-form-urlencoded')
     req.setHeader('X-Requested-With', 'XMLHttpRequest')
+    timeoutId = setTimeout(() => {
+      console.log(`[api] ${params.c}.${params.m} → timeout after ${REQUEST_TIMEOUT_MS}ms`)
+      try { req.abort() } catch {}
+      done({ error: 'timeout' })
+    }, REQUEST_TIMEOUT_MS)
     let text = ''
     req.on('response', (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400) {
         console.log(`[api] ${params.c}.${params.m} → redirect ${res.statusCode}`)
-        return resolve({ error: 'not_authenticated' })
+        return done({ error: 'not_authenticated' })
       }
       res.on('data', (chunk) => { text += chunk.toString() })
       res.on('end', () => {
         const clean = text.replace(/^\uFEFF/, '')
         console.log(`[api] ${params.c}.${params.m} (${res.statusCode}) ${clean.slice(0, 300)}`)
         try {
-          resolve({ data: JSON.parse(clean) })
+          done({ data: JSON.parse(clean) })
         } catch {
           // Non-JSON response on 2xx: treat as empty success (some endpoints return plain "OK" or empty body)
           if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve({ data: { success: true, raw: clean } })
+            done({ data: { success: true, raw: clean } })
           } else {
             const snippet = clean.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)
-            resolve({ error: `http_${res.statusCode}${snippet ? ': ' + snippet : ''}` })
+            done({ error: `http_${res.statusCode}${snippet ? ': ' + snippet : ''}` })
           }
         }
       })
     })
     req.on('error', (err) => {
+      if (settled) return
       console.log('[api] error:', err.message)
-      resolve({ error: err.message })
+      done({ error: err.message })
     })
     req.write(body ? new URLSearchParams(body).toString() : '')
     req.end()
@@ -205,53 +228,22 @@ ipcMain.handle('api-call', async (event, { params, body }) => {
 })
 
 ipcMain.handle('check-auth', async () => probeAuthenticated())
-ipcMain.handle('probe-user', async () => probeUserEndpoints())
 
-// Try common endpoint names to discover a "current user" API.
-async function probeUserEndpoints() {
-  const candidates = [
-    ['user', 'current'], ['user', 'me'], ['user', 'get'], ['user', 'load'], ['user', 'info'],
-    ['users', 'current'], ['users', 'me'],
-    ['session', 'current'], ['session', 'me'], ['session', 'get'], ['session', 'user'],
-    ['auth', 'me'], ['auth', 'user'],
-    ['profile', 'get'], ['me', 'get'], ['me', 'load'],
-  ]
-  console.log('[probe-user] starting scan...')
-  for (const [c, m] of candidates) {
-    const result = await new Promise((resolve) => {
-      const req = net.request({
-        method: 'POST',
-        url: `${BASE_URL}/index.php?c=${c}&m=${m}`,
-        session: session.fromPartition('persist:timetracker'),
-        useSessionCookies: true,
-        redirect: 'manual',
-      })
-      req.setHeader('Content-Type', 'application/x-www-form-urlencoded')
-      req.setHeader('X-Requested-With', 'XMLHttpRequest')
-      let text = ''
-      req.on('response', (res) => {
-        res.on('data', (chunk) => { text += chunk.toString() })
-        res.on('end', () => resolve({ status: res.statusCode, body: text.replace(/^\uFEFF/, '') }))
-      })
-      req.on('error', () => resolve({ status: 0, body: '' }))
-      req.write('')
-      req.end()
-    })
-    const preview = result.body.slice(0, 250).replace(/\s+/g, ' ')
-    console.log(`[probe-user] ${c}.${m} → ${result.status}  ${preview}`)
-  }
-  console.log('[probe-user] scan done')
-  return true
-}
-
-// Discovered: c=user&m=load returns all users. No per-user endpoint exists.
-// Strategy for current user: pull _user_id from any time.load row, then match in user.load.
-// (No auto-probe needed any more.)
+// No per-user endpoint exists — current user is inferred from time.load rows
+// and resolved against c=user&m=load (handled in the renderer).
 
 // Probe an authenticated endpoint. Returns true only if the server responds
 // with valid JSON (i.e. a real authenticated session), not an HTML login page.
 async function probeAuthenticated() {
   return new Promise((resolve) => {
+    let settled = false
+    let timeoutId
+    const done = (result) => {
+      if (settled) return
+      settled = true
+      if (timeoutId) clearTimeout(timeoutId)
+      resolve(result)
+    }
     const req = net.request({
       method: 'POST',
       url: `${BASE_URL}/index.php?c=time&m=load`,
@@ -261,27 +253,33 @@ async function probeAuthenticated() {
     })
     req.setHeader('Content-Type', 'application/x-www-form-urlencoded')
     req.setHeader('X-Requested-With', 'XMLHttpRequest')
-    const today = new Date().toISOString().slice(0, 10)
+    timeoutId = setTimeout(() => {
+      console.log(`[auth] probe timed out after ${REQUEST_TIMEOUT_MS}ms`)
+      try { req.abort() } catch {}
+      done(false)
+    }, REQUEST_TIMEOUT_MS)
+    const today = formatLocalDate(new Date())
     let body = ''
     req.on('response', (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400) {
         console.log('[auth] probe got redirect', res.statusCode, res.headers.location)
-        return resolve(false)
+        return done(false)
       }
       res.on('data', (chunk) => { body += chunk.toString() })
       res.on('end', () => {
         try {
           const json = JSON.parse(body.replace(/^\uFEFF/, ''))
-          resolve(Array.isArray(json.rows))
+          done(Array.isArray(json.rows))
         } catch {
           console.log('[auth] probe got non-JSON (first 200 chars):', body.slice(0, 200))
-          resolve(false)
+          done(false)
         }
       })
     })
     req.on('error', (err) => {
+      if (settled) return
       console.log('[auth] probe error:', err.message)
-      resolve(false)
+      done(false)
     })
     req.write(`date=${today}`)
     req.end()
