@@ -165,9 +165,19 @@ async function signOut() {
   mainWindow?.webContents.send('signed-out')
 }
 
-// ─── IPC handlers ─────────────────────────────────────────────────────────────
-ipcMain.handle('api-call', async (event, { params, body }) => {
-  const qs = new URLSearchParams(params).toString()
+// ─── API transport ────────────────────────────────────────────────────────────
+// Low-level POST to the timetracker API. Centralizes session, headers, timeout,
+// abort-on-timeout, and BOM stripping. Returns a uniform shape; interpretation
+// (redirect → not-authenticated, JSON vs HTML, etc.) is up to the caller.
+//
+//   { status: number, body: string }                    — normal HTTP response
+//   { timedOut: true }                                  — hit REQUEST_TIMEOUT_MS
+//   { networkError: string }                            — connection failure
+//
+// Input: { c, m } are the CodeIgniter controller/method; `query` adds extra
+// URL params (e.g. active=true); `body` is a plain object sent as x-www-form-urlencoded.
+function apiRequest({ c, m, query, body }) {
+  const qs = new URLSearchParams({ c, m, ...(query || {}) }).toString()
   const url = `${BASE_URL}/index.php?${qs}`
 
   return new Promise((resolve) => {
@@ -180,6 +190,7 @@ ipcMain.handle('api-call', async (event, { params, body }) => {
       if (timeoutId) clearTimeout(timeoutId)
       resolve(result)
     }
+
     const req = net.request({
       method: 'POST',
       url,
@@ -189,42 +200,58 @@ ipcMain.handle('api-call', async (event, { params, body }) => {
     })
     req.setHeader('Content-Type', 'application/x-www-form-urlencoded')
     req.setHeader('X-Requested-With', 'XMLHttpRequest')
+
     timeoutId = setTimeout(() => {
-      console.log(`[api] ${params.c}.${params.m} → timeout after ${REQUEST_TIMEOUT_MS}ms`)
       try { req.abort() } catch {}
-      done({ error: 'timeout' })
+      done({ timedOut: true })
     }, REQUEST_TIMEOUT_MS)
+
     let text = ''
     req.on('response', (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400) {
-        console.log(`[api] ${params.c}.${params.m} → redirect ${res.statusCode}`)
-        return done({ error: 'not_authenticated' })
-      }
       res.on('data', (chunk) => { text += chunk.toString() })
       res.on('end', () => {
-        const clean = text.replace(/^\uFEFF/, '')
-        console.log(`[api] ${params.c}.${params.m} (${res.statusCode}) ${clean.slice(0, 300)}`)
-        try {
-          done({ data: JSON.parse(clean) })
-        } catch {
-          // Non-JSON response on 2xx: treat as empty success (some endpoints return plain "OK" or empty body)
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            done({ data: { success: true, raw: clean } })
-          } else {
-            const snippet = clean.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)
-            done({ error: `http_${res.statusCode}${snippet ? ': ' + snippet : ''}` })
-          }
-        }
+        done({ status: res.statusCode, body: text.replace(/^\uFEFF/, '') })
       })
     })
     req.on('error', (err) => {
       if (settled) return
-      console.log('[api] error:', err.message)
-      done({ error: err.message })
+      done({ networkError: err.message })
     })
     req.write(body ? new URLSearchParams(body).toString() : '')
     req.end()
   })
+}
+
+// ─── IPC handlers ─────────────────────────────────────────────────────────────
+ipcMain.handle('api-call', async (event, { params, body }) => {
+  const { c, m, ...query } = params
+  const res = await apiRequest({ c, m, query, body })
+  const label = `${c}.${m}`
+
+  if (res.timedOut) {
+    console.log(`[api] ${label} → timeout after ${REQUEST_TIMEOUT_MS}ms`)
+    return { error: 'timeout' }
+  }
+  if (res.networkError) {
+    console.log(`[api] ${label} → error: ${res.networkError}`)
+    return { error: res.networkError }
+  }
+  if (res.status >= 300 && res.status < 400) {
+    console.log(`[api] ${label} → redirect ${res.status}`)
+    return { error: 'not_authenticated' }
+  }
+
+  console.log(`[api] ${label} (${res.status}) ${res.body.slice(0, 300)}`)
+  try {
+    return { data: JSON.parse(res.body) }
+  } catch {
+    // Non-JSON 2xx: some endpoints return plain "OK" or empty body.
+    if (res.status >= 200 && res.status < 300) {
+      return { data: { success: true, raw: res.body } }
+    }
+    const snippet = res.body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)
+    return { error: `http_${res.status}${snippet ? ': ' + snippet : ''}` }
+  }
 })
 
 ipcMain.handle('check-auth', async () => probeAuthenticated())
@@ -235,55 +262,31 @@ ipcMain.handle('check-auth', async () => probeAuthenticated())
 // Probe an authenticated endpoint. Returns true only if the server responds
 // with valid JSON (i.e. a real authenticated session), not an HTML login page.
 async function probeAuthenticated() {
-  return new Promise((resolve) => {
-    let settled = false
-    let timeoutId
-    const done = (result) => {
-      if (settled) return
-      settled = true
-      if (timeoutId) clearTimeout(timeoutId)
-      resolve(result)
-    }
-    const req = net.request({
-      method: 'POST',
-      url: `${BASE_URL}/index.php?c=time&m=load`,
-      session: session.fromPartition('persist:timetracker'),
-      useSessionCookies: true,
-      redirect: 'manual',
-    })
-    req.setHeader('Content-Type', 'application/x-www-form-urlencoded')
-    req.setHeader('X-Requested-With', 'XMLHttpRequest')
-    timeoutId = setTimeout(() => {
-      console.log(`[auth] probe timed out after ${REQUEST_TIMEOUT_MS}ms`)
-      try { req.abort() } catch {}
-      done(false)
-    }, REQUEST_TIMEOUT_MS)
-    const today = formatLocalDate(new Date())
-    let body = ''
-    req.on('response', (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400) {
-        console.log('[auth] probe got redirect', res.statusCode, res.headers.location)
-        return done(false)
-      }
-      res.on('data', (chunk) => { body += chunk.toString() })
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(body.replace(/^\uFEFF/, ''))
-          done(Array.isArray(json.rows))
-        } catch {
-          console.log('[auth] probe got non-JSON (first 200 chars):', body.slice(0, 200))
-          done(false)
-        }
-      })
-    })
-    req.on('error', (err) => {
-      if (settled) return
-      console.log('[auth] probe error:', err.message)
-      done(false)
-    })
-    req.write(`date=${today}`)
-    req.end()
+  const res = await apiRequest({
+    c: 'time',
+    m: 'load',
+    body: { date: formatLocalDate(new Date()) },
   })
+
+  if (res.timedOut) {
+    console.log(`[auth] probe timed out after ${REQUEST_TIMEOUT_MS}ms`)
+    return false
+  }
+  if (res.networkError) {
+    console.log('[auth] probe error:', res.networkError)
+    return false
+  }
+  if (res.status >= 300 && res.status < 400) {
+    console.log('[auth] probe got redirect', res.status)
+    return false
+  }
+  try {
+    const json = JSON.parse(res.body)
+    return Array.isArray(json.rows)
+  } catch {
+    console.log('[auth] probe got non-JSON (first 200 chars):', res.body.slice(0, 200))
+    return false
+  }
 }
 
 ipcMain.handle('open-auth', () => {

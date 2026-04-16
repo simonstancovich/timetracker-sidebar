@@ -54,7 +54,7 @@ Current rating: **8/10**. Thoughtful code that handles real edge cases (IP-lock,
 
 | # | Title | Severity | Status | Notes |
 |---|---|---|---|---|
-| 44 | Three near-identical `net.request` blocks | P2 | open | `api-call` (161), `probeAuthenticated` (253), `probeUserEndpoints` (221). Same session, headers, BOM strip. Extract `function request({ c, m, query, body })` so the timeout fix (#41), BOM handling, and header contract have one source of truth. Cuts ~60 lines. |
+| 44 | Three near-identical `net.request` blocks | P2 | fixed | Extracted `apiRequest({ c, m, query, body })` at top of IPC section. Returns uniform `{ status, body } \| { timedOut } \| { networkError }`. Both `api-call` and `probeAuthenticated` are now thin interpreters of that shape — session/headers/timeout/BOM live in one place. Next new call site (e.g. a future `c=user&m=current` probe) just consumes `apiRequest` and decides what the response means. |
 
 ### Smaller polish
 
