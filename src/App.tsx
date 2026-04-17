@@ -14,7 +14,6 @@ import {
   saveTimeEntry,
 } from './api'
 import { formatLocalDate } from './lib/date'
-import { useShakeDismiss } from './lib/useShakeDismiss'
 import { pickRandomMessage } from './lib/funMessages'
 import { IntroOverlay, IntroStep } from './components/IntroOverlay'
 
@@ -138,46 +137,106 @@ const L = {
   lo: '#7c3aed', btn: '#7c3aed', bsh: '0 4px 14px rgba(124,58,237,.35)',
   co: ['#7c3aed', '#0891b2', '#be185d', '#0d9488'],
 }
-// Dark mode — reference: GitHub / Linear / Notion
-// Flat layered surfaces, muted accents, subtle borders, neutral shadows.
+// Dark mode — reference: JetBrains Toolbox
+// Deep violet-black base with a soft gradient glow, glassy lifted surfaces.
 const D = {
   id: 'dark',
-  bg: '#0d0f12',         // app bg
-  s1: '#15181d',         // raised surface (cards)
-  s2: '#1a1d22',         // alt surface
-  s3: '#21252c',         // hover/active
-  b1: '#262a33',         // subtle border
-  b2: '#363b45',         // stronger border
-  ac: '#6b7cdb',         // muted indigo accent
-  ad: '#1b1f2a',         // accent-tinted surface
-  at: '#c4cbef',         // text on accent bg
-  am: '#343843',         // neutral medium
-  pk: '#c08aa0',         // dusty pink (streak only)
-  pb: '#1c181a',         // near-neutral pink surface
-  pp: '#2f2428',         // pink border
-  pv: '#c08aa0',
-  gn: '#54a878',         // muted green (goal reached / bill dot)
-  gb: '#141c18',
-  gd: '#1f3a2b',
-  t1: '#f1f3f7',         // primary text
-  t2: '#c5cbd4',         // secondary text
-  t3: '#8f96a3',         // tertiary / labels
-  tf: '#5c6170',         // faint
-  lo: '#c9cdd5',         // logo / header — neutral
-  btn: '#5560c4',        // primary button (muted indigo)
-  bsh: '0 2px 8px rgba(0,0,0,0.4)',
-  // Per-company stripe colors: all neutral-gray shades in dark mode.
-  co: ['#8a8f9a', '#727784', '#a0a4ac', '#6a6f7a'],
+  bg: '#0b0910',         // near-black violet base
+  s1: 'rgba(255,255,255,0.04)', // glassy raised surface
+  s2: 'rgba(255,255,255,0.025)',
+  s3: 'rgba(255,255,255,0.07)',
+  b1: 'rgba(255,255,255,0.06)',
+  b2: 'rgba(255,255,255,0.12)',
+  ac: '#9b8cff',         // vivid violet accent
+  ad: 'rgba(155,140,255,0.12)',
+  at: '#d5cdff',
+  am: 'rgba(255,255,255,0.12)',
+  pk: '#e89aae',
+  pb: 'rgba(232,154,174,0.07)',
+  pp: 'rgba(232,154,174,0.18)',
+  pv: '#e89aae',
+  gn: '#6fd4a0',
+  gb: 'rgba(111,212,160,0.07)',
+  gd: 'rgba(111,212,160,0.25)',
+  t1: '#f5f3ff',
+  t2: '#c4bedb',
+  t3: '#8b85a3',
+  tf: '#5a5470',
+  lo: '#ffffff',
+  btn: '#7e6bff',
+  bsh: '0 8px 24px rgba(0,0,0,0.5)',
+  co: ['#9b8cff', '#e89aae', '#6fd4a0', '#6ec0e8'],
 }
 type Theme = typeof L
 
 const ACHS = [
+  // First-time milestones
   { id: 'first', e: '🎯', n: 'First Steps', d: 'First entry logged', xp: 50, co: '#7c3aed' },
-  { id: 'fire', e: '🔥', n: 'On Fire', d: '7-day streak', xp: 100, co: '#f97316' },
-  { id: 'early', e: '⏰', n: 'Early Bird', d: 'Log before 9am', xp: 75, co: '#16a34a' },
-  { id: 'lord', e: '⚡', n: 'Time Lord', d: '10h in one day', xp: 150, co: '#0891b2' },
-  { id: 'cent', e: '💯', n: 'Centurion', d: '100h logged', xp: 300, co: '#be185d' },
-  { id: 'speed', e: '🚀', n: 'Speed Logger', d: '3 entries fast', xp: 80, co: '#8b5cf6' },
+  { id: 'rookie', e: '📋', n: 'Rookie', d: '10 entries logged', xp: 75, co: '#8b5cf6' },
+  { id: 'novice', e: '📝', n: 'Novice', d: '50 entries logged', xp: 150, co: '#6366f1' },
+  { id: 'veteran', e: '🎖️', n: 'Veteran', d: '100 entries logged', xp: 250, co: '#4f46e5' },
+  { id: 'prolific', e: '📚', n: 'Prolific', d: '500 entries logged', xp: 750, co: '#3730a3' },
+
+  // Streaks
+  { id: 'warmup', e: '☕', n: 'Warming Up', d: '3-day streak', xp: 50, co: '#f97316' },
+  { id: 'fire', e: '🔥', n: 'On Fire', d: '7-day streak', xp: 100, co: '#ea580c' },
+  { id: 'habit', e: '🔗', n: 'Habit Formed', d: '14-day streak', xp: 175, co: '#dc2626' },
+  { id: 'lockin', e: '🔒', n: 'Locked In', d: '30-day streak', xp: 300, co: '#b91c1c' },
+  { id: 'disciplined', e: '🧘', n: 'Disciplined', d: '60-day streak', xp: 500, co: '#991b1b' },
+  { id: 'obsessed', e: '⚡', n: 'Obsessed', d: '100-day streak', xp: 800, co: '#eab308' },
+  { id: 'unstoppable', e: '🚀', n: 'Unstoppable', d: '200-day streak', xp: 1200, co: '#ca8a04' },
+  { id: 'legend', e: '👑', n: 'Legend', d: '365-day streak', xp: 2500, co: '#a16207' },
+
+  // Hours accumulated
+  { id: 'quarter', e: '🌱', n: 'First Quarter', d: '25h logged', xp: 100, co: '#22c55e' },
+  { id: 'flow', e: '🌊', n: 'Finding Flow', d: '50h logged', xp: 150, co: '#0ea5e9' },
+  { id: 'cent', e: '💯', n: 'Centurion', d: '100h logged', xp: 300, co: '#0891b2' },
+  { id: 'dedicated', e: '💪', n: 'Dedicated', d: '250h logged', xp: 500, co: '#0e7490' },
+  { id: 'halfgrand', e: '🏅', n: 'Half Grand', d: '500h logged', xp: 750, co: '#155e75' },
+  { id: 'grand', e: '🏆', n: 'Grand Master', d: '1000h logged', xp: 1250, co: '#be185d' },
+  { id: 'mythic', e: '💎', n: 'Mythic', d: '2500h logged', xp: 2500, co: '#9f1239' },
+  { id: 'legacy', e: '🗿', n: 'Legacy', d: '5000h logged', xp: 5000, co: '#881337' },
+
+  // Daily peaks
+  { id: 'solid', e: '📈', n: 'Solid Day', d: '4h in one day', xp: 50, co: '#14b8a6' },
+  { id: 'full', e: '✅', n: 'Full Day', d: '6h in one day', xp: 80, co: '#059669' },
+  { id: 'goal', e: '⭐', n: 'Goal Crusher', d: 'Hit 8h in a day', xp: 120, co: '#16a34a' },
+  { id: 'lord', e: '⏰', n: 'Time Lord', d: '10h in one day', xp: 175, co: '#15803d' },
+  { id: 'midnight', e: '🌙', n: 'Midnight Oil', d: '12h in one day', xp: 275, co: '#166534' },
+  { id: 'impossible', e: '🤯', n: 'Impossible Day', d: '16h in one day', xp: 500, co: '#14532d' },
+
+  // Time of day
+  { id: 'early', e: '🌅', n: 'Early Bird', d: 'Log before 9am', xp: 75, co: '#f59e0b' },
+  { id: 'dawn', e: '🌄', n: 'Dawn Patrol', d: 'Log before 6am', xp: 150, co: '#d97706' },
+  { id: 'night', e: '🦉', n: 'Night Owl', d: 'Log after 10pm', xp: 75, co: '#6366f1' },
+  { id: 'vampire', e: '🦇', n: 'Vampire', d: 'Log after midnight', xp: 125, co: '#4f46e5' },
+  { id: 'twilight', e: '🌇', n: 'Twilight', d: 'Log in the evening', xp: 40, co: '#c026d3' },
+  { id: 'lunch', e: '🥪', n: 'Skipped Lunch', d: 'Log during 12–1pm', xp: 50, co: '#db2777' },
+
+  // Variety
+  { id: 'multi', e: '🎭', n: 'Multitasker', d: '3 clients in one day', xp: 100, co: '#9333ea' },
+  { id: 'collector', e: '🗂️', n: 'Client Collector', d: '10 different clients', xp: 250, co: '#7e22ce' },
+  { id: 'hopper', e: '🐸', n: 'Project Hopper', d: '5 projects in one day', xp: 125, co: '#6b21a8' },
+  { id: 'renaissance', e: '🎨', n: 'Renaissance', d: '20 different projects', xp: 400, co: '#581c87' },
+  { id: 'focused', e: '🎯', n: 'Laser Focus', d: 'One project all day', xp: 100, co: '#0d9488' },
+
+  // Weekly / monthly
+  { id: 'perfectweek', e: '🌟', n: 'Perfect Week', d: 'Goal hit Mon–Fri', xp: 350, co: '#fbbf24' },
+  { id: 'perfectmonth', e: '✨', n: 'Perfect Month', d: 'Every weekday at goal', xp: 1500, co: '#f59e0b' },
+  { id: 'king', e: '♛', n: 'Consistency King', d: '4 perfect weeks in a row', xp: 1000, co: '#d97706' },
+  { id: 'comeback', e: '💫', n: 'Comeback', d: 'Log after a 7+ day break', xp: 75, co: '#06b6d4' },
+  { id: 'weekend', e: '🌴', n: 'Weekend Warrior', d: 'Log on a weekend', xp: 60, co: '#10b981' },
+  { id: 'break', e: '🏖️', n: 'Vacation Mode', d: 'Took a 7+ day break', xp: 25, co: '#22d3ee' },
+
+  // Billing
+  { id: 'firstinv', e: '💰', n: 'First Invoice', d: 'First billable hour', xp: 50, co: '#84cc16' },
+  { id: 'bigweek', e: '💵', n: 'Big Week', d: '40+ billable hours in a week', xp: 300, co: '#65a30d' },
+  { id: 'moneymaker', e: '💸', n: 'Money Maker', d: '1000 billable hours', xp: 1750, co: '#4d7c0f' },
+
+  // Quirky
+  { id: 'speed', e: '⚡', n: 'Speed Logger', d: '3 entries within 5 min', xp: 80, co: '#a855f7' },
+  { id: 'overachiever', e: '🔥', n: 'Overachiever', d: '10h+ every day for a week', xp: 600, co: '#ef4444' },
+  { id: 'editor', e: '✏️', n: 'Refined', d: 'Edit an entry 5 times', xp: 50, co: '#64748b' },
 ] as const
 type Ach = (typeof ACHS)[number]
 
@@ -238,27 +297,13 @@ const mondayOf = (d: Date) => {
 }
 
 export default function App() {
-  useShakeDismiss()
   const [authed, setAuthed] = useState<boolean | null>(null)
   const [mode, setMode] = useState<'light' | 'dark'>('light')
   const M: Theme = mode === 'light' ? L : D
 
   const [tab, setTab] = useState<'today' | 'timer' | 'log' | 'xp'>('today')
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [size, setWindowSize] = useState<'full' | 'pill' | 'square' | 'top'>('full')
-  const [dockMode, setDockMode] = useState<'pill' | 'top'>('pill')
-
-  useEffect(() => {
-    window.electronAPI.storeGet('blurCollapseMode').then((v) => {
-      if (v === 'pill' || v === 'top') setDockMode(v)
-    })
-  }, [])
-
-  const toggleDockMode = async () => {
-    const next = dockMode === 'top' ? 'pill' : 'top'
-    setDockMode(next)
-    await window.electronAPI.setCollapseMode(next)
-  }
+  const [size, setWindowSize] = useState<'full' | 'top'>('full')
 
   const [sessionXp, setSessionXp] = useState(0)
   const lastXp = useRef<number | null>(null)
@@ -269,11 +314,17 @@ export default function App() {
   const [showIntro, setShowIntro] = useState(false)
   const [introChecked, setIntroChecked] = useState(false)
   const [introStep, setIntroStep] = useState(0)
-  const expandLockUntil = useRef(0)
-  const goSize = (s: 'full' | 'pill' | 'square' | 'top') => {
+  const [modeTransition, setModeTransition] = useState<'idle' | 'out' | 'in'>('idle')
+
+  const goSize = async (s: 'full' | 'top') => {
     if (s === 'full' && tRun) setTab('timer')
+    if (modeTransition !== 'idle') return
+    setModeTransition('out')
+    await new Promise((r) => setTimeout(r, 180))
     setWindowSize(s)
-    window.electronAPI.setSize(s)
+    await window.electronAPI.setSize(s)
+    setModeTransition('in')
+    setTimeout(() => setModeTransition('idle'), 200)
   }
 
   const confirmSignOut = () => {
@@ -453,7 +504,6 @@ export default function App() {
     window.electronAPI.onSessionLost(() => setAuthed(false))
     window.electronAPI.onForcedSize((s) => {
       setWindowSize(s)
-      expandLockUntil.current = Date.now() + 1500
     })
   }, [])
 
@@ -853,20 +903,44 @@ export default function App() {
               onClick={() => setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}
               style={{ background: 'none', border: 'none', color: M.tf, fontSize: 18, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
             >‹</button>
-            <span style={{ whiteSpace: 'nowrap' }}>{dateLabel}</span>
+            <button
+              onClick={() => setSelectedDate(new Date())}
+              title="Jump to today (refresh)"
+              style={{ background: 'none', border: 'none', color: M.t3, fontSize: 11, fontWeight: 500, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}
+            >{dateLabel}</button>
             <button
               onClick={() => setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}
               style={{ background: 'none', border: 'none', color: M.tf, fontSize: 18, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
             >›</button>
           </div>
           <span style={{ fontSize: 13, fontWeight: 700, color: done ? M.gn : todayH > 0 ? M.t1 : M.tf, fontFamily: 'monospace' }}>{fmtHours(todayH)}</span>
+          <div
+            onClick={() => setTab('timer')}
+            title={tRun ? 'Timer running' : tSec > 0 ? 'Timer paused — resume on Timer tab' : 'No timer running — click to start'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
+              background: tRun ? `${M.pk}1f` : 'transparent',
+              border: `1px solid ${tRun ? `${M.pk}55` : M.b1}`,
+              borderRadius: 100, padding: '2px 7px',
+            }}
+          >
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: tRun ? M.pk : tSec > 0 ? '#f59e0b' : '#ef4444',
+              boxShadow: tRun ? `0 0 6px ${M.pk}` : 'none',
+              animation: tRun ? 'pulse 1.2s ease-in-out infinite' : 'none',
+            }} />
+            <span style={{ fontSize: 10, fontWeight: 700, color: tRun ? M.pk : M.t3, fontFamily: 'monospace', letterSpacing: 0.3 }}>
+              {tRun ? fmtClock(tSec) : tSec > 0 ? 'Paused' : 'Idle'}
+            </span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: M.pb, border: `1px solid ${M.pp}`, borderRadius: 100, padding: '2px 7px' }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: M.pv }} />
             <span style={{ fontSize: 10, fontWeight: 700, color: M.pk, fontFamily: 'monospace' }}>{streak}d</span>
           </div>
           <button
-            onClick={() => goSize('pill')}
-            title="Minimize to pill"
+            onClick={() => goSize('top')}
+            title="Dock as top bar"
             style={{ width: 24, height: 24, borderRadius: 7, background: M.s2, border: `1px solid ${M.b1}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 9, color: M.t3, fontWeight: 700 }}
           >▼</button>
         </div>
@@ -976,9 +1050,17 @@ export default function App() {
                             <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: M.ac }}>
                               {fmtHours(parseFloat(e.hour))}
                             </span>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', background: M.gb, border: `1px solid ${M.gd}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: e.invoice === '1' ? M.gn : M.tf }} />
-                            </div>
+                            <span
+                              title={e.invoice === '1' ? 'Billable — shows up on invoice' : 'Internal — not billed'}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center',
+                                height: 16, padding: '0 6px', borderRadius: 4,
+                                fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+                                background: e.invoice === '1' ? `${M.ac}26` : 'transparent',
+                                color: e.invoice === '1' ? M.ac : M.tf,
+                                border: `1px solid ${e.invoice === '1' ? `${M.ac}55` : M.b1}`,
+                              }}
+                            >{e.invoice === '1' ? 'Billable' : 'Internal'}</span>
                             {(() => {
                               const isActive = tRun && draftId === e.id
                               return (
@@ -1480,14 +1562,35 @@ export default function App() {
   const runningXpBonus = tRun ? Math.floor(tSec / 60) : 0
   const displaySessionXp = sessionXp + runningXpBonus
 
+  const modeOverlay = (
+    <div
+      aria-hidden
+      style={{
+        position: 'fixed', inset: 0, background: M.bg, zIndex: 999,
+        pointerEvents: modeTransition === 'out' ? 'auto' : 'none',
+        opacity: modeTransition === 'out' ? 1 : 0,
+        transition: 'opacity 180ms ease-out',
+      }}
+    />
+  )
+
+  const warnColor = tRun ? null : tSec > 0 ? '#f59e0b' : '#ef4444'
+
   if (size === 'top') {
     return (
+      <>
       <div
+        key="mode-top"
+        className="mode-root"
+        onDoubleClick={() => goSize('full')}
+        title="Double-click to open full sidebar"
         style={{
           height: '100vh', width: '100vw', background: M.bg,
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '0 8px', fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
           borderBottom: `1px solid ${M.b1}`, position: 'relative', overflow: 'hidden',
+          boxShadow: warnColor ? `inset 0 0 0 1.5px ${warnColor}` : undefined,
+          transition: 'box-shadow 200ms ease-out',
         }}
       >
         <div
@@ -1516,10 +1619,10 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, zIndex: 1 }}>
           <span
             style={{
-              width: 4, height: 4, borderRadius: '50%',
-              background: tRun ? M.pk : 'transparent',
-              boxShadow: tRun ? `0 0 4px ${M.pk}` : 'none',
-              animation: tRun ? 'pulse 1.4s ease-in-out infinite' : 'none',
+              width: 5, height: 5, borderRadius: '50%',
+              background: tRun ? M.pk : tSec > 0 ? '#f59e0b' : '#ef4444',
+              boxShadow: tRun ? `0 0 5px ${M.pk}` : 'none',
+              animation: tRun ? 'pulse 1.2s ease-in-out infinite' : 'none',
               flexShrink: 0,
             }}
           />
@@ -1531,38 +1634,62 @@ export default function App() {
         <div style={{ width: 1, height: 12, background: M.b1, zIndex: 1 }} />
 
         <div style={{ flex: 1, minWidth: 0, zIndex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, maxWidth: '45%', minWidth: 0 }}>
-            {hasCtx && coObj ? (
-              <>
-                <span style={{ fontSize: 10, fontWeight: 700, color: M.t1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
-                  {coObj.name}
-                </span>
-                <span style={{ fontSize: 9, color: M.t3, flexShrink: 0 }}>·</span>
-                <span style={{ fontSize: 10, color: M.t2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-                  {prObj?.name || ''}
-                </span>
-                {tD.trim() && (
+          {!tRun ? (
+            (() => {
+              const msg = tSec > 0 ? 'PAUSED TASK' : 'NO TASK BEING WORKED ON'
+              const sep = '   •   '
+              const half = (msg + sep).repeat(30)
+              return (
+                <div className="status-marquee" style={{ zIndex: 1 }}>
+                  <div
+                    className="status-marquee-track"
+                    style={{
+                      fontSize: 10, fontWeight: 800, letterSpacing: 1.4,
+                      color: warnColor || M.t3,
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {half}{half}
+                  </div>
+                </div>
+              )
+            })()
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, maxWidth: '45%', minWidth: 0 }}>
+                {hasCtx && coObj ? (
                   <>
-                    <span style={{ fontSize: 9, color: M.t3, flexShrink: 0 }}>—</span>
-                    <span style={{ fontSize: 10, color: M.t3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-                      {tD}
+                    <span style={{ fontSize: 10, fontWeight: 700, color: M.t1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                      {coObj.name}
                     </span>
+                    <span style={{ fontSize: 9, color: M.t3, flexShrink: 0 }}>·</span>
+                    <span style={{ fontSize: 10, color: M.t2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                      {prObj?.name || ''}
+                    </span>
+                    {tD.trim() && (
+                      <>
+                        <span style={{ fontSize: 9, color: M.t3, flexShrink: 0 }}>—</span>
+                        <span style={{ fontSize: 10, color: M.t3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                          {tD}
+                        </span>
+                      </>
+                    )}
                   </>
+                ) : (
+                  <span style={{ fontSize: 10, color: M.t3, fontStyle: 'italic' }}>No task selected</span>
                 )}
-              </>
-            ) : (
-              <span style={{ fontSize: 10, color: M.t3, fontStyle: 'italic' }}>No task selected</span>
-            )}
-          </div>
+              </div>
 
-          {funMessage && (
-            <span
-              key={funMessage}
-              className="fun-msg"
-              style={{ fontSize: 10, color: M.ac, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500, flex: 1, minWidth: 0 }}
-            >
-              {funMessage}
-            </span>
+              {funMessage && (
+                <span
+                  key={funMessage}
+                  className="fun-msg"
+                  style={{ fontSize: 10, color: M.ac, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500, flex: 1, minWidth: 0 }}
+                >
+                  {funMessage}
+                </span>
+              )}
+            </>
           )}
         </div>
 
@@ -1632,118 +1759,19 @@ export default function App() {
           </button>
         </div>
       </div>
-    )
-  }
-
-  if (size === 'pill') {
-    return (
-      <div
-        onClick={() => { if (Date.now() < expandLockUntil.current) return; goSize('full') }}
-        style={{ height: '100vh', width: '100vw', background: 'transparent', cursor: 'pointer', fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif" }}
-      >
-        <div
-          className={tRun ? 'rec-runner' : ''}
-          style={{
-            height: '100%', width: '100%', background: M.bg,
-            borderLeft: `3px solid ${done ? M.gn : M.ac}`,
-            display: 'flex', alignItems: 'center', padding: '0 12px 0 10px', gap: 10, position: 'relative', overflow: 'hidden',
-          }}
-        >
-          <div style={{ position: 'absolute', left: 3, top: 0, bottom: 0, width: `calc(${gpct}% - 3px)`, background: done ? `${M.gn}14` : `${M.ac}0e`, pointerEvents: 'none' }} />
-
-          <button
-            onClick={(e) => { e.stopPropagation(); setTRun((r) => !r) }}
-            title={tRun ? 'Pause' : 'Start'}
-            style={{ width: 36, height: 36, borderRadius: '50%', background: tRun ? M.pk : M.btn, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, cursor: 'pointer', boxShadow: tRun ? `0 2px 10px ${M.pk}55` : M.bsh }}
-          >
-            {tRun ? (
-              <svg width="10" height="12" viewBox="0 0 12 14" fill="none"><rect x="1" y="1" width="3" height="12" rx="1" fill="white" /><rect x="8" y="1" width="3" height="12" rx="1" fill="white" /></svg>
-            ) : (
-              <svg width="11" height="13" viewBox="0 0 13 15" fill="none" style={{ marginLeft: 2 }}><path d="M1.5 1.5L11.5 7.5L1.5 13.5V1.5Z" fill="white" stroke="white" strokeWidth="1.2" strokeLinejoin="round" /></svg>
-            )}
-          </button>
-
-          <div style={{ flex: 1, minWidth: 0, zIndex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 800, color: tRun ? M.ac : M.t2, letterSpacing: 0.5, lineHeight: 1 }}>
-              {fmtClock(tSec)}
-            </div>
-            <div className="pill-marquee" style={{ height: 16, maskImage: 'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 20px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 12px, black calc(100% - 20px), transparent 100%)' }}>
-              <div className="pill-marquee-track" style={{ fontSize: 11, color: M.t3, fontWeight: 500, lineHeight: '16px' }}>
-                {hasCtx && coObj
-                  ? `${coObj.name} · ${prObj?.name || ''}  •  ${coObj.name} · ${prObj?.name || ''}  •  `
-                  : `No task selected · tap to open  •  No task selected · tap to open  •  `}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, zIndex: 1 }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: done ? M.gn : M.t1, fontFamily: 'monospace', letterSpacing: -0.5, lineHeight: 1 }}>{fmtHours(todayH)}</div>
-              <div style={{ fontSize: 8, color: M.t3, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>today</div>
-            </div>
-            <div style={{ width: 1, height: 20, background: M.b1 }} />
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: M.pk, fontFamily: 'monospace', lineHeight: 1 }}>{streak}d</div>
-              <div style={{ fontSize: 8, color: M.t3, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>streak</div>
-            </div>
-            <div style={{ width: 1, height: 20, background: M.b1 }} />
-            <button
-              onClick={(e) => { e.stopPropagation(); goSize('square') }}
-              title="Shrink further"
-              style={{ width: 22, height: 22, borderRadius: 5, background: M.s2, border: `1px solid ${M.b1}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-            >
-              <span style={{ fontSize: 8, color: M.t3, fontWeight: 700 }}>▼</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (size === 'square') {
-    return (
-      <div style={{ height: '100vh', width: '100vw', background: 'transparent', fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif" }}>
-        <div
-          className={tRun ? 'rec-runner-sq' : ''}
-          style={{
-            height: '100%', width: '100%', background: M.bg,
-            borderLeft: `3px solid ${tRun ? M.pk : M.ac}`,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, position: 'relative', padding: 6,
-          }}
-        >
-          <button
-            onClick={() => goSize('pill')}
-            title="Expand"
-            style={{ position: 'absolute', top: 2, right: 2, width: 14, height: 14, borderRadius: 3, background: M.s2, border: `1px solid ${M.b1}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 7, color: M.t3, fontWeight: 700, padding: 0 }}
-          >▲</button>
-
-          <button
-            onClick={() => setTRun((r) => !r)}
-            title={tRun ? 'Pause' : 'Start'}
-            style={{ width: 32, height: 32, borderRadius: '50%', background: tRun ? M.pk : M.btn, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-          >
-            {tRun ? (
-              <svg width="10" height="12" viewBox="0 0 12 14" fill="none"><rect x="1" y="1" width="3" height="12" rx="1" fill="white" /><rect x="8" y="1" width="3" height="12" rx="1" fill="white" /></svg>
-            ) : (
-              <svg width="10" height="12" viewBox="0 0 13 15" fill="none" style={{ marginLeft: 1.5 }}><path d="M1.5 1.5L11.5 7.5L1.5 13.5V1.5Z" fill="white" stroke="white" strokeWidth="1.2" strokeLinejoin="round" /></svg>
-            )}
-          </button>
-
-          <div style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 700, color: tRun ? M.ac : M.t3, letterSpacing: 0.2 }}>
-            {fmtClock(tSec)}
-          </div>
-        </div>
-      </div>
+      {modeOverlay}
+      </>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: M.bg, fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif", color: M.t1, position: 'relative', overflow: 'hidden' }}>
+    <>
+    <div key="mode-full" className={`mode-root ${M.id === 'dark' ? 'app-dark-glow' : ''}`} style={{ height: '100vh', background: M.id === 'dark' ? undefined : M.bg, fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif", color: M.t1, position: 'relative', overflow: 'hidden', boxShadow: warnColor ? `inset 0 0 0 2px ${warnColor}` : undefined, transition: 'box-shadow 200ms ease-out', display: 'flex', flexDirection: 'column' }}>
       {hdr}
-      <div style={{ height: 'calc(100vh - 124px)', overflowY: 'auto' }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
         {views[tab]}
       </div>
-      <div style={{ height: 40, borderTop: `1px solid ${M.b1}`, background: M.bg, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', gap: 10 }}>
+      <div style={{ height: 40, flexShrink: 0, borderTop: `1px solid ${M.b1}`, background: M.bg, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', gap: 10 }}>
         <div style={{ display: 'flex', gap: 2, background: M.s2, border: `1px solid ${M.b1}`, borderRadius: 7, padding: 2 }}>
           {(['light', 'dark'] as const).map((m) => (
             <button
@@ -1760,15 +1788,6 @@ export default function App() {
         >
           ?
         </button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: M.t3, cursor: 'pointer', userSelect: 'none' }}>
-          <input
-            type="checkbox"
-            checked={dockMode === 'top'}
-            onChange={toggleDockMode}
-            style={{ width: 13, height: 13, accentColor: M.ac, cursor: 'pointer' }}
-          />
-          Top bar when closed
-        </label>
         <button
           onClick={confirmSignOut}
           title="Sign out"
@@ -1829,5 +1848,7 @@ export default function App() {
         </div>
       )}
     </div>
+    {modeOverlay}
+    </>
   )
 }

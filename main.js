@@ -39,26 +39,12 @@ let currentMode = "full";
 const SIDEBAR_WIDTH = 380;
 
 let displayChangeSilenceUntil = 0;
-const PILL_WIDTH = 360;
-const PILL_HEIGHT = 68;
-const SQUARE_SIZE = 72;
 const TOP_HEIGHT = 18;
 const TOP_RESERVED_HEIGHT = 46;
 const REQUEST_TIMEOUT_MS = 15000;
 
-let dismissed = false;
-let dismissOriginalBounds = null;
-let dismissSlideTimer = null;
-let dismissPollTimer = null;
-
 let appBarRegistered = false;
 let appBarReassertTimer = null;
-
-let blurCollapseMode = "pill";
-try {
-  const stored = store.get("blurCollapseMode");
-  if (stored === "pill" || stored === "top") blurCollapseMode = stored;
-} catch {}
 
 let blurCollapseDisabled = false;
 
@@ -100,101 +86,18 @@ function createMainWindow() {
 
   mainWindow.on("blur", () => {
     if (!mainWindow) return;
-    if (dismissed) return;
     if (blurCollapseDisabled) return;
     if (Date.now() < displayChangeSilenceUntil) return;
     if (mainWindow.webContents.isDevToolsFocused()) return;
     if (currentMode === "full") {
-      setWindowSize(blurCollapseMode);
-      mainWindow.webContents.send("forced-size", blurCollapseMode);
+      setWindowSize("top");
+      mainWindow.webContents.send("forced-size", "top");
     }
   });
 }
 
-function cancelDismissAnimation() {
-  if (dismissSlideTimer) {
-    clearInterval(dismissSlideTimer);
-    dismissSlideTimer = null;
-  }
-}
-
-function stopDismissPoll() {
-  if (dismissPollTimer) {
-    clearInterval(dismissPollTimer);
-    dismissPollTimer = null;
-  }
-}
-
-function clearDismissState() {
-  cancelDismissAnimation();
-  stopDismissPoll();
-  dismissed = false;
-  dismissOriginalBounds = null;
-}
-
-function slideWindowX(win, targetX, durationMs, onDone) {
-  cancelDismissAnimation();
-  if (!win || win.isDestroyed()) return;
-  const [startX, lockedY] = win.getPosition();
-  const startedAt = Date.now();
-  dismissSlideTimer = setInterval(() => {
-    if (!win || win.isDestroyed()) {
-      cancelDismissAnimation();
-      return;
-    }
-    const elapsed = Date.now() - startedAt;
-    const t = Math.min(1, elapsed / durationMs);
-    const eased = 1 - Math.pow(1 - t, 3);
-    const x = Math.round(startX + (targetX - startX) * eased);
-    win.setPosition(x, lockedY);
-    if (t >= 1) {
-      cancelDismissAnimation();
-      if (onDone) onDone();
-    }
-  }, 16);
-}
-
-function dismissForCursor() {
-  if (!mainWindow || dismissed) return;
-  if (currentMode === "full") return;
-  const b = mainWindow.getBounds();
-  dismissOriginalBounds = { ...b };
-  const display = screen.getDisplayMatching(b);
-  const offscreenX = display.bounds.x + display.bounds.width + 4;
-  dismissed = true;
-  slideWindowX(mainWindow, offscreenX, 180, () => {
-    startDismissPoll();
-  });
-}
-
-function startDismissPoll() {
-  stopDismissPoll();
-  dismissPollTimer = setInterval(() => {
-    if (!dismissed || !mainWindow || !dismissOriginalBounds) return;
-    const pt = screen.getCursorScreenPoint();
-    const leftEdge = dismissOriginalBounds.x - 8;
-    if (pt.x < leftEdge) restoreFromDismiss();
-  }, 80);
-}
-
-function restoreFromDismiss() {
-  if (!dismissed || !mainWindow || !dismissOriginalBounds) return;
-  stopDismissPoll();
-  const target = { ...dismissOriginalBounds };
-  slideWindowX(mainWindow, target.x, 180, () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const wasResizable = mainWindow.isResizable();
-      if (!wasResizable) mainWindow.setResizable(true);
-      mainWindow.setBounds(target);
-      if (!wasResizable) mainWindow.setResizable(false);
-    }
-    dismissed = false;
-    dismissOriginalBounds = null;
-  });
-}
-
-function applyTopPos() {
-  if (!mainWindow || !appBarRegistered) return;
+function computeTopTarget() {
+  if (!mainWindow || !appBarRegistered) return null;
   const hwnd = mainWindow.getNativeWindowHandle();
   const d = screen.getPrimaryDisplay();
   const adjusted = appbar.setTopPos(hwnd, {
@@ -203,15 +106,21 @@ function applyTopPos() {
     right: d.bounds.x + d.bounds.width,
     height: TOP_RESERVED_HEIGHT,
   });
-  if (!adjusted) return;
-  const wasResizable = mainWindow.isResizable();
-  if (!wasResizable) mainWindow.setResizable(true);
-  mainWindow.setBounds({
+  if (!adjusted) return null;
+  return {
     x: adjusted.left,
     y: adjusted.top,
     width: adjusted.right - adjusted.left,
     height: TOP_HEIGHT,
-  });
+  };
+}
+
+function applyTopPos() {
+  const target = computeTopTarget();
+  if (!target) return;
+  const wasResizable = mainWindow.isResizable();
+  if (!wasResizable) mainWindow.setResizable(true);
+  mainWindow.setBounds(target);
   if (!wasResizable) mainWindow.setResizable(false);
 }
 
@@ -245,41 +154,28 @@ function exitTopMode() {
   appBarRegistered = false;
 }
 
-function setWindowSize(size) {
+async function setWindowSize(size) {
   if (!mainWindow) return;
-  if (dismissed) clearDismissState();
+  mainWindow.setOpacity(0);
+  await new Promise((r) => setTimeout(r, 16));
   if (currentMode === "top" && size !== "top") exitTopMode();
   currentMode = size;
   if (size === "top") {
     enterTopMode();
-    return;
-  }
-  const { height, width } = screen.getPrimaryDisplay().workAreaSize;
-  const wasResizable = mainWindow.isResizable();
-  if (!wasResizable) mainWindow.setResizable(true);
-  if (size === "pill") {
-    mainWindow.setBounds({
-      x: width - PILL_WIDTH - 12,
-      y: 12,
-      width: PILL_WIDTH,
-      height: PILL_HEIGHT,
-    });
-  } else if (size === "square") {
-    mainWindow.setBounds({
-      x: width - SQUARE_SIZE - 12,
-      y: 12,
-      width: SQUARE_SIZE,
-      height: SQUARE_SIZE,
-    });
   } else {
+    const { height, width } = screen.getPrimaryDisplay().workAreaSize;
+    const wasResizable = mainWindow.isResizable();
+    if (!wasResizable) mainWindow.setResizable(true);
     mainWindow.setBounds({
       x: width - SIDEBAR_WIDTH,
       y: 0,
       width: SIDEBAR_WIDTH,
       height,
     });
+    if (!wasResizable) mainWindow.setResizable(false);
   }
-  if (!wasResizable) mainWindow.setResizable(false);
+  await new Promise((r) => setTimeout(r, 60));
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setOpacity(1);
 }
 
 function createAuthWindow() {
@@ -493,12 +389,8 @@ ipcMain.handle("sign-out", () => signOut());
 
 ipcMain.handle("store-get", (event, key) => store.get(key));
 ipcMain.handle("store-set", (event, key, value) => store.set(key, value));
-ipcMain.handle("set-size", (_e, size) => setWindowSize(size));
-ipcMain.handle("shake-dismiss", () => dismissForCursor());
-ipcMain.handle("set-collapse-mode", (_e, mode) => {
-  if (mode !== "pill" && mode !== "top") return;
-  blurCollapseMode = mode;
-  store.set("blurCollapseMode", mode);
+ipcMain.handle("set-size", async (_e, size) => {
+  await setWindowSize(size);
 });
 ipcMain.handle("set-blur-collapse-disabled", (_e, disabled) => {
   blurCollapseDisabled = !!disabled;
@@ -542,13 +434,9 @@ app.whenReady().then(() => {
       createMainWindow();
       return;
     }
-    if (dismissed) {
-      restoreFromDismiss();
-      return;
-    }
     if (currentMode === "full") {
-      setWindowSize("pill");
-      mainWindow.webContents.send("forced-size", "pill");
+      setWindowSize("top");
+      mainWindow.webContents.send("forced-size", "top");
     } else {
       setWindowSize("full");
       mainWindow.webContents.send("forced-size", "full");

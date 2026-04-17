@@ -87,8 +87,12 @@ export function Combobox({ value, items, onChange, placeholder, theme, maxResult
         <div
           style={{
             position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-            background: theme.s1, border: `1px solid ${theme.b2}`, borderRadius: 10,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: 220, overflowY: 'auto',
+            background: theme.bg,
+            backgroundImage: `linear-gradient(${theme.s1}, ${theme.s1})`,
+            backdropFilter: 'blur(20px) saturate(140%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+            border: `1px solid ${theme.b2}`, borderRadius: 10,
+            boxShadow: '0 12px 32px rgba(0,0,0,0.45)', maxHeight: 220, overflowY: 'auto',
             zIndex: 50,
           }}
         >
