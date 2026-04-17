@@ -19,4 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Window
   setSize: (size) => ipcRenderer.invoke('set-size', size),
   onForcedSize: (cb) => ipcRenderer.on('forced-size', (_e, s) => cb(s)),
+  shakeDismiss: () => ipcRenderer.invoke('shake-dismiss'),
+  setCollapseMode: (mode) => ipcRenderer.invoke('set-collapse-mode', mode),
+  setBlurCollapseDisabled: (disabled) => ipcRenderer.invoke('set-blur-collapse-disabled', disabled),
 })

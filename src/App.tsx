@@ -5,6 +5,7 @@ import {
   Company,
   Project,
   TimeEntry,
+  buildSavePayload,
   deleteTimeEntry,
   loadCompanies,
   loadProjects,
@@ -12,6 +13,116 @@ import {
   loadUsers,
   saveTimeEntry,
 } from './api'
+import { formatLocalDate } from './lib/date'
+import { useShakeDismiss } from './lib/useShakeDismiss'
+import { pickRandomMessage } from './lib/funMessages'
+import { IntroOverlay, IntroStep } from './components/IntroOverlay'
+
+const INTRO_STEPS: IntroStep[] = [
+  {
+    target: null,
+    title: "Time tracking shouldn't feel like homework.",
+    body:
+      "Run the timer as you work. Log entries in seconds. Earn XP for showing up.\n\nLet's get you rolling in under a minute.",
+    nextLabel: "Let's go →",
+  },
+  {
+    target: 'tab-timer',
+    title: 'Open the Timer tab',
+    body: 'This is where you live-track time. Tap it to continue.',
+  },
+  {
+    target: 'timer-start',
+    title: 'Start the clock',
+    body:
+      "Hit Start — don't worry about the details yet. You fill them in while the timer runs.",
+  },
+  {
+    target: 'timer-company',
+    title: 'Pick a client',
+    body: "Tap the field, then type to filter. Try 'DevCore' for this first run.",
+    hint: 'Start typing — the list narrows as you go.',
+  },
+  {
+    target: 'timer-project',
+    title: 'Pick a project',
+    body: "Open the project menu and select 'Utbildning/Seminarium'.",
+  },
+  {
+    target: 'timer-description',
+    title: 'What are you doing?',
+    body: "Type a short description. 'learning to track time!' works for now.",
+    needsManualNext: true,
+    nextLabel: 'Next →',
+  },
+  {
+    target: 'tab-today',
+    title: 'Your day at a glance',
+    body: "Tap Today. It's your dashboard — stats, progress, everything you logged.",
+  },
+  {
+    target: 'today-stats',
+    title: "Today's numbers",
+    body:
+      "Hours logged today, your current streak, and this week's total. Streak resets if you skip a weekday.",
+    needsManualNext: true,
+    readOnly: true,
+    nextLabel: 'Got it →',
+  },
+  {
+    target: 'today-entries',
+    title: "Entries live here",
+    body:
+      "Every entry you log shows up here grouped by client.\n\n▶ resumes a task · double-click to edit · ✕ deletes.",
+    needsManualNext: true,
+    readOnly: true,
+    nextLabel: 'Next →',
+  },
+  {
+    target: 'tab-log',
+    title: 'Log past entries',
+    body: 'Tap +Log. Use this tab to backfill time or log without the timer.',
+  },
+  {
+    target: 'log-hours',
+    title: 'Type hours directly',
+    body:
+      "No timer, no problem. Use +/- or type 1:30 / 1.5 to set the hours, then save.",
+    needsManualNext: true,
+    readOnly: true,
+    nextLabel: 'Got it →',
+  },
+  {
+    target: 'tab-xp',
+    title: 'Achievements & XP',
+    body: 'Tap XP. Every minute tracked earns XP.',
+  },
+  {
+    target: 'xp-level',
+    title: 'Level up',
+    body:
+      "Every 1000 XP gets you a new level. Higher levels unlock cooler titles — aim for Principal Dev.",
+    needsManualNext: true,
+    readOnly: true,
+    nextLabel: 'Next →',
+  },
+  {
+    target: 'xp-achievements',
+    title: 'Unlock achievements',
+    body:
+      "Hit milestones like first entry, 7-day streak, or 10h in a day to unlock these badges.",
+    needsManualNext: true,
+    readOnly: true,
+    nextLabel: 'Almost done →',
+  },
+  {
+    target: null,
+    title: "You're all set! 🎉",
+    body:
+      "Your timer is running and you know where everything lives.\n\nShake the window to hide it, dock it as a top bar from the footer, or just keep working.\n\nHave fun!",
+    nextLabel: 'Start tracking',
+  },
+]
 
 // Fallback used only if we can't resolve the real user from the server.
 const FALLBACK_USER = { _user_id: '187', username: 'Simon Stancovich' }
@@ -117,12 +228,7 @@ function parseHoursInput(raw: string): number | null {
 }
 const fmtClock = (s: number) =>
   `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`
-const fmtDateISO = (d: Date) => {
-  const y = d.getFullYear()
-  const m = pad(d.getMonth() + 1)
-  const day = pad(d.getDate())
-  return `${y}-${m}-${day}`
-}
+const fmtDateISO = formatLocalDate
 const mondayOf = (d: Date) => {
   const r = new Date(d)
   const day = (r.getDay() + 6) % 7 // Mon=0
@@ -132,15 +238,39 @@ const mondayOf = (d: Date) => {
 }
 
 export default function App() {
+  useShakeDismiss()
   const [authed, setAuthed] = useState<boolean | null>(null)
   const [mode, setMode] = useState<'light' | 'dark'>('light')
   const M: Theme = mode === 'light' ? L : D
 
   const [tab, setTab] = useState<'today' | 'timer' | 'log' | 'xp'>('today')
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [size, setWindowSize] = useState<'full' | 'pill' | 'square'>('full')
+  const [size, setWindowSize] = useState<'full' | 'pill' | 'square' | 'top'>('full')
+  const [dockMode, setDockMode] = useState<'pill' | 'top'>('pill')
+
+  useEffect(() => {
+    window.electronAPI.storeGet('blurCollapseMode').then((v) => {
+      if (v === 'pill' || v === 'top') setDockMode(v)
+    })
+  }, [])
+
+  const toggleDockMode = async () => {
+    const next = dockMode === 'top' ? 'pill' : 'top'
+    setDockMode(next)
+    await window.electronAPI.setCollapseMode(next)
+  }
+
+  const [sessionXp, setSessionXp] = useState(0)
+  const lastXp = useRef<number | null>(null)
+  const sessionSettledAt = useRef(Date.now() + 2500)
+  const [funMessage, setFunMessage] = useState<string | null>(null)
+  const [xpBump, setXpBump] = useState<{ id: number; delta: number } | null>(null)
+  const xpBumpId = useRef(0)
+  const [showIntro, setShowIntro] = useState(false)
+  const [introChecked, setIntroChecked] = useState(false)
+  const [introStep, setIntroStep] = useState(0)
   const expandLockUntil = useRef(0)
-  const goSize = (s: 'full' | 'pill' | 'square') => {
+  const goSize = (s: 'full' | 'pill' | 'square' | 'top') => {
     if (s === 'full' && tRun) setTab('timer')
     setWindowSize(s)
     window.electronAPI.setSize(s)
@@ -152,7 +282,7 @@ export default function App() {
     }
   }
 
-  const [currentUser, setCurrentUser] = useState<{ _user_id: string; username: string } | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ _user_id: string; username: string }>(FALLBACK_USER)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
   const [projectCache, setProjectCache] = useState<Record<string, Project[]>>({})
@@ -160,6 +290,33 @@ export default function App() {
   const [weekH, setWeekH] = useState<number[]>([0, 0, 0, 0, 0])
 
   const [xp, setXp] = useState(0)
+
+  useEffect(() => {
+    if (Date.now() < sessionSettledAt.current) {
+      lastXp.current = xp
+      return
+    }
+    if (lastXp.current !== null && xp > lastXp.current) {
+      setSessionXp((s) => s + (xp - lastXp.current!))
+    }
+    lastXp.current = xp
+  }, [xp])
+
+  useEffect(() => {
+    if (size !== 'top') { setFunMessage(null); return }
+    let hideId: number | undefined
+    const show = () => {
+      setFunMessage(pickRandomMessage())
+      hideId = window.setTimeout(() => setFunMessage(null), 18000)
+    }
+    const initialId = window.setTimeout(show, 5000)
+    const rotateId = window.setInterval(show, 45000)
+    return () => {
+      clearTimeout(initialId)
+      clearInterval(rotateId)
+      if (hideId) clearTimeout(hideId)
+    }
+  }, [size])
   const [unlocked, setUnlocked] = useState<string[]>([])
   const [streak, setStreak] = useState(0)
   const [floats, setFloats] = useState<{ id: number; txt: string; col: string }[]>([])
@@ -177,6 +334,22 @@ export default function App() {
   const [timerLoaded, setTimerLoaded] = useState(false)
   const tick = useRef<number | null>(null)
 
+  const prevDisplayXp = useRef(0)
+  useEffect(() => {
+    const current = sessionXp + (tRun ? Math.floor(tSec / 60) : 0)
+    if (current > prevDisplayXp.current) {
+      const delta = current - prevDisplayXp.current
+      const id = ++xpBumpId.current
+      setXpBump({ id, delta })
+      const t = window.setTimeout(() => {
+        setXpBump((cur) => (cur && cur.id === id ? null : cur))
+      }, 1500)
+      prevDisplayXp.current = current
+      return () => clearTimeout(t)
+    }
+    prevDisplayXp.current = current
+  }, [sessionXp, tRun, tSec])
+
   // Log form state
   const [fCo, setFCo] = useState('')
   const [fPr, setFPr] = useState('')
@@ -193,6 +366,15 @@ export default function App() {
     { title: string; body: string; confirmLabel: string; onConfirm: () => void | Promise<void> } | null
   >(null)
 
+  const resetTimer = () => {
+    setTRun(false); setTSec(0); setTCo(''); setTPr(''); setTD(''); setTNote(''); setTInv(true)
+    setDraftId(null); draftIdRef.current = null
+  }
+
+  const resetLogForm = () => {
+    setEditingId(null); setFCo(''); setFPr(''); setFH(1); setFD(''); setFNote(''); setFInv(true)
+  }
+
   const stopAndLogCurrent = async () => {
     if (!tCo || !tPr || !tD.trim()) {
       addFloat('Fill client, project & task first', '#ef4444')
@@ -200,8 +382,7 @@ export default function App() {
     }
     const h = Math.max(1, Math.ceil(tSec / 60)) / 60
     await saveNewEntry(tCo, tPr, h, tD.trim(), tInv, tNote.trim(), new Date(), draftIdRef.current)
-    setTRun(false); setTSec(0); setTCo(''); setTPr(''); setTD(''); setTNote(''); setTInv(true)
-    setDraftId(null); draftIdRef.current = null
+    resetTimer()
     setTab('today')
   }
 
@@ -329,6 +510,79 @@ export default function App() {
     r.setProperty('--select-bg', M.bg)
     r.setProperty('--select-fg', M.t1)
   }, [M])
+  useEffect(() => {
+    if (!authed || introChecked) return
+    window.electronAPI.storeGet('intro_seen').then((seen) => {
+      if (!seen) {
+        setShowIntro(true)
+        setIntroStep(0)
+        if (size !== 'full') goSize('full')
+      }
+      setIntroChecked(true)
+    })
+  }, [authed, introChecked])
+
+  const dismissIntro = () => {
+    setShowIntro(false)
+    setIntroStep(0)
+    window.electronAPI.storeSet('intro_seen', true)
+    window.electronAPI.setBlurCollapseDisabled(false)
+  }
+
+  const advanceIntro = () => {
+    setIntroStep((s) => {
+      const next = s + 1
+      if (next >= INTRO_STEPS.length) {
+        dismissIntro()
+        return 0
+      }
+      return next
+    })
+  }
+
+  const startIntroFresh = () => {
+    setTRun(false)
+    setTSec(0)
+    setTCo('')
+    setTPr('')
+    setTD('')
+    setTNote('')
+    setTab('today')
+    setIntroStep(0)
+    setShowIntro(true)
+    if (size !== 'full') goSize('full')
+  }
+
+  const devcoreId = (
+    companies.find((c) => c.name.toLowerCase() === 'devcore') ??
+    companies.find((c) => c.name.toLowerCase().includes('devcore'))
+  )?.id
+
+  useEffect(() => {
+    if (!showIntro || !devcoreId) return
+    if (projectCache[devcoreId]) return
+    loadProjects(devcoreId)
+      .then((list) => setProjectCache((pc) => ({ ...pc, [devcoreId]: list })))
+      .catch(() => {})
+  }, [showIntro, devcoreId, projectCache])
+
+  useEffect(() => {
+    if (!showIntro) return
+    if (introStep === 1 && tab === 'timer') setIntroStep(2)
+    if (introStep === 2 && tRun) setIntroStep(3)
+    if (introStep === 3 && tCo) setIntroStep(4)
+    if (introStep === 4 && tPr) setIntroStep(5)
+    if (introStep === 6 && tab === 'today') setIntroStep(7)
+    if (introStep === 9 && tab === 'log') setIntroStep(10)
+    if (introStep === 11 && tab === 'xp') setIntroStep(12)
+  }, [showIntro, introStep, tab, tCo, tPr, tRun])
+
+  const introCanAdvance = introStep === 5 ? tD.trim().length > 0 : true
+
+  useEffect(() => {
+    window.electronAPI.setBlurCollapseDisabled(showIntro)
+  }, [showIntro])
+
   useEffect(() => { if (authed) window.electronAPI.storeSet('xp', xp) }, [xp, authed])
   useEffect(() => { if (authed) window.electronAPI.storeSet('unlocked', unlocked) }, [unlocked, authed])
   useEffect(() => { if (authed) window.electronAPI.storeSet('streak', streak) }, [streak, authed])
@@ -457,6 +711,7 @@ export default function App() {
     () => entries.reduce((s, e) => s + parseFloat(e.hour || '0'), 0),
     [entries],
   )
+  const weekTotal = useMemo(() => weekH.reduce((s, h) => s + h, 0), [weekH])
   const done = todayH >= GOAL
   const gpct = Math.min((todayH / GOAL) * 100, 100)
 
@@ -482,23 +737,12 @@ export default function App() {
     const pr = (projectCache[cid] || []).find((p) => p.id === prid)
     if (!co || !pr) return
 
-    const payload = {
-      id: existingId || '-1',
-      company: co.name,
-      project: pr.name,
-      description: desc || pr.name,
-      internal_description: internalNote,
-      hour: hours.toFixed(2),
-      invoice_hours: hours.toFixed(2),
-      invoice: inv ? '1' : 'false',
-      no_flex: 'false',
-      username: (currentUser || FALLBACK_USER).username,
-      _user_id: (currentUser || FALLBACK_USER)._user_id,
-      _company_id: cid,
-      _project_id: prid,
-      hour_price: pr.hour_price || '0',
-      task_date: fmtDateISO(entryDate),
-    }
+    const payload = buildSavePayload({
+      company: co, project: pr, hours,
+      description: desc, internalNote,
+      invoice: inv, user: currentUser,
+      entryDate, existingId,
+    })
     let saved: { success: boolean; id?: string } | undefined
     try {
       saved = await saveTimeEntry(payload)
@@ -557,23 +801,12 @@ export default function App() {
     const pr = (projectCache[tCo] || []).find((p) => p.id === tPr)
     if (!co || !pr) return
     const hours = Math.max(1, Math.ceil(tSec / 60)) / 60
-    const payload = {
-      id: draftIdRef.current || '-1',
-      company: co.name,
-      project: pr.name,
-      description: tD.trim(),
-      internal_description: tNote.trim(),
-      hour: hours.toFixed(2),
-      invoice_hours: hours.toFixed(2),
-      invoice: tInv ? '1' : 'false',
-      no_flex: 'false',
-      username: (currentUser || FALLBACK_USER).username,
-      _user_id: (currentUser || FALLBACK_USER)._user_id,
-      _company_id: tCo,
-      _project_id: tPr,
-      hour_price: pr.hour_price || '0',
-      task_date: fmtDateISO(new Date()),
-    }
+    const payload = buildSavePayload({
+      company: co, project: pr, hours,
+      description: tD.trim(), internalNote: tNote.trim(),
+      invoice: tInv, user: currentUser,
+      entryDate: new Date(), existingId: draftIdRef.current,
+    })
     try {
       const r = await saveTimeEntry(payload)
       if (!draftIdRef.current && r?.id) { draftIdRef.current = r.id; setDraftId(r.id) }
@@ -642,6 +875,7 @@ export default function App() {
         {([['today', 'Today'], ['timer', 'Timer'], ['log', '+ Log'], ['xp', 'XP']] as const).map(([v, l]) => (
           <button
             key={v}
+            data-tour={`tab-${v}`}
             onClick={() => setTab(v)}
             style={{ flex: 1, padding: '9px 0', border: 'none', borderBottom: `2px solid ${tab === v ? M.ac : 'transparent'}`, background: 'transparent', color: tab === v ? M.t1 : M.t3, fontSize: 12, fontWeight: tab === v ? 700 : 500, cursor: 'pointer', marginBottom: -1 }}
           >{l}</button>
@@ -666,7 +900,7 @@ export default function App() {
 
   // ─── Today view ────────────────────────────────────────────────────────
   const todayView = (() => {
-    const firstName = (currentUser?.username || '').trim().split(/\s+/)[0]
+    const firstName = currentUser.username.trim().split(/\s+/)[0]
     const hr = new Date().getHours()
     const greeting =
       hr >= 5 && hr < 12 ? 'Good morning' :
@@ -691,7 +925,7 @@ export default function App() {
         )}
         {pbar}
         <div style={{ padding: '12px 14px 0', display: 'flex', flexDirection: 'column', gap: 11 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.7fr 1fr', gap: 6 }}>
+          <div data-tour="today-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1.7fr 1fr', gap: 6 }}>
             <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 11, padding: '11px 6px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: M.ac }}>{fmtHours(todayH)}</div>
               <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>Today</div>
@@ -705,7 +939,7 @@ export default function App() {
             </div>
             <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 11, padding: '11px 6px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: M.t3 }}>
-                {fmtHours(weekH.reduce((s, h) => s + h, 0))}
+                {fmtHours(weekTotal)}
               </div>
               <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>Week</div>
             </div>
@@ -713,6 +947,7 @@ export default function App() {
 
           <div style={{ height: 1, background: M.s2 }} />
 
+          <div data-tour="today-entries" style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
           {Object.entries(groups).map(([co, g], gi) => (
             <div key={co} style={{ paddingLeft: 11, borderLeft: `3px solid ${M.co[gi % M.co.length]}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -803,6 +1038,7 @@ export default function App() {
               No entries yet for {dateLabel}. Start the timer or add one manually.
             </div>
           )}
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, paddingTop: 8, borderTop: `1px solid ${M.s2}` }}>
             <span style={{ fontSize: 12, color: M.t3 }}>Total:</span>
@@ -829,8 +1065,8 @@ export default function App() {
       }
       const h = Math.max(1, Math.ceil(tSec / 60)) / 60
       await saveNewEntry(tCo, tPr, h, tD.trim(), tInv, tNote.trim(), new Date(), draftId)
-      setTRun(false); setTSec(0); setTCo(''); setTPr(''); setTD(''); setTNote(''); setTInv(true); setTab('today')
-      setDraftId(null); draftIdRef.current = null
+      resetTimer()
+      setTab('today')
     }
 
     return (
@@ -883,6 +1119,7 @@ export default function App() {
                 </div>
               ) : (
                 <button
+                  data-tour="timer-start"
                   onClick={() => setTRun(true)}
                   style={{ width: '100%', padding: 13, background: M.btn, border: '1px solid transparent', borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: M.bsh }}
                 >{tSec > 0 ? '▶  Resume' : '▶  Start timer'}</button>
@@ -900,16 +1137,19 @@ export default function App() {
               <div style={{ flex: 1, height: 1, background: M.b1 }} />
             </div>
 
-            <Combobox
-              value={tCo}
-              items={companies}
-              placeholder={`Search client… (${companies.length})`}
-              theme={M}
-              onChange={async (id) => { setTCo(id); setTPr(''); if (id) await ensureProjects(id) }}
-            />
+            <div data-tour="timer-company">
+              <Combobox
+                value={tCo}
+                items={companies}
+                placeholder={`Search client… (${companies.length})`}
+                theme={M}
+                onChange={async (id) => { setTCo(id); setTPr(''); if (id) await ensureProjects(id) }}
+              />
+            </div>
 
             {tCo && (
               <select
+                data-tour="timer-project"
                 value={tPr}
                 onChange={(e) => setTPr(e.target.value)}
                 style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1.5px solid ${tPr ? M.ac : M.b2}`, borderRadius: 10, color: tPr ? M.t1 : M.t3, fontSize: 13, outline: 'none', cursor: 'pointer', fontWeight: tPr ? 500 : 400 }}
@@ -926,6 +1166,7 @@ export default function App() {
             {tCo && tPr && (
               <>
                 <input
+                  data-tour="timer-description"
                   value={tD}
                   onChange={(e) => setTD(e.target.value)}
                   placeholder="Task description *"
@@ -1008,8 +1249,8 @@ export default function App() {
     const save = async () => {
       if (!fCo || !fPr || !co || !prObj) return
       await saveNewEntry(fCo, fPr, fH, fD, fInv, fNote.trim(), selectedDate, editingId)
-      setEditingId(null)
-      setFCo(''); setFPr(''); setFH(1); setFD(''); setFNote(''); setFInv(true); setTab('today')
+      resetLogForm()
+      setTab('today')
     }
 
     return (
@@ -1018,7 +1259,7 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: M.ad, border: `1px solid ${M.am}`, borderRadius: 10, padding: '9px 12px' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: M.at, letterSpacing: 0.5, textTransform: 'uppercase' }}>Editing entry</span>
             <button
-              onClick={() => { setEditingId(null); setFCo(''); setFPr(''); setFH(1); setFD(''); setFNote(''); setFInv(true) }}
+              onClick={resetLogForm}
               style={{ background: 'none', border: 'none', color: M.ac, fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: '2px 4px' }}
             >Cancel</button>
           </div>
@@ -1080,7 +1321,7 @@ export default function App() {
           </div>
         )}
 
-        <div>
+        <div data-tour="log-hours">
           <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>Hours *</div>
           <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
             <button onClick={() => setFH((h) => Math.max(0.25, +(h - 0.25).toFixed(2)))} style={{ width: 46, height: 46, background: 'transparent', border: 'none', borderRight: `1px solid ${M.b1}`, color: M.t3, fontSize: 20, fontWeight: 200, cursor: 'pointer' }}>−</button>
@@ -1164,7 +1405,7 @@ export default function App() {
 
     return (
       <div style={{ padding: '14px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ background: M.id === 'dark' ? M.s1 : 'linear-gradient(135deg,#ede9fe,#ddd6fe)', border: `1px solid ${M.id === 'dark' ? M.b1 : M.am}`, borderRadius: 14, padding: 15 }}>
+        <div data-tour="xp-level" style={{ background: M.id === 'dark' ? M.s1 : 'linear-gradient(135deg,#ede9fe,#ddd6fe)', border: `1px solid ${M.id === 'dark' ? M.b1 : M.am}`, borderRadius: 14, padding: 15 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 13 }}>
             <div>
               <div style={{ fontSize: 10, fontWeight: 700, color: M.ac, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 3 }}>Level {level}</div>
@@ -1207,13 +1448,13 @@ export default function App() {
             })}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 9, borderTop: `1px solid ${M.s2}` }}>
-            <span style={{ fontSize: 11, color: M.t3 }}>{fmtHours(weekH.reduce((a, h) => a + h, 0))} this week</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: M.ac }}>+{Math.round(weekH.reduce((a, h) => a + h, 0) * 8)} XP</span>
+            <span style={{ fontSize: 11, color: M.t3 }}>{fmtHours(weekTotal)} this week</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: M.ac }}>+{Math.round(weekTotal * 8)} XP</span>
           </div>
         </div>
 
         <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>Achievements</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+        <div data-tour="xp-achievements" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
           {ACHS.map((a) => {
             const got = unlocked.includes(a.id)
             return (
@@ -1235,6 +1476,164 @@ export default function App() {
   const hasCtx = !!(tCo && tPr)
   const coObj = companies.find((c) => c.id === tCo)
   const prObj = (projectCache[tCo] || []).find((p) => p.id === tPr)
+
+  const runningXpBonus = tRun ? Math.floor(tSec / 60) : 0
+  const displaySessionXp = sessionXp + runningXpBonus
+
+  if (size === 'top') {
+    return (
+      <div
+        style={{
+          height: '100vh', width: '100vw', background: M.bg,
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '0 8px', fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
+          borderBottom: `1px solid ${M.b1}`, position: 'relative', overflow: 'hidden',
+        }}
+      >
+        <div
+          className="top-fill"
+          style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0, width: `${gpct}%`,
+            backgroundImage: done
+              ? `linear-gradient(90deg, ${M.gn}12 0%, ${M.gn}22 50%, ${M.gn}12 100%)`
+              : `linear-gradient(90deg, ${M.ac}0a 0%, ${M.ac}1c 50%, ${M.ac}0a 100%)`,
+            pointerEvents: 'none',
+          }}
+        />
+
+        <button
+          onClick={() => setTRun((r) => !r)}
+          title={tRun ? 'Pause' : 'Start'}
+          style={{ width: 14, height: 14, borderRadius: '50%', background: tRun ? M.pk : M.btn, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, cursor: 'pointer' }}
+        >
+          {tRun ? (
+            <svg width="5" height="6" viewBox="0 0 12 14" fill="none"><rect x="1" y="1" width="3" height="12" rx="1" fill="white" /><rect x="8" y="1" width="3" height="12" rx="1" fill="white" /></svg>
+          ) : (
+            <svg width="5" height="7" viewBox="0 0 13 15" fill="none" style={{ marginLeft: 1 }}><path d="M1.5 1.5L11.5 7.5L1.5 13.5V1.5Z" fill="white" stroke="white" strokeWidth="1.2" strokeLinejoin="round" /></svg>
+          )}
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, zIndex: 1 }}>
+          <span
+            style={{
+              width: 4, height: 4, borderRadius: '50%',
+              background: tRun ? M.pk : 'transparent',
+              boxShadow: tRun ? `0 0 4px ${M.pk}` : 'none',
+              animation: tRun ? 'pulse 1.4s ease-in-out infinite' : 'none',
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: tRun ? M.ac : M.t2, letterSpacing: 0.1, minWidth: 48 }}>
+            {fmtClock(tSec)}
+          </div>
+        </div>
+
+        <div style={{ width: 1, height: 12, background: M.b1, zIndex: 1 }} />
+
+        <div style={{ flex: 1, minWidth: 0, zIndex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, maxWidth: '45%', minWidth: 0 }}>
+            {hasCtx && coObj ? (
+              <>
+                <span style={{ fontSize: 10, fontWeight: 700, color: M.t1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 0 }}>
+                  {coObj.name}
+                </span>
+                <span style={{ fontSize: 9, color: M.t3, flexShrink: 0 }}>·</span>
+                <span style={{ fontSize: 10, color: M.t2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                  {prObj?.name || ''}
+                </span>
+                {tD.trim() && (
+                  <>
+                    <span style={{ fontSize: 9, color: M.t3, flexShrink: 0 }}>—</span>
+                    <span style={{ fontSize: 10, color: M.t3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                      {tD}
+                    </span>
+                  </>
+                )}
+              </>
+            ) : (
+              <span style={{ fontSize: 10, color: M.t3, fontStyle: 'italic' }}>No task selected</span>
+            )}
+          </div>
+
+          {funMessage && (
+            <span
+              key={funMessage}
+              className="fun-msg"
+              style={{ fontSize: 10, color: M.ac, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 500, flex: 1, minWidth: 0 }}
+            >
+              {funMessage}
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {weekH.map((h, i) => {
+              const p = Math.min(1, h / GOAL)
+              const filled = p > 0
+              const color = p >= 1 ? M.gn : p > 0 ? M.ac : M.b1
+              return (
+                <span
+                  key={i}
+                  title={`${DAYS[i]}: ${fmtHours(h)}h`}
+                  style={{
+                    width: 4, height: 4, borderRadius: '50%',
+                    background: color,
+                    opacity: filled ? 0.35 + p * 0.65 : 0.4,
+                  }}
+                />
+              )
+            })}
+          </div>
+
+          <div style={{ width: 1, height: 9, background: M.b1 }} />
+
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, position: 'relative' }}>
+            <span style={{ fontSize: 9, lineHeight: 1 }}>
+              {gpct >= 100 ? '🚀' : gpct >= 75 ? '🎯' : gpct >= 50 ? '🔥' : gpct >= 25 ? '☕' : '🌱'}
+            </span>
+            <div style={{ fontSize: 9, fontWeight: 800, color: displaySessionXp > 0 ? M.ac : M.t3, fontFamily: 'monospace', opacity: displaySessionXp > 0 ? 1 : 0.55, position: 'relative' }}>
+              +{displaySessionXp}
+              {xpBump && (
+                <span key={xpBump.id} className="xp-bump" style={{ color: M.ac }}>
+                  +{xpBump.delta}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 8, color: M.t3, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>xp</div>
+            <div style={{ width: 1, height: 9, background: M.b1, margin: '0 2px', alignSelf: 'center' }} />
+            <div style={{ fontSize: 10, fontWeight: 800, color: done ? M.gn : M.t1, fontFamily: 'monospace', letterSpacing: -0.3 }}>{fmtHours(todayH)}</div>
+            <div style={{ fontSize: 8, color: M.t3, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>/ {GOAL}h</div>
+          </div>
+
+          <div style={{ width: 1, height: 9, background: M.b1 }} />
+
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+            <div style={{ fontSize: 9, fontWeight: 800, color: M.pk, fontFamily: 'monospace' }}>{streak}d</div>
+            <div style={{ fontSize: 8, color: M.t3, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>streak</div>
+          </div>
+
+          <div style={{ width: 1, height: 9, background: M.b1 }} />
+
+          <button
+            onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}
+            title={mode === 'light' ? 'Switch to dark' : 'Switch to light'}
+            style={{ width: 14, height: 14, borderRadius: 3, background: 'transparent', border: `1px solid ${M.b1}`, color: M.t3, fontSize: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+          >
+            {mode === 'light' ? '☀️' : '🌙'}
+          </button>
+
+          <button
+            onClick={() => goSize('full')}
+            title="Open sidebar"
+            style={{ height: 14, padding: '0 6px', borderRadius: 3, background: M.s2, border: `1px solid ${M.b1}`, color: M.t2, fontSize: 8, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Open
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (size === 'pill') {
     return (
@@ -1344,7 +1743,7 @@ export default function App() {
       <div style={{ height: 'calc(100vh - 124px)', overflowY: 'auto' }}>
         {views[tab]}
       </div>
-      <div style={{ height: 40, borderTop: `1px solid ${M.b1}`, background: M.bg, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px' }}>
+      <div style={{ height: 40, borderTop: `1px solid ${M.b1}`, background: M.bg, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', gap: 10 }}>
         <div style={{ display: 'flex', gap: 2, background: M.s2, border: `1px solid ${M.b1}`, borderRadius: 7, padding: 2 }}>
           {(['light', 'dark'] as const).map((m) => (
             <button
@@ -1355,6 +1754,22 @@ export default function App() {
           ))}
         </div>
         <button
+          onClick={startIntroFresh}
+          title="Show intro"
+          style={{ width: 22, height: 22, borderRadius: 5, background: M.s2, border: `1px solid ${M.b1}`, color: M.t3, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+        >
+          ?
+        </button>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: M.t3, cursor: 'pointer', userSelect: 'none' }}>
+          <input
+            type="checkbox"
+            checked={dockMode === 'top'}
+            onChange={toggleDockMode}
+            style={{ width: 13, height: 13, accentColor: M.ac, cursor: 'pointer' }}
+          />
+          Top bar when closed
+        </label>
+        <button
           onClick={confirmSignOut}
           title="Sign out"
           style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: M.t3, fontSize: 12, cursor: 'pointer', padding: '4px 8px' }}
@@ -1363,6 +1778,17 @@ export default function App() {
           <span style={{ fontSize: 13 }}>⎋</span>
         </button>
       </div>
+
+      {showIntro && (
+        <IntroOverlay
+          M={M}
+          step={introStep}
+          steps={INTRO_STEPS}
+          onAdvance={advanceIntro}
+          onSkip={dismissIntro}
+          canAdvance={introCanAdvance}
+        />
+      )}
 
       {confirmation && (
         <>

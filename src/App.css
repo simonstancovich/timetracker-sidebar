@@ -27,6 +27,50 @@ input::placeholder, textarea::placeholder {
   0%, 100% { opacity: 1; }
   50% { opacity: .3; }
 }
+@keyframes topShimmer {
+  0% { background-position: -150% 0; }
+  100% { background-position: 250% 0; }
+}
+.top-fill {
+  background-size: 200% 100%;
+  animation: topShimmer 6s linear infinite;
+}
+@keyframes funIn {
+  0% { opacity: 0; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.fun-msg {
+  animation: funIn 600ms ease-out;
+}
+@keyframes xpFloat {
+  0% { opacity: 0; transform: translate(-50%, 4px) scale(0.9); }
+  25% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -14px) scale(1); }
+}
+.xp-bump {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  pointer-events: none;
+  animation: xpFloat 1500ms ease-out forwards;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+@keyframes introWiggle {
+  0%, 100% { transform: translateY(0) rotate(-8deg); }
+  50% { transform: translateY(-14px) rotate(8deg); }
+}
+@keyframes introFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.intro-emoji { animation: introWiggle 1.6s ease-in-out infinite; display: inline-block; }
+.intro-in { animation: introFadeUp 600ms ease-out both; }
+@keyframes introPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(107,124,219,0.2), 0 0 22px rgba(107,124,219,0.4); }
+  50% { box-shadow: 0 0 0 7px rgba(107,124,219,0.1), 0 0 32px rgba(107,124,219,0.6); }
+}
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }

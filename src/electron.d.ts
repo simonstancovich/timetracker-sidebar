@@ -8,8 +8,11 @@ interface ElectronAPI {
   apiCall: (params: Record<string, string>, body: Record<string, string> | null) => Promise<{ data?: any; error?: string }>
   storeGet: (key: string) => Promise<any>
   storeSet: (key: string, value: any) => Promise<void>
-  setSize: (size: 'full' | 'pill' | 'square') => Promise<void>
-  onForcedSize: (cb: (size: 'full' | 'pill' | 'square') => void) => void
+  setSize: (size: 'full' | 'pill' | 'square' | 'top') => Promise<void>
+  onForcedSize: (cb: (size: 'full' | 'pill' | 'square' | 'top') => void) => void
+  shakeDismiss: () => Promise<void>
+  setCollapseMode: (mode: 'pill' | 'top') => Promise<void>
+  setBlurCollapseDisabled: (disabled: boolean) => Promise<void>
 }
 
 declare global {
