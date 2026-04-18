@@ -15,6 +15,7 @@ const fs = require("fs");
 const Store = require("electron-store");
 const log = require("electron-log/main");
 const appbar = require("./appbar");
+const graph = require("./graph");
 
 log.initialize();
 log.transports.file.level = "info";
@@ -28,6 +29,7 @@ process.on("uncaughtException", (err) => {
 });
 
 const store = new Store();
+graph.init(store);
 const BASE_URL = "https://timetracker.devcore.se";
 const isDev = !app.isPackaged;
 
@@ -394,6 +396,25 @@ ipcMain.handle("set-size", async (_e, size) => {
 });
 ipcMain.handle("set-blur-collapse-disabled", (_e, disabled) => {
   blurCollapseDisabled = !!disabled;
+});
+
+ipcMain.handle("graph-status", () => graph.status());
+ipcMain.handle("graph-sign-in", async (event) => {
+  try {
+    return await graph.signIn((code) => {
+      event.sender.send("graph-device-code", code);
+    });
+  } catch (err) {
+    return { error: err.message || String(err) };
+  }
+});
+ipcMain.handle("graph-sign-out", () => graph.signOut());
+ipcMain.handle("graph-meetings", async (_e, opts) => {
+  try {
+    return { meetings: await graph.getMeetings(opts || {}) };
+  } catch (err) {
+    return { error: err.message || String(err) };
+  }
 });
 
 if (!app.requestSingleInstanceLock()) {

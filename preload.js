@@ -20,4 +20,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setSize: (size) => ipcRenderer.invoke('set-size', size),
   onForcedSize: (cb) => ipcRenderer.on('forced-size', (_e, s) => cb(s)),
   setBlurCollapseDisabled: (disabled) => ipcRenderer.invoke('set-blur-collapse-disabled', disabled),
+
+  // Microsoft Graph (calendar)
+  graphStatus: () => ipcRenderer.invoke('graph-status'),
+  graphSignIn: () => ipcRenderer.invoke('graph-sign-in'),
+  graphSignOut: () => ipcRenderer.invoke('graph-sign-out'),
+  graphMeetings: (opts) => ipcRenderer.invoke('graph-meetings', opts),
+  onGraphDeviceCode: (cb) => ipcRenderer.on('graph-device-code', (_e, code) => cb(code)),
 })

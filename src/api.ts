@@ -1,3 +1,5 @@
+import { formatLocalDate } from './lib/date'
+
 const api = window.electronAPI
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -59,13 +61,64 @@ export interface SaveEntryPayload {
   _project_id: string
   hour_price: string
   task_date: string
+  create_date: string
+  admin_ok: string
+  _admin_id: string
+  admin_date: string
+  ignore_flex: string
+  invoiced: string
+  show_customer: string
+  _invoicer_id: string
+  invoicer: string
+  verifier: string
+  delete: string
+  companyadmin: string
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+export function buildSavePayload(opts: {
+  company: Company
+  project: Project
+  hours: number
+  description: string
+  internalNote: string
+  invoice: boolean
+  user: { _user_id: string; username: string }
+  entryDate: Date
+  existingId: string | null
+}): SaveEntryPayload {
+  const h = opts.hours.toString()
+  const nowIso = new Date().toISOString().slice(0, 19)
+  return {
+    id: opts.existingId || '-1',
+    company: opts.company.name,
+    project: opts.project.name,
+    description: opts.description || opts.project.name,
+    internal_description: opts.internalNote,
+    hour: h,
+    invoice_hours: h,
+    invoice: opts.invoice ? 'true' : 'false',
+    no_flex: 'false',
+    username: opts.user.username,
+    _user_id: opts.user._user_id,
+    _company_id: opts.company.id,
+    _project_id: opts.project.id,
+    hour_price: opts.project.hour_price || '0',
+    task_date: formatLocalDate(opts.entryDate),
+    create_date: nowIso,
+    admin_ok: 'false',
+    _admin_id: '',
+    admin_date: '',
+    ignore_flex: 'false',
+    invoiced: 'false',
+    show_customer: 'false',
+    _invoicer_id: '',
+    invoicer: '',
+    verifier: '',
+    delete: 'false',
+    companyadmin: 'false',
+  }
 }
 
 async function call<T>(params: Record<string, string>, body?: Record<string, string>): Promise<T> {
@@ -80,16 +133,19 @@ async function call<T>(params: Record<string, string>, body?: Record<string, str
 export async function loadTimeEntries(date: Date): Promise<TimeEntry[]> {
   const res = await call<{ count: number; rows: TimeEntry[] }>(
     { c: 'time', m: 'load' },
-    { date: formatDate(date) }
+    { date: formatLocalDate(date) }
   )
   return res.rows
 }
 
 export async function saveTimeEntry(payload: SaveEntryPayload): Promise<{ success: boolean; id?: string }> {
-  return call(
+  console.log('[save] payload:', JSON.stringify(payload))
+  const res = await call<{ success: boolean; id?: string }>(
     { c: 'time', m: 'save' },
     payload as unknown as Record<string, string>
   )
+  console.log('[save] response:', JSON.stringify(res))
+  return res
 }
 
 export async function deleteTimeEntry(id: string): Promise<void> {

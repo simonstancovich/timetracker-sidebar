@@ -15,7 +15,11 @@ import {
 } from './api'
 import { formatLocalDate } from './lib/date'
 import { pickRandomMessage } from './lib/funMessages'
+import { pickGreeting } from './lib/greetingMessages'
+import { getTimerInsight } from './lib/timerInsights'
+import { emptyTodayMessage, saveCheer, xpCoachNote } from './lib/personality'
 import { IntroOverlay, IntroStep } from './components/IntroOverlay'
+import { MeetingsWidget } from './components/MeetingsWidget'
 
 const INTRO_STEPS: IntroStep[] = [
   {
@@ -314,6 +318,8 @@ export default function App() {
   const [showIntro, setShowIntro] = useState(false)
   const [introChecked, setIntroChecked] = useState(false)
   const [introStep, setIntroStep] = useState(0)
+  const [greetingMsg, setGreetingMsg] = useState<string>('')
+  const [timerInsight, setTimerInsight] = useState<string>('')
   const [modeTransition, setModeTransition] = useState<'idle' | 'out' | 'in'>('idle')
 
   const goSize = async (s: 'full' | 'top') => {
@@ -630,8 +636,37 @@ export default function App() {
   const introCanAdvance = introStep === 5 ? tD.trim().length > 0 : true
 
   useEffect(() => {
-    window.electronAPI.setBlurCollapseDisabled(showIntro)
-  }, [showIntro])
+    window.electronAPI.setBlurCollapseDisabled(showIntro || !authed)
+  }, [showIntro, authed])
+
+  useEffect(() => {
+    if (authed === false && size !== 'full') {
+      setWindowSize('full')
+      window.electronAPI.setSize('full')
+    }
+  }, [authed, size])
+
+  useEffect(() => {
+    const first = currentUser.username.trim().split(/\s+/)[0] || 'friend'
+    setGreetingMsg(pickGreeting(first))
+    const id = window.setInterval(() => setGreetingMsg(pickGreeting(first)), 30 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [currentUser.username])
+
+  useEffect(() => {
+    const first = currentUser.username.trim().split(/\s+/)[0] || ''
+    const compute = () => setTimerInsight(getTimerInsight({
+      tRun, tSec, tCo, tPr, tD,
+      todayH, goal: GOAL,
+      entriesToday: entries.length,
+      streak,
+      firstName: first,
+    }))
+    compute()
+    const id = window.setInterval(compute, 2 * 60 * 1000)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tRun, tCo, tPr, tD, entries.length, currentUser.username])
 
   useEffect(() => { if (authed) window.electronAPI.storeSet('xp', xp) }, [xp, authed])
   useEffect(() => { if (authed) window.electronAPI.storeSet('unlocked', unlocked) }, [unlocked, authed])
@@ -824,7 +859,7 @@ export default function App() {
 
     const earned = Math.round(10 + hours * 8)
     setXp((x) => x + earned)
-    addFloat(`+${fmtHours(hours)}  +${earned} XP`, M.ac)
+    addFloat(`${saveCheer()} +${fmtHours(hours)}  +${earned} XP`, M.ac)
 
     if (entries.length === 0 && !unlocked.includes('first')) {
       const a = ACHS[0]
@@ -898,22 +933,22 @@ export default function App() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <span style={{ fontSize: 15, fontWeight: 700, color: M.lo, letterSpacing: -0.4 }}>DevCore Time</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: M.t3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, color: M.t3, height: 22, marginTop: -2 }}>
             <button
               onClick={() => setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}
-              style={{ background: 'none', border: 'none', color: M.tf, fontSize: 18, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
+              style={{ background: 'none', border: 'none', color: M.tf, fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1, height: 22, display: 'flex', alignItems: 'center' }}
             >‹</button>
             <button
               onClick={() => setSelectedDate(new Date())}
               title="Jump to today (refresh)"
-              style={{ background: 'none', border: 'none', color: M.t3, fontSize: 11, fontWeight: 500, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}
+              style={{ background: 'none', border: 'none', color: M.t3, fontSize: 11, fontWeight: 500, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap', lineHeight: 1, height: 22, display: 'flex', alignItems: 'center' }}
             >{dateLabel}</button>
             <button
               onClick={() => setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}
-              style={{ background: 'none', border: 'none', color: M.tf, fontSize: 18, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
+              style={{ background: 'none', border: 'none', color: M.tf, fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1, height: 22, display: 'flex', alignItems: 'center' }}
             >›</button>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: done ? M.gn : todayH > 0 ? M.t1 : M.tf, fontFamily: 'monospace' }}>{fmtHours(todayH)}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: done ? M.gn : todayH > 0 ? M.t1 : M.tf, fontFamily: 'monospace', display: 'inline-flex', alignItems: 'center', height: 22, lineHeight: 1 }}>{fmtHours(todayH)}</span>
           <div
             onClick={() => setTab('timer')}
             title={tRun ? 'Timer running' : tSec > 0 ? 'Timer paused — resume on Timer tab' : 'No timer running — click to start'}
@@ -921,7 +956,7 @@ export default function App() {
               display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
               background: tRun ? `${M.pk}1f` : 'transparent',
               border: `1px solid ${tRun ? `${M.pk}55` : M.b1}`,
-              borderRadius: 100, padding: '2px 7px',
+              borderRadius: 100, padding: '0 7px', height: 22,
             }}
           >
             <span style={{
@@ -934,7 +969,7 @@ export default function App() {
               {tRun ? fmtClock(tSec) : tSec > 0 ? 'Paused' : 'Idle'}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: M.pb, border: `1px solid ${M.pp}`, borderRadius: 100, padding: '2px 7px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: M.pb, border: `1px solid ${M.pp}`, borderRadius: 100, padding: '0 7px', height: 22 }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: M.pv }} />
             <span style={{ fontSize: 10, fontWeight: 700, color: M.pk, fontFamily: 'monospace' }}>{streak}d</span>
           </div>
@@ -989,11 +1024,16 @@ export default function App() {
     return (
       <div style={{ paddingBottom: 24 }}>
         {firstName && (
-          <div style={{ padding: '12px 14px 4px', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 18 }}>{emoji}</span>
-            <div>
+          <div style={{ padding: '12px 14px 4px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <span style={{ fontSize: 18, lineHeight: 1.1 }}>{emoji}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: M.t1, letterSpacing: -0.3, lineHeight: 1.1 }}>{greeting}, {firstName}</div>
               <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>{done ? 'Goal reached — nice work.' : `${fmtHours(GOAL - todayH)} left to hit ${GOAL}:00.`}</div>
+              {greetingMsg && (
+                <div style={{ fontSize: 11, color: M.ac, marginTop: 4, fontStyle: 'italic', opacity: 0.85 }}>
+                  {greetingMsg}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1018,6 +1058,14 @@ export default function App() {
               <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>Week</div>
             </div>
           </div>
+
+          <MeetingsWidget
+            M={M}
+            onStartForMeeting={(title) => {
+              setTD(title)
+              setTab('timer')
+            }}
+          />
 
           <div style={{ height: 1, background: M.s2 }} />
 
@@ -1116,8 +1164,9 @@ export default function App() {
           ))}
 
           {entries.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '28px 12px', color: M.t3, fontSize: 13 }}>
-              No entries yet for {dateLabel}. Start the timer or add one manually.
+            <div style={{ textAlign: 'center', padding: '28px 12px', fontSize: 13, lineHeight: 1.5 }}>
+              <div style={{ color: M.t2, fontWeight: 600, marginBottom: 4 }}>{emptyTodayMessage()}</div>
+              <div style={{ color: M.tf, fontSize: 11 }}>No entries yet for {dateLabel}.</div>
             </div>
           )}
           </div>
@@ -1177,6 +1226,11 @@ export default function App() {
               </div>
             )
           })()}
+          {timerInsight && (
+            <div style={{ textAlign: 'center', fontSize: 11, color: M.t3, fontStyle: 'italic', marginTop: 4, padding: '0 14px', lineHeight: 1.3 }}>
+              {timerInsight}
+            </div>
+          )}
         </div>
 
         {tRun && (
@@ -1230,19 +1284,15 @@ export default function App() {
             </div>
 
             {tCo && (
-              <select
-                data-tour="timer-project"
-                value={tPr}
-                onChange={(e) => setTPr(e.target.value)}
-                style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1.5px solid ${tPr ? M.ac : M.b2}`, borderRadius: 10, color: tPr ? M.t1 : M.t3, fontSize: 13, outline: 'none', cursor: 'pointer', fontWeight: tPr ? 500 : 400 }}
-              >
-                <option value="">{prList.length ? 'Select project…' : 'Loading…'}</option>
-                {prList.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}{parseFloat(p.hour_price) > 0 ? ` · ${parseFloat(p.hour_price)}kr/h` : ''}
-                  </option>
-                ))}
-              </select>
+              <div data-tour="timer-project">
+                <Combobox
+                  value={tPr}
+                  items={prList}
+                  placeholder={prList.length ? `Search project… (${prList.length})` : 'Loading…'}
+                  theme={M}
+                  onChange={setTPr}
+                />
+              </div>
             )}
 
             {tCo && tPr && (
@@ -1390,16 +1440,13 @@ export default function App() {
         {fCo && (
           <div>
             <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>Project *</div>
-            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-              {prList.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setFPr(fPr === p.id ? '' : p.id)}
-                  style={{ padding: '7px 12px', borderRadius: 100, border: `1.5px solid ${fPr === p.id ? M.ac : M.b1}`, background: fPr === p.id ? M.ad : M.bg, color: fPr === p.id ? M.at : M.t2, fontSize: 12, fontWeight: fPr === p.id ? 700 : 400, cursor: 'pointer' }}
-                >{p.name}</button>
-              ))}
-              {prList.length === 0 && <span style={{ fontSize: 11, color: M.tf }}>Loading…</span>}
-            </div>
+            <Combobox
+              value={fPr}
+              items={prList}
+              placeholder={prList.length ? `Search project… (${prList.length})` : 'Loading…'}
+              theme={M}
+              onChange={setFPr}
+            />
           </div>
         )}
 
@@ -1503,6 +1550,13 @@ export default function App() {
           <div style={{ height: 9, background: M.id === 'dark' ? '#0e0e0e' : '#fff', borderRadius: 5, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${pct}%`, background: M.ac, borderRadius: 5 }} />
           </div>
+          <div style={{ fontSize: 11, color: M.t3, fontStyle: 'italic', marginTop: 10, lineHeight: 1.4 }}>
+            {xpCoachNote({
+              xp, xpIntoLevel: xp - xpBase, xpPerLevel: xpNext - xpBase,
+              streak, weekTotal,
+              firstName: currentUser.username.trim().split(/\s+/)[0],
+            })}
+          </div>
         </div>
 
         <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 13, padding: 13 }}>
@@ -1575,6 +1629,9 @@ export default function App() {
   )
 
   const warnColor = tRun ? null : tSec > 0 ? '#f59e0b' : '#ef4444'
+  const topBarBg = tRun ? M.bg : tSec > 0 ? '#ff7a00' : '#ff1f1f'
+  const topBarFg = tRun ? M.t1 : '#fff'
+  const topBarMuted = tRun ? M.t3 : 'rgba(255,255,255,0.8)'
 
   if (size === 'top') {
     return (
@@ -1586,13 +1643,19 @@ export default function App() {
         title="Double-click to open full sidebar"
         style={{
           height: '100vh', width: '100vw', background: M.bg,
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '0 8px', fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
+          display: 'flex', alignItems: 'stretch', gap: 0,
+          padding: 0, fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
           borderBottom: `1px solid ${M.b1}`, position: 'relative', overflow: 'hidden',
-          boxShadow: warnColor ? `inset 0 0 0 1.5px ${warnColor}` : undefined,
-          transition: 'box-shadow 200ms ease-out',
         }}
       >
+        <div
+          style={{
+            flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+            padding: '0 8px', position: 'relative', overflow: 'hidden',
+            background: topBarBg,
+            transition: 'background 200ms ease-out',
+          }}
+        >
         <div
           className="top-fill"
           style={{
@@ -1620,13 +1683,13 @@ export default function App() {
           <span
             style={{
               width: 5, height: 5, borderRadius: '50%',
-              background: tRun ? M.pk : tSec > 0 ? '#f59e0b' : '#ef4444',
-              boxShadow: tRun ? `0 0 5px ${M.pk}` : 'none',
-              animation: tRun ? 'pulse 1.2s ease-in-out infinite' : 'none',
+              background: tRun ? M.pk : '#fff',
+              boxShadow: tRun ? `0 0 5px ${M.pk}` : '0 0 4px rgba(255,255,255,0.6)',
+              animation: 'pulse 1.2s ease-in-out infinite',
               flexShrink: 0,
             }}
           />
-          <div style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: tRun ? M.ac : M.t2, letterSpacing: 0.1, minWidth: 48 }}>
+          <div style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: tRun ? M.ac : topBarFg, letterSpacing: 0.1, minWidth: 48 }}>
             {fmtClock(tSec)}
           </div>
         </div>
@@ -1645,7 +1708,7 @@ export default function App() {
                     className="status-marquee-track"
                     style={{
                       fontSize: 10, fontWeight: 800, letterSpacing: 1.4,
-                      color: warnColor || M.t3,
+                      color: '#fff',
                       fontFamily: 'monospace',
                     }}
                   >
@@ -1693,7 +1756,8 @@ export default function App() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, zIndex: 1 }}>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '0 8px', background: M.bg }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {weekH.map((h, i) => {
               const p = Math.min(1, h / GOAL)
