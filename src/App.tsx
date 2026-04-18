@@ -20,6 +20,8 @@ import { getTimerInsight } from './lib/timerInsights'
 import { emptyTodayMessage, saveCheer, xpCoachNote } from './lib/personality'
 import { IntroOverlay, IntroStep } from './components/IntroOverlay'
 import { MeetingsWidget } from './components/MeetingsWidget'
+import { MonthView } from './components/MonthView'
+import { WeekView } from './components/WeekView'
 
 const INTRO_STEPS: IntroStep[] = [
   {
@@ -307,6 +309,22 @@ export default function App() {
 
   const [tab, setTab] = useState<'today' | 'timer' | 'log' | 'xp'>('today')
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [scale, setScale] = useState<'day' | 'week' | 'month'>('day')
+
+  const cycleScale = () => {
+    setScale((s) => (s === 'day' ? 'week' : s === 'week' ? 'month' : 'day'))
+    setTab('today')
+  }
+  const stepDate = (dir: 1 | -1) => {
+    if (scale === 'day') {
+      setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() + dir); return n })
+    } else if (scale === 'week') {
+      setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() + 7 * dir); return n })
+    } else {
+      setSelectedDate((d) => new Date(d.getFullYear(), d.getMonth() + dir, 1))
+    }
+  }
+  const jumpToCurrent = () => setSelectedDate(new Date())
   const [size, setWindowSize] = useState<'full' | 'top'>('full')
 
   const [sessionXp, setSessionXp] = useState(0)
@@ -926,6 +944,15 @@ export default function App() {
 
   // ─── Shared UI helpers ────────────────────────────────────────────────
   const dateLabel = selectedDate.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })
+  const isoWeek = (() => {
+    const d = new Date(Date.UTC(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()))
+    const dayNum = d.getUTCDay() || 7
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+    return Math.ceil((((+d - +yearStart) / 86400000) + 1) / 7)
+  })()
+  const monthLabel = selectedDate.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' })
+  const scaleLabel = scale === 'day' ? dateLabel : scale === 'week' ? `Vecka ${isoWeek}` : monthLabel
 
   // ─── Header ────────────────────────────────────────────────────────────
   const hdr = (
@@ -935,16 +962,17 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, color: M.t3, height: 22, marginTop: -2 }}>
             <button
-              onClick={() => setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}
+              onClick={() => stepDate(-1)}
               style={{ background: 'none', border: 'none', color: M.tf, fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1, height: 22, display: 'flex', alignItems: 'center' }}
             >‹</button>
             <button
-              onClick={() => setSelectedDate(new Date())}
-              title="Jump to today (refresh)"
+              onClick={cycleScale}
+              onDoubleClick={jumpToCurrent}
+              title={`${scale === 'day' ? 'Day' : scale === 'week' ? 'Week' : 'Month'} view — click to switch, double-click for today`}
               style={{ background: 'none', border: 'none', color: M.t3, fontSize: 11, fontWeight: 500, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap', lineHeight: 1, height: 22, display: 'flex', alignItems: 'center' }}
-            >{dateLabel}</button>
+            >{scaleLabel}</button>
             <button
-              onClick={() => setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}
+              onClick={() => stepDate(1)}
               style={{ background: 'none', border: 'none', color: M.tf, fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1, height: 22, display: 'flex', alignItems: 'center' }}
             >›</button>
           </div>
@@ -1607,7 +1635,29 @@ export default function App() {
     )
   })()
 
-  const views = { today: todayView, timer: timerView, log: logView, xp: xpView }
+  const monthView = (
+    <MonthView
+      M={M}
+      goal={GOAL}
+      onPickDay={(d) => { setSelectedDate(d); setScale('day') }}
+      onBackfillDay={(d) => { setSelectedDate(d); setScale('day'); setTab('log') }}
+      firstName={currentUser.username.trim().split(/\s+/)[0]}
+    />
+  )
+  const weekView = (
+    <WeekView
+      M={M}
+      goal={GOAL}
+      referenceDate={selectedDate}
+      onPickDay={(d) => { setSelectedDate(d); setScale('day') }}
+      onBackfillDay={(d) => { setSelectedDate(d); setScale('day'); setTab('log') }}
+      firstName={currentUser.username.trim().split(/\s+/)[0]}
+    />
+  )
+
+  const todayScopeView = scale === 'day' ? todayView : scale === 'week' ? weekView : monthView
+
+  const views = { today: todayScopeView, timer: timerView, log: logView, xp: xpView }
 
   const hasCtx = !!(tCo && tPr)
   const coObj = companies.find((c) => c.id === tCo)

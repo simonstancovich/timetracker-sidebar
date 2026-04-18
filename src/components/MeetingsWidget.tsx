@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Theme = {
   bg: string
@@ -38,30 +38,28 @@ export function MeetingsWidget({ M, onStartForMeeting }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signingIn, setSigningIn] = useState(false)
-  const mounted = useRef(true)
-
-  useEffect(() => () => { mounted.current = false }, [])
 
   useEffect(() => {
-    window.electronAPI.graphStatus().then((s) => {
-      if (mounted.current) setStatus(s)
-    })
+    let cancelled = false
+    window.electronAPI.graphStatus().then((s) => { if (!cancelled) setStatus(s) })
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
     if (!status?.signedIn) return
+    let cancelled = false
     const load = async () => {
       setLoading(true)
       setError(null)
       const res = await window.electronAPI.graphMeetings({ hoursBack: 1, hoursForward: 12 })
-      if (!mounted.current) return
+      if (cancelled) return
       if (res.error) setError(res.error)
       else setMeetings((res.meetings || []).filter((m) => !m.isCancelled))
       setLoading(false)
     }
     load()
     const id = window.setInterval(load, 5 * 60 * 1000)
-    return () => clearInterval(id)
+    return () => { cancelled = true; clearInterval(id) }
   }, [status?.signedIn])
 
   if (!status) return null
@@ -88,7 +86,7 @@ export function MeetingsWidget({ M, onStartForMeeting }: Props) {
             const res = await window.electronAPI.graphSignIn()
             setSigningIn(false)
             if (res.error) setError(res.error)
-            else if (mounted.current) {
+            else {
               const s = await window.electronAPI.graphStatus()
               setStatus(s)
             }

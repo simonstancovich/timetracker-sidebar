@@ -27,6 +27,34 @@ input::placeholder, textarea::placeholder {
   0%, 100% { opacity: 1; }
   50% { opacity: .3; }
 }
+@keyframes skeletonShimmer {
+  0% { background-position: -150% 0; }
+  100% { background-position: 250% 0; }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(140, 140, 160, 0.18);
+  border-radius: 8px;
+}
+div.skeleton { display: block; }
+span.skeleton { display: inline-block; vertical-align: middle; }
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 40%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.08) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeletonShimmer 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
 @keyframes marqueeX {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
