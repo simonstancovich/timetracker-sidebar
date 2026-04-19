@@ -14,6 +14,8 @@ import {
   saveTimeEntry,
 } from './api'
 import { formatLocalDate } from './lib/date'
+import { fmtHours, parseHoursInput } from './lib/hours'
+import { CHECKS, EMPTY_ACH_STATS, isoWeekKey, type AchCtx, type AchStats } from './lib/achievements'
 import { pickRandomMessage } from './lib/funMessages'
 import { pickTip } from './lib/productivityTips'
 import { pickGreeting } from './lib/greetingMessages'
@@ -149,104 +151,6 @@ type Ach = (typeof ACHS)[number]
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr']
 const GOAL = 8
 
-type AchStats = {
-  entriesCount: number
-  totalH: number
-  totalBillableH: number
-  clientIds: string[]
-  projectIds: string[]
-  currentWeekKey: string
-  currentWeekBillableH: number
-}
-const EMPTY_ACH_STATS: AchStats = {
-  entriesCount: 0, totalH: 0, totalBillableH: 0,
-  clientIds: [], projectIds: [],
-  currentWeekKey: '', currentWeekBillableH: 0,
-}
-
-type AchCtx = {
-  stats: AchStats
-  streak: number
-  todayH: number
-  clientsToday: number
-  projectsToday: number
-  hourOfDay: number
-  daysSinceLastLog: number
-  savedIsWeekend: boolean
-  savedIsToday: boolean
-  entryIsBillable: boolean
-  entryHours: number
-  weekDaysAtGoal: number
-}
-
-// Predicate table — returns true when the achievement's condition is met.
-// Entries not listed (perfectmonth, king, overachiever, speed, editor) require
-// richer historical data than we currently track; they stay locked until we
-// add the history backing.
-const CHECKS: Record<string, (c: AchCtx) => boolean> = {
-  first:       (c) => c.stats.entriesCount >= 1,
-  rookie:      (c) => c.stats.entriesCount >= 10,
-  novice:      (c) => c.stats.entriesCount >= 50,
-  veteran:     (c) => c.stats.entriesCount >= 100,
-  prolific:    (c) => c.stats.entriesCount >= 500,
-
-  warmup:      (c) => c.streak >= 3,
-  fire:        (c) => c.streak >= 7,
-  habit:       (c) => c.streak >= 14,
-  lockin:      (c) => c.streak >= 30,
-  disciplined: (c) => c.streak >= 60,
-  obsessed:    (c) => c.streak >= 100,
-  unstoppable: (c) => c.streak >= 200,
-  legend:      (c) => c.streak >= 365,
-
-  quarter:     (c) => c.stats.totalH >= 25,
-  flow:        (c) => c.stats.totalH >= 50,
-  cent:        (c) => c.stats.totalH >= 100,
-  dedicated:   (c) => c.stats.totalH >= 250,
-  halfgrand:   (c) => c.stats.totalH >= 500,
-  grand:       (c) => c.stats.totalH >= 1000,
-  mythic:      (c) => c.stats.totalH >= 2500,
-  legacy:      (c) => c.stats.totalH >= 5000,
-
-  solid:       (c) => c.savedIsToday && c.todayH >= 4,
-  full:        (c) => c.savedIsToday && c.todayH >= 6,
-  goal:        (c) => c.savedIsToday && c.todayH >= GOAL,
-  lord:        (c) => c.savedIsToday && c.todayH >= 10,
-  midnight:    (c) => c.savedIsToday && c.todayH >= 12,
-  impossible:  (c) => c.savedIsToday && c.todayH >= 16,
-
-  early:       (c) => c.hourOfDay < 9,
-  dawn:        (c) => c.hourOfDay < 6,
-  night:       (c) => c.hourOfDay >= 22,
-  vampire:     (c) => c.hourOfDay >= 0 && c.hourOfDay < 4,
-  twilight:    (c) => c.hourOfDay >= 18 && c.hourOfDay < 22,
-  lunch:       (c) => c.hourOfDay === 12,
-
-  multi:       (c) => c.savedIsToday && c.clientsToday >= 3,
-  collector:   (c) => c.stats.clientIds.length >= 10,
-  hopper:      (c) => c.savedIsToday && c.projectsToday >= 5,
-  renaissance: (c) => c.stats.projectIds.length >= 20,
-  focused:     (c) => c.savedIsToday && c.projectsToday === 1 && c.todayH >= GOAL,
-
-  perfectweek: (c) => c.weekDaysAtGoal >= 5,
-  comeback:    (c) => c.daysSinceLastLog >= 7,
-  weekend:     (c) => c.savedIsWeekend,
-  break:       (c) => c.daysSinceLastLog >= 7,
-
-  firstinv:    (c) => c.stats.totalBillableH > 0,
-  bigweek:     (c) => c.stats.currentWeekBillableH >= 40,
-  moneymaker:  (c) => c.stats.totalBillableH >= 1000,
-}
-
-const isoWeekKey = (d: Date): string => {
-  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-  const day = x.getUTCDay() || 7
-  x.setUTCDate(x.getUTCDate() + 4 - day)
-  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1))
-  const week = Math.ceil(((+x - +yearStart) / 86400000 + 1) / 7)
-  return `${x.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
-}
-
 const pad = (n: number) => String(n).padStart(2, '0')
 
 // Playful status under the timer clock — text and icon kept separate so the
@@ -267,29 +171,6 @@ function vibe(tSec: number, tRun: boolean, lang: Lang = 'en'): { text: string; i
   return       { text: en ? 'Maybe stretch a little?' : 'Stretcha kanske lite?', icon: '🌱' }
 }
 
-// Format decimal hours as "H:MM" (e.g. 1.5 → "1:30", 0.033 → "0:02").
-function fmtHours(h: number): string {
-  if (!Number.isFinite(h) || h < 0) return '0:00'
-  const total = Math.round(h * 60)
-  const hh = Math.floor(total / 60)
-  const mm = total % 60
-  return `${hh}:${String(mm).padStart(2, '0')}`
-}
-
-// Accepts "1.5", "1,5", "1:30", "01:30:00", etc. Returns decimal hours or null.
-function parseHoursInput(raw: string): number | null {
-  const s = raw.trim()
-  if (!s) return null
-  if (/^\d{1,2}:\d{1,2}(:\d{1,2})?$/.test(s)) {
-    const [h, m, sec] = s.split(':').map((p) => parseInt(p, 10))
-    if (isNaN(h) || isNaN(m)) return null
-    if (m >= 60 || (sec != null && sec >= 60)) return null
-    return +(h + m / 60 + (sec || 0) / 3600).toFixed(2)
-  }
-  const n = parseFloat(s.replace(',', '.'))
-  if (isNaN(n) || n < 0) return null
-  return +n.toFixed(2)
-}
 const fmtClock = (s: number) =>
   `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`
 const fmtDateISO = formatLocalDate

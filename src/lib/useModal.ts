@@ -44,7 +44,6 @@ export function useModal<T extends HTMLElement>({
       const node = containerRef.current
       if (!node) return
       const els = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE))
-        .filter((el) => el.offsetParent !== null || el === document.activeElement)
       if (els.length === 0) { e.preventDefault(); return }
       const first = els[0]
       const last = els[els.length - 1]
