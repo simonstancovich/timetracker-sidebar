@@ -1,5 +1,5 @@
 import { style, styleVariants } from '@vanilla-extract/css'
-import { vars } from '../../theme'
+import { vars, sizes, radii, fontSize } from '../../theme'
 
 export const root = style({
   display: 'flex',
@@ -10,9 +10,12 @@ export const root = style({
   boxShadow: vars.shadow.brand,
 })
 
+// Each size composes token values across the box dimension, corner rounding,
+// and icon glyph size. Keeping these three axes coupled per size preserves
+// visual proportions; change a size by editing one line, not three.
 export const size = styleVariants({
-  sm: { width: 24, height: 24, borderRadius: 8,  fontSize: 14 },
-  md: { width: 32, height: 32, borderRadius: 10, fontSize: 18 },
-  lg: { width: 48, height: 48, borderRadius: 14, fontSize: 22 },
-  xl: { width: 64, height: 64, borderRadius: 18, fontSize: 28 },
+  sm: { width: sizes.sm, height: sizes.sm, borderRadius: radii.sm,    fontSize: fontSize.lg },
+  md: { width: sizes.md, height: sizes.md, borderRadius: radii.md,    fontSize: fontSize['3xl'] },
+  lg: { width: sizes.lg, height: sizes.lg, borderRadius: radii.xl,    fontSize: fontSize['4xl'] },
+  xl: { width: sizes.xl, height: sizes.xl, borderRadius: radii['2xl'],fontSize: fontSize.display },
 })

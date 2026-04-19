@@ -3,7 +3,7 @@ import {
   colors, pickColor, chartColors, alpha,
   light, dark, themes,
   fontFamily, fontSize, fontWeight, lineHeight, letterSpacing,
-  spacing, widths, radii, shadows, zIndex, duration, easing, transitions,
+  spacing, widths, sizes, radii, shadows, zIndex, duration, easing, transitions,
 } from './index'
 
 describe('colors — catalog shape', () => {
@@ -175,13 +175,27 @@ describe('widths', () => {
   })
 })
 
+describe('sizes', () => {
+  it('box dimensions grow monotonically from xs to 2xl', () => {
+    expect(sizes.xs).toBeLessThan(sizes.sm)
+    expect(sizes.sm).toBeLessThan(sizes.md)
+    expect(sizes.md).toBeLessThan(sizes.lg)
+    expect(sizes.lg).toBeLessThan(sizes.xl)
+    expect(sizes.xl).toBeLessThan(sizes['2xl'])
+  })
+})
+
 describe('radii', () => {
-  it('xs through 5xl are increasing numeric pixel values', () => {
+  it('xs through 2xl grow monotonically', () => {
     expect(radii.xs).toBeLessThan(radii.sm)
     expect(radii.sm).toBeLessThan(radii.md)
     expect(radii.md).toBeLessThan(radii.lg)
     expect(radii.lg).toBeLessThan(radii.xl)
     expect(radii.xl).toBeLessThan(radii['2xl'])
+  })
+
+  it('pill is the large sentinel value', () => {
+    expect(radii.pill).toBeGreaterThan(radii['2xl'])
   })
 
   it('circle is the special-case 50% string', () => {
