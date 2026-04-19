@@ -29,50 +29,7 @@ import { IntroOverlay } from './components/IntroOverlay'
 import { MeetingsWidget } from './components/MeetingsWidget'
 import { MonthView } from './components/MonthView'
 import { WeekView } from './components/WeekView'
-
-
-// ─── Theme tokens ────────────────────────────────────────────────────────
-const L = {
-  id: 'light', bg: '#f8f7ff', s1: '#ffffff', s2: '#f1effc', s3: '#e8e4fa',
-  b1: '#e2dff5', b2: '#c4bfec',
-  ac: '#7c3aed', ad: '#ede9fe', at: '#4c1d95', am: '#c4b5fd',
-  pk: '#be185d', pb: '#fdf2f8', pp: '#fce7f3', pv: '#f472b6',
-  gn: '#16a34a', gb: '#f0fdf4', gd: '#bbf7d0',
-  t1: '#1e1b4b', t2: '#3e3878', t3: '#544e8a', tf: '#9d98c8',
-  lo: '#7c3aed', btn: '#7c3aed', bsh: '0 4px 14px rgba(124,58,237,.35)',
-  co: ['#7c3aed', '#0891b2', '#be185d', '#0d9488'],
-}
-// Dark mode — reference: JetBrains Toolbox
-// Deep violet-black base with a soft gradient glow, glassy lifted surfaces.
-const D = {
-  id: 'dark',
-  bg: '#0b0910',         // near-black violet base
-  s1: 'rgba(255,255,255,0.065)', // glassy raised surface
-  s2: 'rgba(255,255,255,0.04)',
-  s3: 'rgba(255,255,255,0.10)',
-  b1: 'rgba(255,255,255,0.10)',
-  b2: 'rgba(255,255,255,0.18)',
-  ac: '#9b8cff',         // vivid violet accent
-  ad: 'rgba(155,140,255,0.12)',
-  at: '#d5cdff',
-  am: 'rgba(255,255,255,0.12)',
-  pk: '#e89aae',
-  pb: 'rgba(232,154,174,0.07)',
-  pp: 'rgba(232,154,174,0.18)',
-  pv: '#e89aae',
-  gn: '#6fd4a0',
-  gb: 'rgba(111,212,160,0.07)',
-  gd: 'rgba(111,212,160,0.25)',
-  t1: '#f5f3ff',
-  t2: '#c4bedb',
-  t3: '#8b85a3',
-  tf: '#5a5470',
-  lo: '#ffffff',
-  btn: '#7e6bff',
-  bsh: '0 8px 24px rgba(0,0,0,0.5)',
-  co: ['#9b8cff', '#e89aae', '#6fd4a0', '#6ec0e8'],
-}
-type Theme = typeof L
+import { light as L, dark as D, type Theme } from './theme'
 
 // Language-agnostic achievement records. Localized name + description live
 // in /locales/{lang}.json under `achievements.{id}.{name,description}` and
