@@ -1,20 +1,35 @@
-interface Props {
-  onLogin: () => void
+import { t as tr, type Lang } from '../lib/i18n'
+
+interface Theme {
+  id: string
+  bg: string
+  t1: string
+  t3: string
+  ac: string
+  btn: string
+  bsh: string
 }
 
-export function LoginScreen({ onLogin }: Props) {
+interface Props {
+  onLogin: () => void
+  lang?: Lang
+  M: Theme
+}
+
+export function LoginScreen({ onLogin, lang = 'en', M }: Props) {
+  const t = (k: Parameters<typeof tr>[0], v?: Parameters<typeof tr>[2]) => tr(k, lang, v)
   return (
     <div
       style={{
         minHeight: '100vh',
-        background: '#f8f7ff',
+        background: M.bg,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 24,
         fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
-        color: '#1e1b4b',
+        color: M.t1,
       }}
     >
       <div
@@ -22,13 +37,13 @@ export function LoginScreen({ onLogin }: Props) {
           width: 64,
           height: 64,
           borderRadius: 18,
-          background: '#7c3aed',
+          background: M.ac,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 28,
           color: '#fff',
-          boxShadow: '0 6px 20px rgba(124,58,237,.4)',
+          boxShadow: M.bsh,
           marginBottom: 22,
         }}
       >
@@ -37,24 +52,24 @@ export function LoginScreen({ onLogin }: Props) {
       <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5, marginBottom: 8 }}>
         DevCore TimeTracker
       </h1>
-      <p style={{ fontSize: 13, color: '#5b56a0', textAlign: 'center', maxWidth: 280, marginBottom: 22 }}>
-        Sign in with your DevCore account to start tracking time.
+      <p style={{ fontSize: 13, color: M.t3, textAlign: 'center', maxWidth: 280, marginBottom: 22 }}>
+        {t('login.pitch')}
       </p>
       <button
         onClick={onLogin}
         style={{
           padding: '12px 28px',
-          background: '#7c3aed',
+          background: M.btn,
           border: 'none',
           borderRadius: 12,
           color: '#fff',
           fontSize: 14,
           fontWeight: 700,
           cursor: 'pointer',
-          boxShadow: '0 4px 14px rgba(124,58,237,.35)',
+          boxShadow: M.bsh,
         }}
       >
-        Sign in
+        {t('login.signIn')}
       </button>
     </div>
   )

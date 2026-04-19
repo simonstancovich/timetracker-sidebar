@@ -2,14 +2,14 @@ interface ElectronAPI {
   checkAuth: () => Promise<boolean>
   openAuth: () => Promise<void>
   signOut: () => Promise<void>
-  onAuthSuccess: (cb: () => void) => void
-  onSignedOut: (cb: () => void) => void
-  onSessionLost: (cb: () => void) => void
+  onAuthSuccess: (cb: () => void) => () => void
+  onSignedOut: (cb: () => void) => () => void
+  onSessionLost: (cb: () => void) => () => void
   apiCall: (params: Record<string, string>, body: Record<string, string> | null) => Promise<{ data?: any; error?: string }>
   storeGet: (key: string) => Promise<any>
   storeSet: (key: string, value: any) => Promise<void>
   setSize: (size: 'full' | 'top') => Promise<void>
-  onForcedSize: (cb: (size: 'full' | 'top') => void) => void
+  onForcedSize: (cb: (size: 'full' | 'top') => void) => () => void
   setBlurCollapseDisabled: (disabled: boolean) => Promise<void>
 
   graphStatus: () => Promise<GraphStatus>
@@ -17,7 +17,7 @@ interface ElectronAPI {
   graphSignOut: () => Promise<void>
   graphMeetings: (opts?: { hoursBack?: number; hoursForward?: number }) =>
     Promise<{ meetings?: GraphMeeting[]; error?: string }>
-  onGraphDeviceCode: (cb: (code: { userCode: string; verificationUri: string; message: string }) => void) => void
+  onGraphDeviceCode: (cb: (code: { userCode: string; verificationUri: string; message: string }) => void) => () => void
 }
 
 interface GraphStatus {

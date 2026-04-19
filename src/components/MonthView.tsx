@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadTimeEntries, TimeEntry } from '../api'
 import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { monthInsight } from '../lib/personality'
+import { Lang, t as tr } from '../lib/i18n'
 
 type Theme = {
   bg: string
@@ -27,9 +28,11 @@ type Theme = {
 interface Props {
   M: Theme
   goal: number
+  referenceDate: Date
   onPickDay: (date: Date) => void
   onBackfillDay?: (date: Date) => void
   firstName?: string
+  lang?: Lang
 }
 
 function isoWeekOf(d: Date): number {
@@ -41,10 +44,6 @@ function isoWeekOf(d: Date): number {
 }
 
 const DAYS_SHORT = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']
-const MONTHS = [
-  'Januari', 'Februari', 'Mars', 'April', 'Maj', 'Juni',
-  'Juli', 'Augusti', 'September', 'Oktober', 'November', 'December',
-]
 
 const fmtHours = (h: number) => {
   const hh = Math.floor(h)
@@ -52,11 +51,12 @@ const fmtHours = (h: number) => {
   return `${hh}:${String(mm).padStart(2, '0')}`
 }
 
-export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Props) {
-  const [anchor, setAnchor] = useState(() => {
-    const d = new Date()
-    return new Date(d.getFullYear(), d.getMonth(), 1)
-  })
+export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName, lang = 'en' }: Props) {
+  const t = (k: Parameters<typeof tr>[0], v?: Parameters<typeof tr>[2]) => tr(k, lang, v)
+  const anchor = useMemo(
+    () => new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1),
+    [referenceDate],
+  )
   const [hoursByDate, setHoursByDate] = useState<Record<string, number>>({})
   const [entriesByDate, setEntriesByDate] = useState<Record<string, TimeEntry[]>>({})
   const [loading, setLoading] = useState(false)
@@ -159,6 +159,35 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
 
   const avgPerWorkday = workingDays.count > 0 ? monthTotal / workingDays.count : 0
   const flexBalance = monthTotal - workingDays.count * goal
+  // Full-month expected: count all workdays of the month (past + future)
+  const allWorkdaysInMonth = useMemo(() => {
+    let n = 0
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (isWorkingDay(new Date(year, month, d), holidays)) n++
+    }
+    return n
+  }, [year, month, daysInMonth, holidays])
+  const expectedMonthHours = allWorkdaysInMonth * goal
+
+  // Overtime / weekend / long-day signals
+  const weekendHours = useMemo(() => {
+    let s = 0
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d)
+      if (date.getDay() !== 0 && date.getDay() !== 6) continue
+      s += hoursByDate[dateKey(date)] || 0
+    }
+    return s
+  }, [year, month, daysInMonth, hoursByDate])
+  const longDayCount = useMemo(() => {
+    let n = 0
+    for (let d = 1; d <= daysInMonth; d++) {
+      const h = hoursByDate[dateKey(new Date(year, month, d))] || 0
+      if (h > 10) n++
+    }
+    return n
+  }, [year, month, daysInMonth, hoursByDate])
+  const overtimeHours = Math.max(0, monthTotal - workingDays.count * goal)
 
   const billable = useMemo(() => {
     let b = 0
@@ -229,46 +258,20 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
     hit: workingDays.hit,
     workDayCount: workingDays.count,
     billable,
-    bestWeekLabel: bestWeek ? `Week ${bestWeek.week}` : undefined,
+    bestWeekLabel: bestWeek ? t('scale.weekNum', { n: bestWeek.week }) : undefined,
     bestWeekHours: bestWeek?.hours,
     topClientName: topClient?.name,
     topClientShare: topClient && monthTotal > 0 ? topClient.hours / monthTotal : undefined,
     firstName,
     isFinished,
+    lang,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [monthTotal, prevMonthTotal, workingDays.hit, workingDays.count, billable, bestWeek?.hours, topClient?.hours, firstName, isFinished])
+  }), [monthTotal, prevMonthTotal, workingDays.hit, workingDays.count, billable, bestWeek?.hours, topClient?.hours, firstName, isFinished, lang])
 
   const monthDelta = prevMonthTotal != null ? monthTotal - prevMonthTotal : null
 
-  const goPrev = () => setAnchor(new Date(year, month - 1, 1))
-  const goNext = () => setAnchor(new Date(year, month + 1, 1))
-  const goToday = () => {
-    const d = new Date()
-    setAnchor(new Date(d.getFullYear(), d.getMonth(), 1))
-  }
-
   return (
     <div style={{ padding: '14px 14px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button
-            onClick={goPrev}
-            style={{ background: 'none', border: 'none', color: M.t3, fontSize: 18, fontWeight: 600, cursor: 'pointer', padding: '0 6px', lineHeight: 1 }}
-          >‹</button>
-          <button
-            onClick={goToday}
-            title="Jump to this month"
-            style={{ background: 'none', border: 'none', color: M.t1, fontSize: 15, fontWeight: 700, cursor: 'pointer', padding: 0, letterSpacing: -0.3 }}
-          >{MONTHS[month]} {year}</button>
-          <button
-            onClick={goNext}
-            style={{ background: 'none', border: 'none', color: M.t3, fontSize: 18, fontWeight: 600, cursor: 'pointer', padding: '0 6px', lineHeight: 1 }}
-          >›</button>
-        </div>
-        <div style={{ display: 'flex', gap: 12, fontSize: 11, color: M.t3 }}>
-          <div><strong style={{ color: M.t1, fontFamily: 'monospace' }}>{fmtHours(monthTotal)}</strong> this month</div>
-        </div>
-      </div>
 
       {loaded ? (insight && (
         <div style={{ background: `${M.ac}12`, border: `1px solid ${M.ac}33`, borderRadius: 10, padding: '9px 11px', fontSize: 12, color: M.t1, lineHeight: 1.4, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -279,33 +282,36 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
         <div className="skeleton" style={{ height: 38, borderRadius: 10 }} />
       )}
 
-      {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-        <StatCard M={M} label="Hit goal" value={loaded ? `${workingDays.hit}/${workingDays.count}` : null} color={M.gn} />
-        <StatCard M={M} label="Partial" value={loaded ? `${workingDays.partial}` : null} color={'#f59e0b'} />
-        <StatCard M={M} label="Missed" value={loaded ? `${workingDays.missed}` : null} color={'#ef4444'} />
-      </div>
-
-      {/* Totals + delta + avg */}
+      {/* Totals + delta + avg + utilization */}
       <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 0.8, textTransform: 'uppercase' }}>This month</span>
-          <span style={{ fontSize: 15, fontWeight: 800, color: M.t1, fontFamily: 'monospace' }}>{fmtHours(monthTotal)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('month.thisMonth')}</span>
+          <span style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+            {monthTotal > 0 && (
+              <span style={{ fontSize: 11, color: M.t3 }}>
+                <strong style={{ color: M.pk, fontFamily: 'monospace' }}>{Math.round((billable / monthTotal) * 100)}%</strong> {t('month.utilization')}
+              </span>
+            )}
+            <span style={{ fontSize: 11, color: M.t3, fontFamily: 'monospace' }}>
+              <strong style={{ color: M.t1 }}>{fmtHours(monthTotal)}</strong>
+              <span style={{ color: M.t3 }}> / {fmtHours(expectedMonthHours)}</span>
+            </span>
+          </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: M.t3, gap: 8, flexWrap: 'wrap' }}>
           <span>
             {monthDelta == null ? '' :
-              monthDelta === 0 ? 'Same as last month' :
-                monthDelta > 0 ? <><strong style={{ color: M.gn }}>+{fmtHours(monthDelta)}</strong> vs last</> :
-                  <><strong style={{ color: '#f59e0b' }}>{fmtHours(monthDelta)}</strong> vs last</>}
+              monthDelta === 0 ? t('month.sameAsLast') :
+                monthDelta > 0 ? <><strong style={{ color: M.gn }}>+{fmtHours(monthDelta)}</strong> {t('month.vsLast')}</> :
+                  <><strong style={{ color: '#f59e0b' }}>{fmtHours(monthDelta)}</strong> {t('month.vsLast')}</>}
           </span>
           <span style={{ display: 'flex', gap: 10 }}>
             {avgPerWorkday > 0 && (
-              <span>Ø <strong style={{ color: M.t2, fontFamily: 'monospace' }}>{fmtHours(avgPerWorkday)}</strong>/day</span>
+              <span>Ø <strong style={{ color: M.t2, fontFamily: 'monospace' }}>{fmtHours(avgPerWorkday)}</strong>/{t('week.day')}</span>
             )}
             {workingDays.count > 0 && (
               <span>
-                Flex{' '}
+                {t('week.flex')}{' '}
                 <strong style={{ color: flexBalance >= 0 ? M.gn : '#f59e0b', fontFamily: 'monospace' }}>
                   {flexBalance >= 0 ? '+' : ''}{fmtHours(flexBalance)}
                 </strong>
@@ -315,11 +321,25 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
         </div>
       </div>
 
+      {/* Overtime / weekend warnings */}
+      {loaded && (overtimeHours > 0 || weekendHours > 0 || longDayCount > 0) && (
+        <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 9, padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+            {t('week.headsUp')}
+          </div>
+          <div style={{ fontSize: 11, color: M.t2, lineHeight: 1.5 }}>
+            {overtimeHours > 0 && <div>· <strong>{fmtHours(overtimeHours)}</strong> over expected ({workingDays.count} workdays × 8h)</div>}
+            {longDayCount > 0 && <div>· {longDayCount} day{longDayCount > 1 ? 's' : ''} over 10h</div>}
+            {weekendHours > 0 && <div>· <strong>{fmtHours(weekendHours)}</strong> logged on weekends</div>}
+          </div>
+        </div>
+      )}
+
       {/* Billable split + earnings */}
       {monthTotal > 0 && (
         <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 0.8, textTransform: 'uppercase' }}>Billable split</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('month.billableSplit')}</span>
             {earnings > 0 && (
               <span style={{ fontSize: 14, fontWeight: 800, color: M.pk, fontFamily: 'monospace' }}>
                 {Math.round(earnings).toLocaleString('sv-SE')} kr
@@ -331,8 +351,8 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
             <div style={{ width: `${100 - billablePct}%`, background: M.t3, opacity: 0.4 }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: M.t3 }}>
-            <span>Billable {fmtHours(billable)} · {Math.round(billablePct)}%</span>
-            <span>Internal {fmtHours(nonBillable)}</span>
+            <span>{t('week.billableLine', { hours: fmtHours(billable) })} · {Math.round(billablePct)}%</span>
+            <span>{t('week.internalLine', { hours: fmtHours(nonBillable) })}</span>
           </div>
         </div>
       )}
@@ -340,7 +360,7 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
       {/* Weekly strip */}
       {weeklyRollup.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>Weeks</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('month.weeks')}</div>
           <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 70 }}>
             {weeklyRollup.map((w) => {
               const max = Math.max(...weeklyRollup.map((x) => x.hours), 1)
@@ -364,21 +384,21 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
       {missingDays.length > 0 && (
         <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: 9, padding: '8px 11px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-            {missingDays.length === 1 ? '1 workday without entries' : `${missingDays.length} workdays without entries`}
+            {missingDays.length === 1 ? t('month.workdaysWithoutEntries', { n: 1 }) : t('month.workdaysWithoutEntriesPlural', { n: missingDays.length })}
           </div>
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
             {missingDays.slice(0, 5).map((d) => (
               <button
                 key={dateKey(d)}
                 onClick={() => (onBackfillDay || onPickDay)(d)}
-                title={d.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'short' })}
+                title={d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}
                 style={{ background: M.s1, border: `1px solid ${M.b1}`, color: M.t2, borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
               >
-                {d.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric' })}
+                {d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'short', day: 'numeric' })}
               </button>
             ))}
             {missingDays.length > 5 && (
-              <span style={{ fontSize: 11, color: M.t3, padding: '3px 4px' }}>+ {missingDays.length - 5} more</span>
+              <span style={{ fontSize: 11, color: M.t3, padding: '3px 4px' }}>{t('month.moreDays', { n: missingDays.length - 5 })}</span>
             )}
           </div>
         </div>
@@ -406,28 +426,32 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
           const isWeekend = d.getDay() === 0 || d.getDay() === 6
           const isWorkday = !isWeekend && !holiday
 
-          let status: 'hit' | 'partial' | 'missed' | 'off' | 'future' = 'off'
-          if (isFuture) status = 'future'
-          else if (!isWorkday) status = 'off'
-          else if (hours >= goal) status = 'hit'
-          else if (hours > 0) status = 'partial'
-          else status = 'missed'
-
-          const bg = status === 'hit' ? `${M.gn}22`
-            : status === 'partial' ? '#f59e0b22'
-              : status === 'missed' ? '#ef444422'
-                : status === 'future' ? 'transparent'
-                  : M.s2
-          const border = status === 'hit' ? `${M.gn}66`
-            : status === 'partial' ? '#f59e0b66'
-              : status === 'missed' ? '#ef444466'
-                : status === 'future' ? M.b1
-                  : M.b1
-          const textColor = isWorkday ? M.t1 : M.t3
-          const hoursColor = status === 'hit' ? M.gn
-            : status === 'partial' ? '#f59e0b'
-              : status === 'missed' ? '#ef4444'
-                : M.tf
+          let bg: string, border: string
+          const heatPct = Math.min(1, hours / goal)
+          const OFF_BG = M.id === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'
+          const OFF_BORDER = M.id === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.13)'
+          if (hours > 0) {
+            // Logged hours — always heatmap green, even on weekends / holidays
+            const alphaHex = Math.round(90 + heatPct * 165).toString(16).padStart(2, '0')
+            bg = `${M.gn}${alphaHex}`
+            border = `${M.gn}`
+          } else if (!isWorkday) {
+            // Off day (past or future), no hours — distinctly greyed out
+            bg = OFF_BG; border = OFF_BORDER
+          } else if (isFuture) {
+            // Future workday — transparent, awaiting
+            bg = 'transparent'; border = M.b1
+          } else {
+            // Past workday with 0 hours — red tint to flag it
+            bg = '#ef444420'; border = '#ef444466'
+          }
+          const hasHours = !isFuture && hours > 0
+          const textColor = hasHours ? '#ffffff' : isWorkday ? M.t1 : M.t3
+          const hoursColor = hasHours ? '#ffffff'
+            : !isWorkday ? M.tf
+              : hours === 0 ? '#ef4444'
+                : M.t2
+          const hoursWeight = hours >= goal ? 800 : 700
 
           if (!loaded) {
             return (
@@ -472,8 +496,8 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
                   <span title={holiday} style={{ fontSize: 8, color: M.t3, flexShrink: 0 }}>✦</span>
                 )}
               </div>
-              {isWorkday && !isFuture && (
-                <span style={{ fontSize: 9, fontWeight: 700, color: hoursColor, fontFamily: 'monospace', textAlign: 'right', lineHeight: 1 }}>
+              {!isFuture && (isWorkday || hours > 0) && (
+                <span style={{ fontSize: 9, fontWeight: hoursWeight, color: hoursColor, fontFamily: 'monospace', textAlign: 'right', lineHeight: 1 }}>
                   {hours > 0 ? fmtHours(hours) : '—'}
                 </span>
               )}
@@ -482,12 +506,20 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
         })}
       </div>
 
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 12, fontSize: 10, color: M.t3, flexWrap: 'wrap' }}>
-        <Legend color={M.gn} label="Hit 8h" />
-        <Legend color="#f59e0b" label="Partial" />
-        <Legend color="#ef4444" label="Missed" />
-        <Legend color={M.b1} label="Weekend / holiday" />
+      {/* Legend — heatmap scale */}
+      <div style={{ display: 'flex', gap: 10, fontSize: 10, color: M.t3, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span>{t('month.less')}</span>
+        <div style={{ display: 'flex', gap: 2 }}>
+          {[0.15, 0.35, 0.55, 0.8, 1].map((a, i) => {
+            const alphaHex = Math.round(90 + a * 165).toString(16).padStart(2, '0')
+            return <span key={i} style={{ width: 11, height: 11, borderRadius: 3, background: `${M.gn}${alphaHex}`, border: `1px solid ${M.gn}aa` }} />
+          })}
+        </div>
+        <span>{t('month.more')}</span>
+        <span style={{ marginLeft: 'auto' }}>
+          <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#ef444420', border: '1px solid #ef444466', verticalAlign: 'middle', marginRight: 4 }} />
+          {t('month.missed')}
+        </span>
       </div>
 
       {!loaded ? (
@@ -498,7 +530,7 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
         </div>
       ) : clientTotals.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>By client</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('week.byClient')}</div>
           {clientTotals.map((c) => {
             const pct = monthTotal > 0 ? (c.hours / monthTotal) * 100 : 0
             return (
@@ -518,7 +550,7 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
 
       {projectTotals.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>Top projects</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('week.topProjects')}</div>
           {projectTotals.map((p) => {
             const pct = monthTotal > 0 ? (p.hours / monthTotal) * 100 : 0
             return (
@@ -540,26 +572,10 @@ export function MonthView({ M, goal, onPickDay, onBackfillDay, firstName }: Prop
       )}
 
       {loading && loaded && (
-        <div style={{ fontSize: 10, color: M.tf, textAlign: 'center' }}>Refreshing…</div>
+        <div style={{ fontSize: 10, color: M.tf, textAlign: 'center' }}>{t('week.refreshing')}</div>
       )}
     </div>
   )
 }
 
-const StatCard = ({ M, label, value, color }: { M: Theme; label: string; value: string | null; color: string }) => (
-  <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, padding: '9px 10px', textAlign: 'center' }}>
-    {value === null ? (
-      <div className="skeleton" style={{ height: 16, width: '60%', margin: '0 auto' }} />
-    ) : (
-      <div style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
-    )}
-    <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6 }}>{label}</div>
-  </div>
-)
 
-const Legend = ({ color, label }: { color: string; label: string }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-    <span style={{ width: 8, height: 8, borderRadius: 2, background: `${color}44`, border: `1px solid ${color}88` }} />
-    {label}
-  </div>
-)

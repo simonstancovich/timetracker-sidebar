@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadTimeEntries, TimeEntry } from '../api'
 import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { weekInsight } from '../lib/personality'
+import { Lang, t as tr } from '../lib/i18n'
 
 type Theme = {
   bg: string
@@ -25,6 +26,7 @@ interface Props {
   onPickDay: (d: Date) => void
   onBackfillDay?: (d: Date) => void
   firstName?: string
+  lang?: Lang
 }
 
 const DAYS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']
@@ -43,7 +45,8 @@ function mondayOf(d: Date): Date {
   return out
 }
 
-export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName }: Props) {
+export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName, lang = 'en' }: Props) {
+  const t = (k: Parameters<typeof tr>[0], v?: Parameters<typeof tr>[2]) => tr(k, lang, v)
   const [loading, setLoading] = useState(false)
   const [entriesByDate, setEntriesByDate] = useState<Record<string, TimeEntry[]>>({})
   const [prevWeekTotal, setPrevWeekTotal] = useState<number | null>(null)
@@ -150,7 +153,9 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
 
   const nonBillable = weekTotal - billable
   const billablePct = weekTotal > 0 ? (billable / weekTotal) * 100 : 0
-  const weeklyGoal = goal * 5
+  // Weekly goal respects Swedish holidays: only actual workdays × 8h
+  const allWorkdaysInWeek = weekDates.filter((d) => isWorkingDay(d, holidays))
+  const weeklyGoal = allWorkdaysInWeek.length * goal
   const goalPct = Math.min(1, weekTotal / weeklyGoal) * 100
   const weekDelta = prevWeekTotal != null ? weekTotal - prevWeekTotal : null
   const bestDay = (() => {
@@ -163,7 +168,20 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
   })()
 
   const avgPerWorkday = workDays.length > 0 ? weekTotal / workDays.length : 0
-  const flexBalance = weekTotal - weeklyGoal
+  // Flex is against workdays that have already passed (not the whole week)
+  const flexBalance = weekTotal - workDays.length * goal
+  const utilizationPct = weekTotal > 0 ? (billable / weekTotal) * 100 : 0
+
+  // Overtime / weekend work / long-day signals (respects holidays)
+  const overtimeHours = Math.max(0, weekTotal - weeklyGoal)
+  const weekendHours = weekDates.reduce((s, d) => {
+    if (d.getDay() !== 0 && d.getDay() !== 6) return s
+    return s + (hoursByDate[dateKey(d)] || 0)
+  }, 0)
+  const longDays = weekDates.filter((d) => {
+    const h = hoursByDate[dateKey(d)] || 0
+    return h > 10
+  })
   const missingDays = useMemo(() => {
     return weekDates.filter((d) => {
       if (d > new Date()) return false
@@ -181,14 +199,15 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
     workDayCount: workDays.length,
     billable,
     prevWeekTotal,
-    bestDayName: bestDay ? bestDay.date.toLocaleDateString('sv-SE', { weekday: 'long' }) : null,
+    bestDayName: bestDay ? bestDay.date.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long' }) : null,
     bestDayHours: bestDay?.hours,
     topClientName: topClient?.name,
     topClientShare: topClient && weekTotal > 0 ? topClient.hours / weekTotal : undefined,
     firstName,
     isFinished,
+    lang,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [weekTotal, billable, prevWeekTotal, hit, workDays.length, bestDay?.hours, topClient?.hours, topClient?.name, firstName, isFinished])
+  }), [weekTotal, billable, prevWeekTotal, hit, workDays.length, bestDay?.hours, topClient?.hours, topClient?.name, firstName, isFinished, lang])
 
   return (
     <div style={{ padding: '14px 14px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -202,16 +221,30 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-        <Stat M={M} label="Total" value={loaded ? fmtHours(weekTotal) : null} color={M.ac} />
-        <Stat M={M} label="Hit goal" value={loaded ? `${hit}/${workDays.length}` : null} color={M.gn} />
-        <Stat M={M} label="Billable" value={loaded ? fmtHours(billable) : null} color={M.pk} />
+        <Stat M={M} label={t('week.total')} value={loaded ? fmtHours(weekTotal) : null} color={M.ac} />
+        <Stat M={M} label={t('week.hitGoal')} value={loaded ? `${hit}/${workDays.length}` : null} color={M.gn} />
+        <Stat M={M} label={t('week.utilization')} value={loaded && weekTotal > 0 ? `${Math.round(utilizationPct)}%` : loaded ? '—' : null} color={M.pk} />
       </div>
+
+      {/* Overtime / weekend warnings */}
+      {loaded && (overtimeHours > 0 || weekendHours > 0 || longDays.length > 0) && (
+        <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 9, padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+            {t('week.headsUp')}
+          </div>
+          <div style={{ fontSize: 11, color: M.t2, lineHeight: 1.5 }}>
+            {overtimeHours > 0 && <div>· <strong>{fmtHours(overtimeHours)}</strong> {t('week.overtime', { goal: fmtHours(weeklyGoal) })}</div>}
+            {longDays.length > 0 && <div>· {t(longDays.length === 1 ? 'week.overTenDays' : 'week.overTenDaysPlural', { n: longDays.length })} ({longDays.map((d) => d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'short' })).join(', ')})</div>}
+            {weekendHours > 0 && <div>· <strong>{fmtHours(weekendHours)}</strong> {t('week.weekendHours')}</div>}
+          </div>
+        </div>
+      )}
 
       {/* Weekly goal progress + prev week delta */}
       <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 7 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-            Weekly goal
+            {t('week.weeklyGoal')}
           </span>
           {loaded ? (
             <span style={{ fontSize: 11, color: M.t2, fontFamily: 'monospace' }}>
@@ -228,16 +261,16 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: M.t3, gap: 8 }}>
           <span>
             {weekDelta == null ? '' :
-              weekDelta === 0 ? 'Same as last week' :
-                weekDelta > 0 ? <><strong style={{ color: M.gn }}>+{fmtHours(weekDelta)}</strong> vs last wk</> :
-                  <><strong style={{ color: '#f59e0b' }}>{fmtHours(weekDelta)}</strong> vs last wk</>}
+              weekDelta === 0 ? t('week.sameAsLastWeek') :
+                weekDelta > 0 ? <><strong style={{ color: M.gn }}>+{fmtHours(weekDelta)}</strong> {t('week.vsLastWeek')}</> :
+                  <><strong style={{ color: '#f59e0b' }}>{fmtHours(weekDelta)}</strong> {t('week.vsLastWeek')}</>}
           </span>
           <span style={{ display: 'flex', gap: 10 }}>
             {avgPerWorkday > 0 && (
-              <span>Ø <strong style={{ color: M.t2, fontFamily: 'monospace' }}>{fmtHours(avgPerWorkday)}</strong>/day</span>
+              <span>Ø <strong style={{ color: M.t2, fontFamily: 'monospace' }}>{fmtHours(avgPerWorkday)}</strong>/{t('week.day')}</span>
             )}
             <span>
-              Flex{' '}
+              {t('week.flex')}{' '}
               <strong style={{ color: flexBalance >= 0 ? M.gn : '#f59e0b', fontFamily: 'monospace' }}>
                 {flexBalance >= 0 ? '+' : ''}{fmtHours(flexBalance)}
               </strong>
@@ -252,16 +285,16 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
       ) : weekTotal > 0 && (
         <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 0.8, textTransform: 'uppercase' }}>Billable split</span>
-            <span style={{ fontSize: 11, color: M.t2, fontFamily: 'monospace' }}>{Math.round(billablePct)}% billable</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('week.billableSplit')}</span>
+            <span style={{ fontSize: 11, color: M.t2, fontFamily: 'monospace' }}>{t('week.pctBillable', { pct: Math.round(billablePct) })}</span>
           </div>
           <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: M.s2 }}>
             <div style={{ width: `${billablePct}%`, background: M.pk }} />
             <div style={{ width: `${100 - billablePct}%`, background: M.t3, opacity: 0.4 }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: M.t3 }}>
-            <span>Billable {fmtHours(billable)}{earnings > 0 ? ` · ${Math.round(earnings).toLocaleString('sv-SE')} kr` : ''}</span>
-            <span>Internal {fmtHours(nonBillable)}</span>
+            <span>{t('week.billableLine', { hours: fmtHours(billable) })}{earnings > 0 ? ` · ${Math.round(earnings).toLocaleString('sv-SE')} kr` : ''}</span>
+            <span>{t('week.internalLine', { hours: fmtHours(nonBillable) })}</span>
           </div>
         </div>
       )}
@@ -274,39 +307,60 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
           const isFuture = d > new Date()
           const isToday = dateKey(new Date()) === k
           const workday = isWorkingDay(d, holidays)
+          const hasHours = !isFuture && h > 0
           const pct = Math.min(1, h / goal)
-          const barColor = !workday ? M.b1
-            : isFuture ? M.b1
-              : h >= goal ? M.gn
-                : h > 0 ? '#f59e0b'
-                  : '#ef4444'
+          const barColor = isFuture ? M.b1
+            : h > 0 ? (h >= goal ? M.gn : '#f59e0b')
+              : !workday ? M.b1
+                : '#ef4444'
           return (
             <button
               key={k}
               onClick={() => onPickDay(d)}
               disabled={!loaded}
-              title={holiday ? `${d.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'short' })} · ${holiday}` : d.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'short' })}
+              title={holiday ? `${d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'short' })} · ${holiday}` : d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}
               style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', cursor: loaded ? 'pointer' : 'default', padding: 0 }}
             >
               <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', minHeight: 0 }}>
                 {loaded ? (
-                  <div style={{
-                    width: '100%',
-                    height: workday && !isFuture ? `${Math.max(pct * 100, h > 0 ? 8 : 4)}%` : '100%',
-                    minHeight: 4,
-                    background: workday && !isFuture ? barColor : 'transparent',
-                    border: workday && !isFuture ? 'none' : `2px dashed ${M.b1}`,
-                    borderRadius: 6,
-                    outline: isToday ? `2px solid ${M.ac}` : 'none',
-                    outlineOffset: 1,
-                  }} />
+                  hasHours ? (
+                    <div style={{
+                      width: '100%',
+                      height: `${Math.max(pct * 100, 8)}%`,
+                      minHeight: 4,
+                      background: barColor,
+                      borderRadius: 6,
+                      outline: isToday ? `2px solid ${M.ac}` : 'none',
+                      outlineOffset: 1,
+                    }} />
+                  ) : !workday ? (
+                    <div style={{
+                      width: '100%',
+                      height: 10,
+                      background: 'rgba(140,140,160,0.3)',
+                      borderRadius: 5,
+                      outline: isToday ? `2px solid ${M.ac}` : 'none',
+                      outlineOffset: 1,
+                    }} />
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      boxSizing: 'border-box',
+                      background: 'transparent',
+                      border: `2px dashed ${isFuture ? M.b1 : '#ef444466'}`,
+                      borderRadius: 6,
+                      outline: isToday ? `2px solid ${M.ac}` : 'none',
+                      outlineOffset: 1,
+                    }} />
+                  )
                 ) : (
                   <div className="skeleton" style={{ width: '100%', height: `${40 + ((idx * 13) % 50)}%`, minHeight: 20, borderRadius: 6 }} />
                 )}
               </div>
               {loaded ? (
-                <span style={{ fontSize: 9, fontWeight: 700, color: workday && !isFuture && h > 0 ? barColor : M.tf, fontFamily: 'monospace' }}>
-                  {isFuture || !workday ? '' : h > 0 ? fmtHours(h) : '—'}
+                <span style={{ fontSize: 9, fontWeight: 700, color: hasHours ? barColor : M.tf, fontFamily: 'monospace', lineHeight: '11px', minHeight: 11 }}>
+                  {isFuture ? '\u00A0' : h > 0 ? fmtHours(h) : workday ? '—' : '\u00A0'}
                 </span>
               ) : (
                 <span className="skeleton" style={{ width: 18, height: 8 }} />
@@ -322,17 +376,17 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
       {missingDays.length > 0 && (
         <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: 9, padding: '8px 11px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-            {missingDays.length === 1 ? '1 day without entries' : `${missingDays.length} days without entries`}
+            {missingDays.length === 1 ? t('week.daysWithoutEntries', { n: 1 }) : t('week.daysWithoutEntriesPlural', { n: missingDays.length })}
           </div>
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
             {missingDays.map((d) => (
               <button
                 key={dateKey(d)}
                 onClick={() => (onBackfillDay || onPickDay)(d)}
-                title={d.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'short' })}
+                title={d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}
                 style={{ background: M.s1, border: `1px solid ${M.b1}`, color: M.t2, borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
               >
-                {d.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric' })}
+                {d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'short', day: 'numeric' })}
               </button>
             ))}
           </div>
@@ -341,7 +395,10 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
 
       {bestDay && (
         <div style={{ fontSize: 11, color: M.t3, textAlign: 'center', fontStyle: 'italic' }}>
-          Strongest day: <strong style={{ color: M.t2 }}>{bestDay.date.toLocaleDateString('sv-SE', { weekday: 'long' })}</strong> with <strong style={{ color: M.gn }}>{fmtHours(bestDay.hours)}</strong>
+          {lang === 'sv' ? 'Starkaste dagen: ' : 'Strongest day: '}
+          <strong style={{ color: M.t2 }}>{bestDay.date.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long' })}</strong>
+          {lang === 'sv' ? ' med ' : ' with '}
+          <strong style={{ color: M.gn }}>{fmtHours(bestDay.hours)}</strong>
         </div>
       )}
 
@@ -352,7 +409,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
         </div>
       ) : clientTotals.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>By client</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('week.byClient')}</div>
           {clientTotals.map((c) => {
             const pct = weekTotal > 0 ? (c.hours / weekTotal) * 100 : 0
             return (
@@ -372,7 +429,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
 
       {projectTotals.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>Top projects</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('week.topProjects')}</div>
           {projectTotals.map((p) => {
             const pct = weekTotal > 0 ? (p.hours / weekTotal) * 100 : 0
             return (
@@ -393,7 +450,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
         </div>
       )}
 
-      {loading && loaded && <div style={{ fontSize: 10, color: M.tf, textAlign: 'center' }}>Refreshing…</div>}
+      {loading && loaded && <div style={{ fontSize: 10, color: M.tf, textAlign: 'center' }}>{t('week.refreshing')}</div>}
     </div>
   )
 }

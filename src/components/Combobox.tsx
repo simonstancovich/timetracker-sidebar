@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { t as tr, type Lang } from '../lib/i18n'
 
 interface Theme {
   bg: string; s1: string; s2: string; ac: string; ad: string; at: string
@@ -14,9 +15,10 @@ interface Props {
   placeholder?: string
   theme: Theme
   maxResults?: number
+  lang?: Lang
 }
 
-export function Combobox({ value, items, onChange, placeholder, theme, maxResults = 40 }: Props) {
+export function Combobox({ value, items, onChange, placeholder, theme, maxResults = 40, lang = 'en' }: Props) {
   const selected = items.find((i) => i.id === value)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -67,7 +69,7 @@ export function Combobox({ value, items, onChange, placeholder, theme, maxResult
         onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => { setOpen(true); setQuery('') }}
         onKeyDown={onKey}
-        placeholder={placeholder || 'Search…'}
+        placeholder={items.length === 0 ? 'Loading…' : (placeholder || 'Search…')}
         style={{
           width: '100%', padding: '11px 32px 11px 12px',
           background: theme.s1, color: selected ? theme.t1 : theme.t3,
@@ -97,7 +99,7 @@ export function Combobox({ value, items, onChange, placeholder, theme, maxResult
           }}
         >
           {filtered.length === 0 ? (
-            <div style={{ padding: '10px 12px', fontSize: 12, color: theme.t3 }}>No matches</div>
+            <div style={{ padding: '10px 12px', fontSize: 12, color: theme.t3 }}>{tr('form.noMatches', lang)}</div>
           ) : (
             filtered.map((item, i) => (
               <div

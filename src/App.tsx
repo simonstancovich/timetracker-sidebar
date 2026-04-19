@@ -15,122 +15,19 @@ import {
 } from './api'
 import { formatLocalDate } from './lib/date'
 import { pickRandomMessage } from './lib/funMessages'
+import { pickTip } from './lib/productivityTips'
 import { pickGreeting } from './lib/greetingMessages'
 import { getTimerInsight } from './lib/timerInsights'
 import { emptyTodayMessage, saveCheer, xpCoachNote } from './lib/personality'
-import { IntroOverlay, IntroStep } from './components/IntroOverlay'
+import { getHolidays, isWorkingDay } from './lib/swedishHolidays'
+import { Lang, t as tr, setLang as setI18nLang, achName, achDescription } from './lib/i18n'
+import { useModal } from './lib/useModal'
+import { buildIntroSteps } from './lib/introSteps'
+import { IntroOverlay } from './components/IntroOverlay'
 import { MeetingsWidget } from './components/MeetingsWidget'
 import { MonthView } from './components/MonthView'
 import { WeekView } from './components/WeekView'
 
-const INTRO_STEPS: IntroStep[] = [
-  {
-    target: null,
-    title: "Time tracking shouldn't feel like homework.",
-    body:
-      "Run the timer as you work. Log entries in seconds. Earn XP for showing up.\n\nLet's get you rolling in under a minute.",
-    nextLabel: "Let's go →",
-  },
-  {
-    target: 'tab-timer',
-    title: 'Open the Timer tab',
-    body: 'This is where you live-track time. Tap it to continue.',
-  },
-  {
-    target: 'timer-start',
-    title: 'Start the clock',
-    body:
-      "Hit Start — don't worry about the details yet. You fill them in while the timer runs.",
-  },
-  {
-    target: 'timer-company',
-    title: 'Pick a client',
-    body: "Tap the field, then type to filter. Try 'DevCore' for this first run.",
-    hint: 'Start typing — the list narrows as you go.',
-  },
-  {
-    target: 'timer-project',
-    title: 'Pick a project',
-    body: "Open the project menu and select 'Utbildning/Seminarium'.",
-  },
-  {
-    target: 'timer-description',
-    title: 'What are you doing?',
-    body: "Type a short description. 'learning to track time!' works for now.",
-    needsManualNext: true,
-    nextLabel: 'Next →',
-  },
-  {
-    target: 'tab-today',
-    title: 'Your day at a glance',
-    body: "Tap Today. It's your dashboard — stats, progress, everything you logged.",
-  },
-  {
-    target: 'today-stats',
-    title: "Today's numbers",
-    body:
-      "Hours logged today, your current streak, and this week's total. Streak resets if you skip a weekday.",
-    needsManualNext: true,
-    readOnly: true,
-    nextLabel: 'Got it →',
-  },
-  {
-    target: 'today-entries',
-    title: "Entries live here",
-    body:
-      "Every entry you log shows up here grouped by client.\n\n▶ resumes a task · double-click to edit · ✕ deletes.",
-    needsManualNext: true,
-    readOnly: true,
-    nextLabel: 'Next →',
-  },
-  {
-    target: 'tab-log',
-    title: 'Log past entries',
-    body: 'Tap +Log. Use this tab to backfill time or log without the timer.',
-  },
-  {
-    target: 'log-hours',
-    title: 'Type hours directly',
-    body:
-      "No timer, no problem. Use +/- or type 1:30 / 1.5 to set the hours, then save.",
-    needsManualNext: true,
-    readOnly: true,
-    nextLabel: 'Got it →',
-  },
-  {
-    target: 'tab-xp',
-    title: 'Achievements & XP',
-    body: 'Tap XP. Every minute tracked earns XP.',
-  },
-  {
-    target: 'xp-level',
-    title: 'Level up',
-    body:
-      "Every 1000 XP gets you a new level. Higher levels unlock cooler titles — aim for Principal Dev.",
-    needsManualNext: true,
-    readOnly: true,
-    nextLabel: 'Next →',
-  },
-  {
-    target: 'xp-achievements',
-    title: 'Unlock achievements',
-    body:
-      "Hit milestones like first entry, 7-day streak, or 10h in a day to unlock these badges.",
-    needsManualNext: true,
-    readOnly: true,
-    nextLabel: 'Almost done →',
-  },
-  {
-    target: null,
-    title: "You're all set! 🎉",
-    body:
-      "Your timer is running and you know where everything lives.\n\nShake the window to hide it, dock it as a top bar from the footer, or just keep working.\n\nHave fun!",
-    nextLabel: 'Start tracking',
-  },
-]
-
-// Fallback used only if we can't resolve the real user from the server.
-const FALLBACK_USER = { _user_id: '187', username: 'Simon Stancovich' }
 
 // ─── Theme tokens ────────────────────────────────────────────────────────
 const L = {
@@ -139,7 +36,7 @@ const L = {
   ac: '#7c3aed', ad: '#ede9fe', at: '#4c1d95', am: '#c4b5fd',
   pk: '#be185d', pb: '#fdf2f8', pp: '#fce7f3', pv: '#f472b6',
   gn: '#16a34a', gb: '#f0fdf4', gd: '#bbf7d0',
-  t1: '#1e1b4b', t2: '#524d96', t3: '#706aa2', tf: '#9d98c8',
+  t1: '#1e1b4b', t2: '#3e3878', t3: '#544e8a', tf: '#9d98c8',
   lo: '#7c3aed', btn: '#7c3aed', bsh: '0 4px 14px rgba(124,58,237,.35)',
   co: ['#7c3aed', '#0891b2', '#be185d', '#0d9488'],
 }
@@ -148,11 +45,11 @@ const L = {
 const D = {
   id: 'dark',
   bg: '#0b0910',         // near-black violet base
-  s1: 'rgba(255,255,255,0.04)', // glassy raised surface
-  s2: 'rgba(255,255,255,0.025)',
-  s3: 'rgba(255,255,255,0.07)',
-  b1: 'rgba(255,255,255,0.06)',
-  b2: 'rgba(255,255,255,0.12)',
+  s1: 'rgba(255,255,255,0.065)', // glassy raised surface
+  s2: 'rgba(255,255,255,0.04)',
+  s3: 'rgba(255,255,255,0.10)',
+  b1: 'rgba(255,255,255,0.10)',
+  b2: 'rgba(255,255,255,0.18)',
   ac: '#9b8cff',         // vivid violet accent
   ad: 'rgba(155,140,255,0.12)',
   at: '#d5cdff',
@@ -175,97 +72,199 @@ const D = {
 }
 type Theme = typeof L
 
+// Language-agnostic achievement records. Localized name + description live
+// in /locales/{lang}.json under `achievements.{id}.{name,description}` and
+// are read via `achName(id, lang)` / `achDescription(id, lang)`.
 const ACHS = [
   // First-time milestones
-  { id: 'first', e: '🎯', n: 'First Steps', d: 'First entry logged', xp: 50, co: '#7c3aed' },
-  { id: 'rookie', e: '📋', n: 'Rookie', d: '10 entries logged', xp: 75, co: '#8b5cf6' },
-  { id: 'novice', e: '📝', n: 'Novice', d: '50 entries logged', xp: 150, co: '#6366f1' },
-  { id: 'veteran', e: '🎖️', n: 'Veteran', d: '100 entries logged', xp: 250, co: '#4f46e5' },
-  { id: 'prolific', e: '📚', n: 'Prolific', d: '500 entries logged', xp: 750, co: '#3730a3' },
+  { id: 'first',       e: '🎯',  xp: 50,   co: '#7c3aed' },
+  { id: 'rookie',      e: '📋',  xp: 75,   co: '#8b5cf6' },
+  { id: 'novice',      e: '📝',  xp: 150,  co: '#6366f1' },
+  { id: 'veteran',     e: '🎖️',  xp: 250,  co: '#4f46e5' },
+  { id: 'prolific',    e: '📚',  xp: 750,  co: '#3730a3' },
 
   // Streaks
-  { id: 'warmup', e: '☕', n: 'Warming Up', d: '3-day streak', xp: 50, co: '#f97316' },
-  { id: 'fire', e: '🔥', n: 'On Fire', d: '7-day streak', xp: 100, co: '#ea580c' },
-  { id: 'habit', e: '🔗', n: 'Habit Formed', d: '14-day streak', xp: 175, co: '#dc2626' },
-  { id: 'lockin', e: '🔒', n: 'Locked In', d: '30-day streak', xp: 300, co: '#b91c1c' },
-  { id: 'disciplined', e: '🧘', n: 'Disciplined', d: '60-day streak', xp: 500, co: '#991b1b' },
-  { id: 'obsessed', e: '⚡', n: 'Obsessed', d: '100-day streak', xp: 800, co: '#eab308' },
-  { id: 'unstoppable', e: '🚀', n: 'Unstoppable', d: '200-day streak', xp: 1200, co: '#ca8a04' },
-  { id: 'legend', e: '👑', n: 'Legend', d: '365-day streak', xp: 2500, co: '#a16207' },
+  { id: 'warmup',      e: '☕',  xp: 50,   co: '#f97316' },
+  { id: 'fire',        e: '🔥',  xp: 100,  co: '#ea580c' },
+  { id: 'habit',       e: '🔗',  xp: 175,  co: '#dc2626' },
+  { id: 'lockin',      e: '🔒',  xp: 300,  co: '#b91c1c' },
+  { id: 'disciplined', e: '🧘',  xp: 500,  co: '#991b1b' },
+  { id: 'obsessed',    e: '⚡',  xp: 800,  co: '#eab308' },
+  { id: 'unstoppable', e: '🚀',  xp: 1200, co: '#ca8a04' },
+  { id: 'legend',      e: '👑',  xp: 2500, co: '#a16207' },
 
   // Hours accumulated
-  { id: 'quarter', e: '🌱', n: 'First Quarter', d: '25h logged', xp: 100, co: '#22c55e' },
-  { id: 'flow', e: '🌊', n: 'Finding Flow', d: '50h logged', xp: 150, co: '#0ea5e9' },
-  { id: 'cent', e: '💯', n: 'Centurion', d: '100h logged', xp: 300, co: '#0891b2' },
-  { id: 'dedicated', e: '💪', n: 'Dedicated', d: '250h logged', xp: 500, co: '#0e7490' },
-  { id: 'halfgrand', e: '🏅', n: 'Half Grand', d: '500h logged', xp: 750, co: '#155e75' },
-  { id: 'grand', e: '🏆', n: 'Grand Master', d: '1000h logged', xp: 1250, co: '#be185d' },
-  { id: 'mythic', e: '💎', n: 'Mythic', d: '2500h logged', xp: 2500, co: '#9f1239' },
-  { id: 'legacy', e: '🗿', n: 'Legacy', d: '5000h logged', xp: 5000, co: '#881337' },
+  { id: 'quarter',     e: '🌱',  xp: 100,  co: '#22c55e' },
+  { id: 'flow',        e: '🌊',  xp: 150,  co: '#0ea5e9' },
+  { id: 'cent',        e: '💯',  xp: 300,  co: '#0891b2' },
+  { id: 'dedicated',   e: '💪',  xp: 500,  co: '#0e7490' },
+  { id: 'halfgrand',   e: '🏅',  xp: 750,  co: '#155e75' },
+  { id: 'grand',       e: '🏆',  xp: 1250, co: '#be185d' },
+  { id: 'mythic',      e: '💎',  xp: 2500, co: '#9f1239' },
+  { id: 'legacy',      e: '🗿',  xp: 5000, co: '#881337' },
 
   // Daily peaks
-  { id: 'solid', e: '📈', n: 'Solid Day', d: '4h in one day', xp: 50, co: '#14b8a6' },
-  { id: 'full', e: '✅', n: 'Full Day', d: '6h in one day', xp: 80, co: '#059669' },
-  { id: 'goal', e: '⭐', n: 'Goal Crusher', d: 'Hit 8h in a day', xp: 120, co: '#16a34a' },
-  { id: 'lord', e: '⏰', n: 'Time Lord', d: '10h in one day', xp: 175, co: '#15803d' },
-  { id: 'midnight', e: '🌙', n: 'Midnight Oil', d: '12h in one day', xp: 275, co: '#166534' },
-  { id: 'impossible', e: '🤯', n: 'Impossible Day', d: '16h in one day', xp: 500, co: '#14532d' },
+  { id: 'solid',       e: '📈',  xp: 50,   co: '#14b8a6' },
+  { id: 'full',        e: '✅',  xp: 80,   co: '#059669' },
+  { id: 'goal',        e: '⭐',  xp: 120,  co: '#16a34a' },
+  { id: 'lord',        e: '⏰',  xp: 175,  co: '#15803d' },
+  { id: 'midnight',    e: '🌙',  xp: 275,  co: '#166534' },
+  { id: 'impossible',  e: '🤯',  xp: 500,  co: '#14532d' },
 
   // Time of day
-  { id: 'early', e: '🌅', n: 'Early Bird', d: 'Log before 9am', xp: 75, co: '#f59e0b' },
-  { id: 'dawn', e: '🌄', n: 'Dawn Patrol', d: 'Log before 6am', xp: 150, co: '#d97706' },
-  { id: 'night', e: '🦉', n: 'Night Owl', d: 'Log after 10pm', xp: 75, co: '#6366f1' },
-  { id: 'vampire', e: '🦇', n: 'Vampire', d: 'Log after midnight', xp: 125, co: '#4f46e5' },
-  { id: 'twilight', e: '🌇', n: 'Twilight', d: 'Log in the evening', xp: 40, co: '#c026d3' },
-  { id: 'lunch', e: '🥪', n: 'Skipped Lunch', d: 'Log during 12–1pm', xp: 50, co: '#db2777' },
+  { id: 'early',       e: '🌅',  xp: 75,   co: '#f59e0b' },
+  { id: 'dawn',        e: '🌄',  xp: 150,  co: '#d97706' },
+  { id: 'night',       e: '🦉',  xp: 75,   co: '#6366f1' },
+  { id: 'vampire',     e: '🦇',  xp: 125,  co: '#4f46e5' },
+  { id: 'twilight',    e: '🌇',  xp: 40,   co: '#c026d3' },
+  { id: 'lunch',       e: '🥪',  xp: 50,   co: '#db2777' },
 
   // Variety
-  { id: 'multi', e: '🎭', n: 'Multitasker', d: '3 clients in one day', xp: 100, co: '#9333ea' },
-  { id: 'collector', e: '🗂️', n: 'Client Collector', d: '10 different clients', xp: 250, co: '#7e22ce' },
-  { id: 'hopper', e: '🐸', n: 'Project Hopper', d: '5 projects in one day', xp: 125, co: '#6b21a8' },
-  { id: 'renaissance', e: '🎨', n: 'Renaissance', d: '20 different projects', xp: 400, co: '#581c87' },
-  { id: 'focused', e: '🎯', n: 'Laser Focus', d: 'One project all day', xp: 100, co: '#0d9488' },
+  { id: 'multi',       e: '🎭',  xp: 100,  co: '#9333ea' },
+  { id: 'collector',   e: '🗂️',  xp: 250,  co: '#7e22ce' },
+  { id: 'hopper',      e: '🐸',  xp: 125,  co: '#6b21a8' },
+  { id: 'renaissance', e: '🎨',  xp: 400,  co: '#581c87' },
+  { id: 'focused',     e: '🎯',  xp: 100,  co: '#0d9488' },
 
   // Weekly / monthly
-  { id: 'perfectweek', e: '🌟', n: 'Perfect Week', d: 'Goal hit Mon–Fri', xp: 350, co: '#fbbf24' },
-  { id: 'perfectmonth', e: '✨', n: 'Perfect Month', d: 'Every weekday at goal', xp: 1500, co: '#f59e0b' },
-  { id: 'king', e: '♛', n: 'Consistency King', d: '4 perfect weeks in a row', xp: 1000, co: '#d97706' },
-  { id: 'comeback', e: '💫', n: 'Comeback', d: 'Log after a 7+ day break', xp: 75, co: '#06b6d4' },
-  { id: 'weekend', e: '🌴', n: 'Weekend Warrior', d: 'Log on a weekend', xp: 60, co: '#10b981' },
-  { id: 'break', e: '🏖️', n: 'Vacation Mode', d: 'Took a 7+ day break', xp: 25, co: '#22d3ee' },
+  { id: 'perfectweek', e: '🌟',  xp: 350,  co: '#fbbf24' },
+  { id: 'perfectmonth',e: '✨',  xp: 1500, co: '#f59e0b' },
+  { id: 'king',        e: '♛',  xp: 1000, co: '#d97706' },
+  { id: 'comeback',    e: '💫',  xp: 75,   co: '#06b6d4' },
+  { id: 'weekend',     e: '🌴',  xp: 60,   co: '#10b981' },
+  { id: 'break',       e: '🏖️',  xp: 25,   co: '#22d3ee' },
 
   // Billing
-  { id: 'firstinv', e: '💰', n: 'First Invoice', d: 'First billable hour', xp: 50, co: '#84cc16' },
-  { id: 'bigweek', e: '💵', n: 'Big Week', d: '40+ billable hours in a week', xp: 300, co: '#65a30d' },
-  { id: 'moneymaker', e: '💸', n: 'Money Maker', d: '1000 billable hours', xp: 1750, co: '#4d7c0f' },
+  { id: 'firstinv',    e: '💰',  xp: 50,   co: '#84cc16' },
+  { id: 'bigweek',     e: '💵',  xp: 300,  co: '#65a30d' },
+  { id: 'moneymaker',  e: '💸',  xp: 1750, co: '#4d7c0f' },
 
   // Quirky
-  { id: 'speed', e: '⚡', n: 'Speed Logger', d: '3 entries within 5 min', xp: 80, co: '#a855f7' },
-  { id: 'overachiever', e: '🔥', n: 'Overachiever', d: '10h+ every day for a week', xp: 600, co: '#ef4444' },
-  { id: 'editor', e: '✏️', n: 'Refined', d: 'Edit an entry 5 times', xp: 50, co: '#64748b' },
+  { id: 'speed',       e: '⚡',  xp: 80,   co: '#a855f7' },
+  { id: 'overachiever',e: '🔥',  xp: 600,  co: '#ef4444' },
+  { id: 'editor',      e: '✏️',  xp: 50,   co: '#64748b' },
 ] as const
 type Ach = (typeof ACHS)[number]
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr']
 const GOAL = 8
 
+type AchStats = {
+  entriesCount: number
+  totalH: number
+  totalBillableH: number
+  clientIds: string[]
+  projectIds: string[]
+  currentWeekKey: string
+  currentWeekBillableH: number
+}
+const EMPTY_ACH_STATS: AchStats = {
+  entriesCount: 0, totalH: 0, totalBillableH: 0,
+  clientIds: [], projectIds: [],
+  currentWeekKey: '', currentWeekBillableH: 0,
+}
+
+type AchCtx = {
+  stats: AchStats
+  streak: number
+  todayH: number
+  clientsToday: number
+  projectsToday: number
+  hourOfDay: number
+  daysSinceLastLog: number
+  savedIsWeekend: boolean
+  savedIsToday: boolean
+  entryIsBillable: boolean
+  entryHours: number
+  weekDaysAtGoal: number
+}
+
+// Predicate table — returns true when the achievement's condition is met.
+// Entries not listed (perfectmonth, king, overachiever, speed, editor) require
+// richer historical data than we currently track; they stay locked until we
+// add the history backing.
+const CHECKS: Record<string, (c: AchCtx) => boolean> = {
+  first:       (c) => c.stats.entriesCount >= 1,
+  rookie:      (c) => c.stats.entriesCount >= 10,
+  novice:      (c) => c.stats.entriesCount >= 50,
+  veteran:     (c) => c.stats.entriesCount >= 100,
+  prolific:    (c) => c.stats.entriesCount >= 500,
+
+  warmup:      (c) => c.streak >= 3,
+  fire:        (c) => c.streak >= 7,
+  habit:       (c) => c.streak >= 14,
+  lockin:      (c) => c.streak >= 30,
+  disciplined: (c) => c.streak >= 60,
+  obsessed:    (c) => c.streak >= 100,
+  unstoppable: (c) => c.streak >= 200,
+  legend:      (c) => c.streak >= 365,
+
+  quarter:     (c) => c.stats.totalH >= 25,
+  flow:        (c) => c.stats.totalH >= 50,
+  cent:        (c) => c.stats.totalH >= 100,
+  dedicated:   (c) => c.stats.totalH >= 250,
+  halfgrand:   (c) => c.stats.totalH >= 500,
+  grand:       (c) => c.stats.totalH >= 1000,
+  mythic:      (c) => c.stats.totalH >= 2500,
+  legacy:      (c) => c.stats.totalH >= 5000,
+
+  solid:       (c) => c.savedIsToday && c.todayH >= 4,
+  full:        (c) => c.savedIsToday && c.todayH >= 6,
+  goal:        (c) => c.savedIsToday && c.todayH >= GOAL,
+  lord:        (c) => c.savedIsToday && c.todayH >= 10,
+  midnight:    (c) => c.savedIsToday && c.todayH >= 12,
+  impossible:  (c) => c.savedIsToday && c.todayH >= 16,
+
+  early:       (c) => c.hourOfDay < 9,
+  dawn:        (c) => c.hourOfDay < 6,
+  night:       (c) => c.hourOfDay >= 22,
+  vampire:     (c) => c.hourOfDay >= 0 && c.hourOfDay < 4,
+  twilight:    (c) => c.hourOfDay >= 18 && c.hourOfDay < 22,
+  lunch:       (c) => c.hourOfDay === 12,
+
+  multi:       (c) => c.savedIsToday && c.clientsToday >= 3,
+  collector:   (c) => c.stats.clientIds.length >= 10,
+  hopper:      (c) => c.savedIsToday && c.projectsToday >= 5,
+  renaissance: (c) => c.stats.projectIds.length >= 20,
+  focused:     (c) => c.savedIsToday && c.projectsToday === 1 && c.todayH >= GOAL,
+
+  perfectweek: (c) => c.weekDaysAtGoal >= 5,
+  comeback:    (c) => c.daysSinceLastLog >= 7,
+  weekend:     (c) => c.savedIsWeekend,
+  break:       (c) => c.daysSinceLastLog >= 7,
+
+  firstinv:    (c) => c.stats.totalBillableH > 0,
+  bigweek:     (c) => c.stats.currentWeekBillableH >= 40,
+  moneymaker:  (c) => c.stats.totalBillableH >= 1000,
+}
+
+const isoWeekKey = (d: Date): string => {
+  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const day = x.getUTCDay() || 7
+  x.setUTCDate(x.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1))
+  const week = Math.ceil(((+x - +yearStart) / 86400000 + 1) / 7)
+  return `${x.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
+}
+
 const pad = (n: number) => String(n).padStart(2, '0')
 
 // Playful status under the timer clock — text and icon kept separate so the
 // text can be centered without the icon pulling it off-center.
-function vibe(tSec: number, tRun: boolean): { text: string; icon: string } {
+function vibe(tSec: number, tRun: boolean, lang: Lang = 'en'): { text: string; icon: string } {
+  const en = lang === 'en'
   if (!tRun) return tSec > 0
-    ? { text: 'On a break — press ▶ to resume', icon: '' }
-    : { text: 'Ready when you are', icon: '✨' }
+    ? { text: en ? 'On a break — press ▶ to resume' : 'På paus — tryck ▶ för att återuppta', icon: '' }
+    : { text: en ? 'Ready when you are' : 'Redo när du är', icon: '✨' }
   const m = tSec / 60
-  if (m < 2)   return { text: 'Warming up',            icon: '☕' }
-  if (m < 10)  return { text: 'Finding flow',          icon: '🎯' }
-  if (m < 25)  return { text: 'In the zone',           icon: '✨' }
-  if (m < 50)  return { text: 'Deep focus',            icon: '🧘' }
-  if (m < 90)  return { text: 'Crushing it',           icon: '🔥' }
-  if (m < 150) return { text: 'Unstoppable',           icon: '⚡' }
-  if (m < 240) return { text: 'Legendary',             icon: '🏆' }
-  return       { text: 'Maybe stretch a little?',      icon: '🌱' }
+  if (m < 2)   return { text: en ? 'Warming up' : 'Värmer upp',                icon: '☕' }
+  if (m < 10)  return { text: en ? 'Finding flow' : 'Hittar flow',             icon: '🎯' }
+  if (m < 25)  return { text: en ? 'In the zone' : 'I zonen',                  icon: '✨' }
+  if (m < 50)  return { text: en ? 'Deep focus' : 'Djupt fokus',               icon: '🧘' }
+  if (m < 90)  return { text: en ? 'Crushing it' : 'Krossar det',              icon: '🔥' }
+  if (m < 150) return { text: en ? 'Unstoppable' : 'Ostoppbar',                icon: '⚡' }
+  if (m < 240) return { text: en ? 'Legendary' : 'Legendarisk',                icon: '🏆' }
+  return       { text: en ? 'Maybe stretch a little?' : 'Stretcha kanske lite?', icon: '🌱' }
 }
 
 // Format decimal hours as "H:MM" (e.g. 1.5 → "1:30", 0.033 → "0:02").
@@ -305,6 +304,8 @@ const mondayOf = (d: Date) => {
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null)
   const [mode, setMode] = useState<'light' | 'dark'>('light')
+  const [lang, setLang] = useState<Lang>('en')
+  const t = (key: Parameters<typeof tr>[0], vars?: Parameters<typeof tr>[2]) => tr(key, lang, vars)
   const M: Theme = mode === 'light' ? L : D
 
   const [tab, setTab] = useState<'today' | 'timer' | 'log' | 'xp'>('today')
@@ -315,6 +316,18 @@ export default function App() {
     setScale((s) => (s === 'day' ? 'week' : s === 'week' ? 'month' : 'day'))
     setTab('today')
   }
+  const isOnCurrent = (() => {
+    const now = new Date()
+    if (scale === 'day') {
+      return selectedDate.toDateString() === now.toDateString()
+    }
+    if (scale === 'week') {
+      const monA = new Date(selectedDate); monA.setDate(monA.getDate() - ((monA.getDay() + 6) % 7)); monA.setHours(0,0,0,0)
+      const monB = new Date(now); monB.setDate(monB.getDate() - ((monB.getDay() + 6) % 7)); monB.setHours(0,0,0,0)
+      return +monA === +monB
+    }
+    return selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() === now.getMonth()
+  })()
   const stepDate = (dir: 1 | -1) => {
     if (scale === 'day') {
       setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() + dir); return n })
@@ -326,6 +339,20 @@ export default function App() {
   }
   const jumpToCurrent = () => setSelectedDate(new Date())
   const [size, setWindowSize] = useState<'full' | 'top'>('full')
+
+  // Bump on local-midnight rollover so `todayI`, `isOnCurrent`, greetings etc.
+  // recompute without requiring an app restart or re-render from user input.
+  const [nowTick, setNowTick] = useState(0)
+  useEffect(() => {
+    let id = 0
+    const schedule = () => {
+      const now = new Date()
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 100)
+      id = window.setTimeout(() => { setNowTick((n) => n + 1); schedule() }, Math.max(1000, +next - +now))
+    }
+    schedule()
+    return () => clearTimeout(id)
+  }, [])
 
   const [sessionXp, setSessionXp] = useState(0)
   const lastXp = useRef<number | null>(null)
@@ -352,16 +379,17 @@ export default function App() {
   }
 
   const confirmSignOut = () => {
-    if (window.confirm('Are you sure you want to sign out?')) {
+    if (window.confirm(t('footer.confirmSignOut'))) {
       window.electronAPI.signOut()
     }
   }
 
-  const [currentUser, setCurrentUser] = useState<{ _user_id: string; username: string }>(FALLBACK_USER)
+  const [currentUser, setCurrentUser] = useState<{ _user_id: string; username: string } | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
   const [projectCache, setProjectCache] = useState<Record<string, Project[]>>({})
   const [entries, setEntries] = useState<TimeEntry[]>([])
+  const [entriesLoading, setEntriesLoading] = useState(true)
   const [weekH, setWeekH] = useState<number[]>([0, 0, 0, 0, 0])
 
   const [xp, setXp] = useState(0)
@@ -380,8 +408,10 @@ export default function App() {
   useEffect(() => {
     if (size !== 'top') { setFunMessage(null); return }
     let hideId: number | undefined
+    let showTip = false
     const show = () => {
-      setFunMessage(pickRandomMessage())
+      setFunMessage(showTip ? pickTip(lang) : pickRandomMessage(lang))
+      showTip = !showTip
       hideId = window.setTimeout(() => setFunMessage(null), 18000)
     }
     const initialId = window.setTimeout(show, 5000)
@@ -391,11 +421,14 @@ export default function App() {
       clearInterval(rotateId)
       if (hideId) clearTimeout(hideId)
     }
-  }, [size])
+  }, [size, lang])
   const [unlocked, setUnlocked] = useState<string[]>([])
   const [streak, setStreak] = useState(0)
   const [floats, setFloats] = useState<{ id: number; txt: string; col: string }[]>([])
   const [ach, setAch] = useState<Ach | null>(null)
+  const [pendingAchs, setPendingAchs] = useState<Ach[]>([])
+  const [achStats, setAchStats] = useState<AchStats>(EMPTY_ACH_STATS)
+  const [achStatsLoaded, setAchStatsLoaded] = useState(false)
   const fid = useRef(0)
 
   // Timer state
@@ -436,23 +469,41 @@ export default function App() {
   useEffect(() => { setFHInput(fmtHours(fH)) }, [fH])
   const [logFormLoaded, setLogFormLoaded] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingDate, setEditingDate] = useState<Date | null>(null)
   const [draftId, setDraftId] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<
     { title: string; body: string; confirmLabel: string; onConfirm: () => void | Promise<void> } | null
   >(null)
+  const confirmationRef = useModal<HTMLDivElement>({
+    enabled: !!confirmation,
+    onClose: () => setConfirmation(null),
+  })
 
   const resetTimer = () => {
     setTRun(false); setTSec(0); setTCo(''); setTPr(''); setTD(''); setTNote(''); setTInv(true)
     setDraftId(null); draftIdRef.current = null
   }
 
+  const [pendingCancelTimer, setPendingCancelTimer] = useState(false)
+  const cancelTimer = async () => {
+    setPendingCancelTimer(false)
+    const id = draftIdRef.current
+    resetTimer()
+    if (id) {
+      // Best-effort: remove the crash-safe draft from the server. Swallow
+      // errors — the local state is already cleared, so the user's intent
+      // has been honored even if the round-trip fails.
+      try { await deleteTimeEntry(id) } catch { /* ignore */ }
+    }
+  }
+
   const resetLogForm = () => {
-    setEditingId(null); setFCo(''); setFPr(''); setFH(1); setFD(''); setFNote(''); setFInv(true)
+    setEditingId(null); setEditingDate(null); setFCo(''); setFPr(''); setFH(1); setFD(''); setFNote(''); setFInv(true)
   }
 
   const stopAndLogCurrent = async () => {
     if (!tCo || !tPr || !tD.trim()) {
-      addFloat('Fill client, project & task first', '#ef4444')
+      addFloat(t('form.fillFirst'), '#ef4444')
       return
     }
     const h = Math.max(1, Math.ceil(tSec / 60)) / 60
@@ -495,9 +546,9 @@ export default function App() {
     if (tRun && canSaveCurrent) {
       // Timer is actively running → confirm before saving & switching.
       setConfirmation({
-        title: 'Change project?',
-        body: 'The current timer is still running. It will be saved to timetracker first, then we switch to the new one.',
-        confirmLabel: 'Save & switch',
+        title: t('timer.confirmSwitchTitle'),
+        body: t('timer.confirmSwitchBody'),
+        confirmLabel: t('timer.confirmSwitchOk'),
         onConfirm: saveCurrentAndSwitch,
       })
     } else if (canSaveCurrent) {
@@ -510,6 +561,10 @@ export default function App() {
 
   const editEntry = async (entry: TimeEntry) => {
     setEditingId(entry.id)
+    // Parse YYYY-MM-DD as a local date so the save keeps the original day
+    // regardless of the calendar's currently-selected date or timezone.
+    const [y, mo, d] = (entry.task_date || '').split('-').map(Number)
+    setEditingDate(Number.isFinite(y) && Number.isFinite(mo) && Number.isFinite(d) ? new Date(y, mo - 1, d) : null)
     setFCo(entry._company_id)
     await ensureProjects(entry._company_id)
     setFPr(entry._project_id)
@@ -523,35 +578,76 @@ export default function App() {
   // ─── Auth gating ───────────────────────────────────────────────────────
   useEffect(() => {
     window.electronAPI.checkAuth().then(setAuthed)
-    window.electronAPI.onAuthSuccess(() => setAuthed(true))
-    window.electronAPI.onSignedOut(() => setAuthed(false))
-    window.electronAPI.onSessionLost(() => setAuthed(false))
-    window.electronAPI.onForcedSize((s) => {
-      setWindowSize(s)
-    })
+    const unsubs = [
+      window.electronAPI.onAuthSuccess(() => setAuthed(true)),
+      window.electronAPI.onSignedOut(() => setAuthed(false)),
+      window.electronAPI.onSessionLost(() => setAuthed(false)),
+      window.electronAPI.onForcedSize((s) => setWindowSize(s)),
+    ]
+    return () => unsubs.forEach((off) => typeof off === 'function' && off())
   }, [])
+
+  // Hydrate device-scoped prefs (mode, lang) before auth completes so the
+  // LoginScreen and cold-start spinner already reflect the user's choices.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const [m, l] = await Promise.all([
+        window.electronAPI.storeGet('mode'),
+        window.electronAPI.storeGet('lang'),
+      ])
+      if (cancelled) return
+      if (m === 'dark' || m === 'light') setMode(m)
+      if (l === 'en' || l === 'sv') setLang(l)
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  // Reset user-scoped state on sign-out so the next user doesn't inherit it.
+  useEffect(() => {
+    if (authed) return
+    setXp(0); setUnlocked([]); setStreak(0)
+    setAchStats(EMPTY_ACH_STATS); setAchStatsLoaded(false); setPendingAchs([]); setAch(null)
+    setEntries([]); setEntriesLoading(true); setWeekH([0, 0, 0, 0, 0])
+    setTRun(false); setTSec(0); setTCo(''); setTPr(''); setTD(''); setTNote(''); setTInv(true)
+    setPendingCancelTimer(false)
+    setFCo(''); setFPr(''); setFH(1); setFHInput('1:00'); setFD(''); setFNote(''); setFInv(true)
+    setEditingId(null); setEditingDate(null)
+    setDraftId(null); setSessionXp(0)
+    setCurrentUser(null)
+    setTimerLoaded(false); setLogFormLoaded(false)
+  }, [authed])
 
   // ─── Persisted: mode, xp, unlocked, streak, timer ──────────────────────
   useEffect(() => {
     if (!authed) return
     ;(async () => {
-      const [m, x, u, s, last, t] = await Promise.all([
+      const [m, x, u, s, last, t, l] = await Promise.all([
         window.electronAPI.storeGet('mode'),
         window.electronAPI.storeGet('xp'),
         window.electronAPI.storeGet('unlocked'),
         window.electronAPI.storeGet('streak'),
         window.electronAPI.storeGet('lastLoggedDate'),
         window.electronAPI.storeGet('timer'),
+        window.electronAPI.storeGet('lang'),
       ])
       if (m === 'dark' || m === 'light') setMode(m)
-      if (typeof x === 'number') setXp(x)
-      if (Array.isArray(u)) setUnlocked(u)
+      if (l === 'en' || l === 'sv') setLang(l)
+      setXp(typeof x === 'number' ? x : 0)
+      setUnlocked(Array.isArray(u) ? u : [])
+      const savedStats = await window.electronAPI.storeGet('achStats')
+      setAchStats(savedStats && typeof savedStats === 'object' ? { ...EMPTY_ACH_STATS, ...savedStats } : EMPTY_ACH_STATS)
+      setAchStatsLoaded(true)
 
-      // streak is valid only if we've logged today or yesterday
-      const today = fmtDateISO(new Date())
-      const yd = new Date(); yd.setDate(yd.getDate() - 1)
-      const yesterday = fmtDateISO(yd)
-      if (typeof s === 'number' && (last === today || last === yesterday)) setStreak(s)
+      // Streak valid if we've logged today or on the most recent
+      // previous working day (skipping weekends + Swedish holidays).
+      const now = new Date()
+      const today = fmtDateISO(now)
+      const hols = getHolidays(now.getFullYear())
+      const prev = new Date(now)
+      do { prev.setDate(prev.getDate() - 1) } while (!isWorkingDay(prev, hols))
+      const prevWD = fmtDateISO(prev)
+      if (typeof s === 'number' && (last === today || last === prevWD)) setStreak(s)
       else setStreak(0)
 
       // restore running timer
@@ -576,6 +672,10 @@ export default function App() {
   }, [authed])
 
   useEffect(() => { window.electronAPI.storeSet('mode', mode) }, [mode])
+  useEffect(() => {
+    window.electronAPI.storeSet('lang', lang)
+    setI18nLang(lang)
+  }, [lang])
 
   useEffect(() => {
     const r = document.documentElement.style
@@ -603,10 +703,11 @@ export default function App() {
     window.electronAPI.setBlurCollapseDisabled(false)
   }
 
+  const introSteps = useMemo(() => buildIntroSteps(lang), [lang])
   const advanceIntro = () => {
     setIntroStep((s) => {
       const next = s + 1
-      if (next >= INTRO_STEPS.length) {
+      if (next >= introSteps.length) {
         dismissIntro()
         return 0
       }
@@ -642,6 +743,8 @@ export default function App() {
 
   useEffect(() => {
     if (!showIntro) return
+    // Any client / project works — not restricted to DevCore / Utbildning —
+    // so the tour continues for tenants without those exact names.
     if (introStep === 1 && tab === 'timer') setIntroStep(2)
     if (introStep === 2 && tRun) setIntroStep(3)
     if (introStep === 3 && tCo) setIntroStep(4)
@@ -665,13 +768,17 @@ export default function App() {
   }, [authed, size])
 
   useEffect(() => {
+    if (!currentUser) return
     const first = currentUser.username.trim().split(/\s+/)[0] || 'friend'
-    setGreetingMsg(pickGreeting(first))
-    const id = window.setInterval(() => setGreetingMsg(pickGreeting(first)), 30 * 60 * 1000)
+    setGreetingMsg(pickGreeting(first, lang))
+    const id = window.setInterval(() => setGreetingMsg(pickGreeting(first, lang)), 30 * 60 * 1000)
     return () => clearInterval(id)
-  }, [currentUser.username])
+  }, [currentUser, lang])
+
+  const emptyMsg = useMemo(() => emptyTodayMessage(lang), [selectedDate, lang])
 
   useEffect(() => {
+    if (!currentUser) return
     const first = currentUser.username.trim().split(/\s+/)[0] || ''
     const compute = () => setTimerInsight(getTimerInsight({
       tRun, tSec, tCo, tPr, tD,
@@ -679,16 +786,28 @@ export default function App() {
       entriesToday: entries.length,
       streak,
       firstName: first,
+      lang,
     }))
     compute()
     const id = window.setInterval(compute, 2 * 60 * 1000)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tRun, tCo, tPr, tD, entries.length, currentUser.username])
+  }, [tRun, tCo, tPr, tD, entries.length, currentUser, lang])
 
   useEffect(() => { if (authed) window.electronAPI.storeSet('xp', xp) }, [xp, authed])
   useEffect(() => { if (authed) window.electronAPI.storeSet('unlocked', unlocked) }, [unlocked, authed])
   useEffect(() => { if (authed) window.electronAPI.storeSet('streak', streak) }, [streak, authed])
+  useEffect(() => { if (authed && achStatsLoaded) window.electronAPI.storeSet('achStats', achStats) }, [achStats, authed, achStatsLoaded])
+
+  // Dequeue achievement toasts one at a time so stacked unlocks don't collide.
+  useEffect(() => {
+    if (ach || pendingAchs.length === 0) return
+    const [next, ...rest] = pendingAchs
+    setAch(next)
+    setPendingAchs(rest)
+    const id = window.setTimeout(() => setAch(null), 3200)
+    return () => clearTimeout(id)
+  }, [ach, pendingAchs])
 
   // Persist timer on control/field changes (NOT on tSec tick — startedAt covers elapsed).
   useEffect(() => {
@@ -749,34 +868,40 @@ export default function App() {
             uid = rows[0]?._user_id
           }
         }
-        if (!uid) { setCurrentUser(FALLBACK_USER); return }
+        // We can't run the app without knowing who the user is. If anything
+        // along the resolution path fails, sign out and let them re-auth
+        // rather than guessing or showing data under a wrong identity.
+        if (!uid) { window.electronAPI.signOut(); return }
         const users = await loadUsers()
         const me = users.find((u) => u.id === uid)
-        const resolved = me
-          ? { _user_id: me.id, username: me.name || me.username }
-          : FALLBACK_USER
+        if (!me) { window.electronAPI.signOut(); return }
+        const resolved = { _user_id: me.id, username: me.name || me.username }
         setCurrentUser(resolved)
         await window.electronAPI.storeSet('currentUser', resolved)
-      } catch {
-        setCurrentUser(FALLBACK_USER)
-      }
+      } catch { window.electronAPI.signOut() }
     })()
   }, [authed])
 
   // ─── Load entries for selected date ────────────────────────────────────
   useEffect(() => {
     if (!authed) return
+    let cancelled = false
+    setEntriesLoading(true)
     loadTimeEntries(selectedDate)
-      .then(setEntries)
+      .then((list) => { if (!cancelled) { setEntries(list); setEntriesLoading(false) } })
       .catch((err) => {
+        if (cancelled) return
+        setEntriesLoading(false)
         if (err.message === 'NOT_AUTHENTICATED') setAuthed(false)
       })
+    return () => { cancelled = true }
   }, [authed, selectedDate])
 
   // ─── Load week hours (Mon–Fri containing selectedDate) ─────────────────
   useEffect(() => {
     if (!authed) return
-    const mon = mondayOf(selectedDate)
+    // Always show the current week — independent of selectedDate
+    const mon = mondayOf(new Date())
     const days = [0, 1, 2, 3, 4].map((i) => {
       const d = new Date(mon)
       d.setDate(d.getDate() + i)
@@ -786,7 +911,7 @@ export default function App() {
       .then((all) =>
         setWeekH(all.map((rows) => rows.reduce((s, e) => s + parseFloat(e.hour || '0'), 0))),
       )
-  }, [authed, selectedDate])
+  }, [authed, entries])
 
   // ─── Timer tick ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -807,9 +932,10 @@ export default function App() {
 
   // ─── Derived ───────────────────────────────────────────────────────────
   const todayI = useMemo(() => {
-    const mon = mondayOf(selectedDate)
-    return Math.max(0, Math.min(4, Math.floor((+selectedDate - +mon) / 86400000)))
-  }, [selectedDate])
+    const now = new Date()
+    const mon = mondayOf(now)
+    return Math.max(0, Math.min(4, Math.floor((+now - +mon) / 86400000)))
+  }, [nowTick])
   const todayH = useMemo(
     () => entries.reduce((s, e) => s + parseFloat(e.hour || '0'), 0),
     [entries],
@@ -836,6 +962,7 @@ export default function App() {
     cid: string, prid: string, hours: number, desc: string, inv: boolean, internalNote = '',
     entryDate: Date = selectedDate, existingId: string | null = null,
   ) => {
+    if (!currentUser) return
     const co = companies.find((c) => c.id === cid)
     const pr = (projectCache[cid] || []).find((p) => p.id === prid)
     if (!co || !pr) return
@@ -851,46 +978,105 @@ export default function App() {
       saved = await saveTimeEntry(payload)
     } catch (err: any) {
       if (err.message === 'NOT_AUTHENTICATED') { setAuthed(false); return }
-      addFloat(`Save failed: ${err.message || 'unknown'}`, '#ef4444')
+      addFloat(t('form.saveFailed', { err: err.message || 'unknown' }), '#ef4444')
       return
     }
 
-    // Refresh entries (server assigns id)
+    // Refresh entries for the relevant date (selectedDate + the saved date if different)
+    const savedDateISO = fmtDateISO(entryDate)
+    const selectedDateISO = fmtDateISO(selectedDate)
     const fresh = await loadTimeEntries(selectedDate)
     setEntries(fresh)
+    if (savedDateISO !== selectedDateISO) {
+      // Saved to a different date than the one in view; refresh that too so
+      // other views / summaries see the change. We don't need its result here.
+      loadTimeEntries(entryDate).catch(() => {})
+    }
+    // Only bump weekH for today's entries (weekH is current week Mon–Fri)
+    const todayISOStr = fmtDateISO(new Date())
     setWeekH((w) => {
+      if (savedDateISO !== todayISOStr) return w
       const n = [...w]
       n[todayI] = +(n[todayI] + hours).toFixed(2)
       return n
     })
 
-    // Streak: bump if this is the first log of today
-    const todayISO = fmtDateISO(new Date())
+    // Streak: bump if this is the first log of today.
+    // "Previous" means the most recent working day before today
+    // (so weekends and Swedish holidays don't break the streak).
+    const nowDate = new Date()
+    const todayISO = fmtDateISO(nowDate)
     const lastLogged = await window.electronAPI.storeGet('lastLoggedDate')
+    let effectiveStreak = streak
     if (lastLogged !== todayISO) {
-      const yd = new Date(); yd.setDate(yd.getDate() - 1)
-      const yesterdayISO = fmtDateISO(yd)
-      const newStreak = lastLogged === yesterdayISO ? streak + 1 : 1
-      setStreak(newStreak)
+      const hols = getHolidays(nowDate.getFullYear())
+      const prev = new Date(nowDate)
+      do { prev.setDate(prev.getDate() - 1) } while (!isWorkingDay(prev, hols))
+      const prevWDISO = fmtDateISO(prev)
+      effectiveStreak = lastLogged === prevWDISO ? streak + 1 : 1
+      setStreak(effectiveStreak)
       await window.electronAPI.storeSet('lastLoggedDate', todayISO)
     }
 
     const earned = Math.round(10 + hours * 8)
     setXp((x) => x + earned)
-    addFloat(`${saveCheer()} +${fmtHours(hours)}  +${earned} XP`, M.ac)
+    addFloat(`${saveCheer(lang)} +${fmtHours(hours)}  +${earned} XP`, M.ac)
 
-    if (entries.length === 0 && !unlocked.includes('first')) {
-      const a = ACHS[0]
-      setUnlocked((u) => [...u, 'first'])
-      setXp((x) => x + a.xp)
-      setAch(a); setTimeout(() => setAch(null), 3200)
+    // Skip achievement evaluation on edits — only fresh entries advance stats.
+    if (existingId) return saved?.id || existingId || null
+
+    // Build post-save stats snapshot and the evaluation context.
+    const savedIsToday = savedDateISO === todayISOStr
+    const savedDay = entryDate.getDay()
+    const savedIsWeekend = savedDay === 0 || savedDay === 6
+    const weekKey = isoWeekKey(nowDate)
+    const nextStats: AchStats = {
+      entriesCount: achStats.entriesCount + 1,
+      totalH: +(achStats.totalH + hours).toFixed(2),
+      totalBillableH: +(achStats.totalBillableH + (inv ? hours : 0)).toFixed(2),
+      clientIds: achStats.clientIds.includes(cid) ? achStats.clientIds : [...achStats.clientIds, cid],
+      projectIds: achStats.projectIds.includes(prid) ? achStats.projectIds : [...achStats.projectIds, prid],
+      currentWeekKey: weekKey,
+      currentWeekBillableH: +((achStats.currentWeekKey === weekKey ? achStats.currentWeekBillableH : 0) + (inv ? hours : 0)).toFixed(2),
     }
-    if (todayH + hours >= 10 && !unlocked.includes('lord')) {
-      const a = ACHS.find((x) => x.id === 'lord')!
-      setUnlocked((u) => [...u, 'lord'])
-      setXp((x) => x + a.xp)
-      setAch(a); setTimeout(() => setAch(null), 3200)
+    setAchStats(nextStats)
+
+    const todaysEntries = entries.filter((e) => fmtDateISO(new Date(e.task_date)) === todayISOStr)
+    const clientsToday = new Set([...todaysEntries.map((e) => e._company_id), ...(savedIsToday ? [cid] : [])]).size
+    const projectsToday = new Set([...todaysEntries.map((e) => e._project_id), ...(savedIsToday ? [prid] : [])]).size
+    const postWeekH = savedIsToday ? (() => { const n = [...weekH]; n[todayI] = +(n[todayI] + hours).toFixed(2); return n })() : weekH
+    const weekDaysAtGoal = postWeekH.filter((h) => h >= GOAL).length
+    const daysSinceLastLog = lastLogged ? Math.max(0, Math.floor((+nowDate - +new Date(lastLogged)) / 86400000)) : 0
+
+    const ctx: AchCtx = {
+      stats: nextStats,
+      streak: effectiveStreak,
+      todayH: savedIsToday ? todayH + hours : todayH,
+      clientsToday,
+      projectsToday,
+      hourOfDay: nowDate.getHours(),
+      daysSinceLastLog,
+      savedIsWeekend,
+      savedIsToday,
+      entryIsBillable: inv,
+      entryHours: hours,
+      weekDaysAtGoal,
     }
+
+    // Fire any newly-passed predicates. Queue toasts so stacked unlocks don't
+    // clobber each other.
+    const newly: Ach[] = []
+    for (const a of ACHS) {
+      if (unlocked.includes(a.id)) continue
+      const fn = CHECKS[a.id]
+      if (fn && fn(ctx)) newly.push(a)
+    }
+    if (newly.length > 0) {
+      setUnlocked((u) => [...u, ...newly.map((a) => a.id)])
+      setXp((x) => x + newly.reduce((s, a) => s + a.xp, 0))
+      setPendingAchs((q) => [...q, ...newly])
+    }
+
     return saved?.id || existingId || null
   }
 
@@ -899,6 +1085,7 @@ export default function App() {
   const draftIdRef = useRef<string | null>(null)
   useEffect(() => { draftIdRef.current = draftId }, [draftId])
   const autoSaveDraft = async () => {
+    if (!currentUser) return
     if (!tCo || !tPr || !tD.trim()) return
     const co = companies.find((c) => c.id === tCo)
     const pr = (projectCache[tCo] || []).find((p) => p.id === tPr)
@@ -922,7 +1109,7 @@ export default function App() {
       await deleteTimeEntry(id)
       setEntries((es) => es.filter((e) => e.id !== id))
     } catch (err: any) {
-      addFloat(`Delete failed: ${err.message || 'unknown'}`, '#ef4444')
+      addFloat(t('form.deleteFailed', { err: err.message || 'unknown' }), '#ef4444')
     }
   }
 
@@ -938,12 +1125,22 @@ export default function App() {
     return g
   }, [entries])
 
-  if (authed === null)
-    return <div style={{ padding: 24, color: M.t2, background: M.bg, minHeight: '100vh' }}>Loading…</div>
-  if (!authed) return <LoginScreen onLogin={() => window.electronAPI.openAuth()} />
+  const spinner = (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: 14, padding: 24, background: M.bg, minHeight: '100vh',
+    }}>
+      <div className="spinner" style={{ width: 28, height: 28, border: `3px solid ${M.b1}`, borderTopColor: M.ac, borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
+      <div style={{ color: M.tf, fontSize: 12, letterSpacing: 0.3 }}>{t('form.loadingProjects')}</div>
+    </div>
+  )
+  if (authed === null) return spinner
+  if (!authed) return <LoginScreen lang={lang} M={M} onLogin={() => window.electronAPI.openAuth()} />
+  if (!currentUser) return spinner
 
   // ─── Shared UI helpers ────────────────────────────────────────────────
-  const dateLabel = selectedDate.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })
+  const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
+  const dateLabel = selectedDate.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })
   const isoWeek = (() => {
     const d = new Date(Date.UTC(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()))
     const dayNum = d.getUTCDay() || 7
@@ -951,40 +1148,52 @@ export default function App() {
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
     return Math.ceil((((+d - +yearStart) / 86400000) + 1) / 7)
   })()
-  const monthLabel = selectedDate.toLocaleDateString('sv-SE', { month: 'long', year: 'numeric' })
-  const scaleLabel = scale === 'day' ? dateLabel : scale === 'week' ? `Vecka ${isoWeek}` : monthLabel
+  const monthLabel = selectedDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+  const scaleLabel = scale === 'day' ? dateLabel : scale === 'week' ? t('scale.weekNum', { n: isoWeek }) : monthLabel
 
   // ─── Header ────────────────────────────────────────────────────────────
   const hdr = (
     <div style={{ padding: '12px 14px 0', background: M.bg, borderBottom: `1px solid ${M.b1}` }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: M.lo, letterSpacing: -0.4 }}>DevCore Time</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: M.lo, letterSpacing: -0.4, whiteSpace: 'nowrap', flexShrink: 0 }}>DevCore Time</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, color: M.t3, height: 22, marginTop: -2 }}>
             <button
               onClick={() => stepDate(-1)}
+              aria-label={t('scale.prev', { scale: t(`scale.${scale}` as 'scale.day') })}
               style={{ background: 'none', border: 'none', color: M.tf, fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1, height: 22, display: 'flex', alignItems: 'center' }}
             >‹</button>
             <button
               onClick={cycleScale}
               onDoubleClick={jumpToCurrent}
-              title={`${scale === 'day' ? 'Day' : scale === 'week' ? 'Week' : 'Month'} view — click to switch, double-click for today`}
+              title={t('scale.switchTitle', { scale: t(`scale.${scale}.cap` as 'scale.day.cap') })}
               style={{ background: 'none', border: 'none', color: M.t3, fontSize: 11, fontWeight: 500, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap', lineHeight: 1, height: 22, display: 'flex', alignItems: 'center' }}
             >{scaleLabel}</button>
             <button
               onClick={() => stepDate(1)}
+              aria-label={t('scale.next', { scale: t(`scale.${scale}` as 'scale.day') })}
               style={{ background: 'none', border: 'none', color: M.tf, fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '0 4px', lineHeight: 1, height: 22, display: 'flex', alignItems: 'center' }}
             >›</button>
+            {!isOnCurrent && (
+              <button
+                onClick={jumpToCurrent}
+                title={`Jump to current ${scale}`}
+                style={{ background: M.ac, border: 'none', color: '#fff', fontSize: 9, fontWeight: 700, cursor: 'pointer', padding: '0 6px', height: 16, marginLeft: 3, borderRadius: 8, display: 'flex', alignItems: 'center', letterSpacing: 0.3, textTransform: 'uppercase' }}
+              >{t('header.now')}</button>
+            )}
           </div>
           <span style={{ fontSize: 13, fontWeight: 700, color: done ? M.gn : todayH > 0 ? M.t1 : M.tf, fontFamily: 'monospace', display: 'inline-flex', alignItems: 'center', height: 22, lineHeight: 1 }}>{fmtHours(todayH)}</span>
-          <div
+          <button
+            type="button"
             onClick={() => setTab('timer')}
-            title={tRun ? 'Timer running' : tSec > 0 ? 'Timer paused — resume on Timer tab' : 'No timer running — click to start'}
+            title={tRun ? t('status.timerRunning') : tSec > 0 ? t('status.timerPaused') : t('status.noTimer')}
+            aria-label={tRun ? t('status.timerRunning') : tSec > 0 ? t('status.timerPaused') : t('status.noTimer')}
             style={{
               display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
               background: tRun ? `${M.pk}1f` : 'transparent',
               border: `1px solid ${tRun ? `${M.pk}55` : M.b1}`,
               borderRadius: 100, padding: '0 7px', height: 22,
+              font: 'inherit', color: 'inherit',
             }}
           >
             <span style={{
@@ -994,25 +1203,28 @@ export default function App() {
               animation: tRun ? 'pulse 1.2s ease-in-out infinite' : 'none',
             }} />
             <span style={{ fontSize: 10, fontWeight: 700, color: tRun ? M.pk : M.t3, fontFamily: 'monospace', letterSpacing: 0.3 }}>
-              {tRun ? fmtClock(tSec) : tSec > 0 ? 'Paused' : 'Idle'}
+              {tRun ? fmtClock(tSec) : tSec > 0 ? t('status.paused') : t('status.idle')}
             </span>
-          </div>
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: M.pb, border: `1px solid ${M.pp}`, borderRadius: 100, padding: '0 7px', height: 22 }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: M.pv }} />
             <span style={{ fontSize: 10, fontWeight: 700, color: M.pk, fontFamily: 'monospace' }}>{streak}d</span>
           </div>
           <button
             onClick={() => goSize('top')}
-            title="Dock as top bar"
+            title={t('header.minimizeTopBar')}
+            aria-label={t('header.minimizeTopBar')}
             style={{ width: 24, height: 24, borderRadius: 7, background: M.s2, border: `1px solid ${M.b1}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 9, color: M.t3, fontWeight: 700 }}
           >▼</button>
         </div>
       </div>
-      <div style={{ display: 'flex' }}>
-        {([['today', 'Today'], ['timer', 'Timer'], ['log', '+ Log'], ['xp', 'XP']] as const).map(([v, l]) => (
+      <div role="tablist" style={{ display: 'flex' }}>
+        {([['today', t('tab.today')], ['timer', t('tab.timer')], ['log', t('tab.log')], ['xp', t('tab.xp')]] as const).map(([v, l]) => (
           <button
             key={v}
             data-tour={`tab-${v}`}
+            role="tab"
+            aria-selected={tab === v}
             onClick={() => setTab(v)}
             style={{ flex: 1, padding: '9px 0', border: 'none', borderBottom: `2px solid ${tab === v ? M.ac : 'transparent'}`, background: 'transparent', color: tab === v ? M.t1 : M.t3, fontSize: 12, fontWeight: tab === v ? 700 : 500, cursor: 'pointer', marginBottom: -1 }}
           >{l}</button>
@@ -1021,12 +1233,25 @@ export default function App() {
     </div>
   )
 
-  const pbar = (
+  const pbarHolidays = getHolidays(selectedDate.getFullYear())
+  const pbarDayOff = !isWorkingDay(selectedDate, pbarHolidays)
+  const pbarHolidayName = pbarHolidays.get(
+    `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`,
+  )
+
+  const pbar = pbarDayOff ? (
+    <div style={{ padding: '10px 14px 10px', borderBottom: `1px solid ${M.s2}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ fontSize: 11, color: M.t3 }}>{t('today.hoursLogged', { hours: fmtHours(todayH) })}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: M.t3 }}>
+        {pbarHolidayName ? `🎉 ${pbarHolidayName}` : `🌴 ${lang === 'sv' ? 'Ledig dag' : 'Day off'}`}
+      </span>
+    </div>
+  ) : (
     <div style={{ padding: '10px 14px 10px', borderBottom: `1px solid ${M.s2}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 11, color: M.t3 }}>{fmtHours(todayH)} logged</span>
+        <span style={{ fontSize: 11, color: M.t3 }}>{t('today.hoursLogged', { hours: fmtHours(todayH) })}</span>
         <span style={{ fontSize: 11, fontWeight: 700, color: done ? M.gn : M.t2 }}>
-          {done ? '✓ Goal reached' : `${fmtHours(GOAL - todayH)} to go`}
+          {done ? t('today.goalReached') : t('today.toGo', { hours: fmtHours(GOAL - todayH) })}
         </span>
       </div>
       <div style={{ height: 5, background: M.s2, borderRadius: 3, overflow: 'hidden' }}>
@@ -1040,15 +1265,23 @@ export default function App() {
     const firstName = currentUser.username.trim().split(/\s+/)[0]
     const hr = new Date().getHours()
     const greeting =
-      hr >= 5 && hr < 12 ? 'Good morning' :
-      hr >= 12 && hr < 17 ? 'Good afternoon' :
-      hr >= 17 && hr < 22 ? 'Good evening' :
-      'Still up'
-    const emoji =
-      hr >= 5 && hr < 12 ? '☀️' :
-      hr >= 12 && hr < 17 ? '🌤️' :
-      hr >= 17 && hr < 22 ? '🌆' :
-      '🌙'
+      hr >= 5 && hr < 12 ? t('greet.morning') :
+      hr >= 12 && hr < 17 ? t('greet.afternoon') :
+      hr >= 17 && hr < 22 ? t('greet.evening') :
+      t('greet.latenight')
+    const holidayMap = getHolidays(selectedDate.getFullYear())
+    const holidayKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+    const holidayName = holidayMap.get(holidayKey)
+    const isDayOff = !isWorkingDay(selectedDate, holidayMap)
+    const isSat = selectedDate.getDay() === 6
+    const emoji = isDayOff ? (holidayName ? '🎉' : isSat ? '🌴' : '🌴')
+      : hr >= 5 && hr < 12 ? '☀️'
+        : hr >= 12 && hr < 17 ? '🌤️'
+          : hr >= 17 && hr < 22 ? '🌆'
+            : '🌙'
+    const subtitle = isDayOff
+      ? (holidayName ? t('today.dayOffHoliday', { holiday: holidayName }) : t('today.dayOff'))
+      : (done ? t('today.goalReachedLine') : t('today.leftToHit', { hours: fmtHours(GOAL - todayH), goal: GOAL }))
     return (
       <div style={{ paddingBottom: 24 }}>
         {firstName && (
@@ -1056,7 +1289,7 @@ export default function App() {
             <span style={{ fontSize: 18, lineHeight: 1.1 }}>{emoji}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: M.t1, letterSpacing: -0.3, lineHeight: 1.1 }}>{greeting}, {firstName}</div>
-              <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>{done ? 'Goal reached — nice work.' : `${fmtHours(GOAL - todayH)} left to hit ${GOAL}:00.`}</div>
+              <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>{subtitle}</div>
               {greetingMsg && (
                 <div style={{ fontSize: 11, color: M.ac, marginTop: 4, fontStyle: 'italic', opacity: 0.85 }}>
                   {greetingMsg}
@@ -1070,12 +1303,12 @@ export default function App() {
           <div data-tour="today-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1.7fr 1fr', gap: 6 }}>
             <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 11, padding: '11px 6px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: M.ac }}>{fmtHours(todayH)}</div>
-              <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>Today</div>
+              <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>{t('today.stat.today')}</div>
             </div>
             <div style={{ background: M.pb, border: `2px solid ${M.pp}`, borderRadius: 11, padding: '10px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 800, color: M.pk, letterSpacing: -1, lineHeight: 1 }}>{streak}d</div>
-                <div style={{ fontSize: 9, color: M.pk, marginTop: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, opacity: .7 }}>Streak</div>
+                <div style={{ fontSize: 9, color: M.pk, marginTop: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, opacity: .7 }}>{t('today.stat.streak')}</div>
               </div>
               <div style={{ fontSize: 20, lineHeight: 1, position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>🔥</div>
             </div>
@@ -1083,12 +1316,13 @@ export default function App() {
               <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: M.t3 }}>
                 {fmtHours(weekTotal)}
               </div>
-              <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>Week</div>
+              <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>{t('today.stat.week')}</div>
             </div>
           </div>
 
           <MeetingsWidget
             M={M}
+            lang={lang}
             onStartForMeeting={(title) => {
               setTD(title)
               setTab('timer')
@@ -1111,7 +1345,7 @@ export default function App() {
                     <div key={e.id} style={{ display: 'flex', flexDirection: 'column' }}>
                       <div
                         onDoubleClick={() => editEntry(e)}
-                        title="Double-click to edit"
+                        title={t('entry.doubleClickEdit')}
                         style={{ background: M.s1, border: `1px solid ${isPending ? '#ef4444' : M.b1}`, borderRadius: 11, padding: '9px 11px', borderBottomLeftRadius: isPending ? 0 : 11, borderBottomRightRadius: isPending ? 0 : 11, borderBottom: isPending ? 'none' : `1px solid ${M.b1}`, transition: 'border-color .15s', cursor: 'pointer' }}
                       >
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -1177,11 +1411,11 @@ export default function App() {
                           <button
                             onClick={() => setPendingDeleteId(null)}
                             style={{ flex: 1, padding: '10px 0', background: M.s2, border: 'none', color: M.t2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                          >Cancel</button>
+                          >{t('entry.cancel')}</button>
                           <button
                             onClick={async () => { setPendingDeleteId(null); await delEntry(e.id) }}
                             style={{ flex: 1, padding: '10px 0', background: '#ef4444', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                          >Delete</button>
+                          >{t('entry.delete')}</button>
                         </div>
                       </div>
                     </div>
@@ -1191,16 +1425,23 @@ export default function App() {
             </div>
           ))}
 
-          {entries.length === 0 && (
+          {entries.length === 0 && entriesLoading && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0' }}>
+              <div className="skeleton" style={{ height: 18, width: '40%', borderRadius: 6 }} />
+              <div className="skeleton" style={{ height: 52, borderRadius: 11 }} />
+              <div className="skeleton" style={{ height: 52, borderRadius: 11 }} />
+            </div>
+          )}
+          {entries.length === 0 && !entriesLoading && (
             <div style={{ textAlign: 'center', padding: '28px 12px', fontSize: 13, lineHeight: 1.5 }}>
-              <div style={{ color: M.t2, fontWeight: 600, marginBottom: 4 }}>{emptyTodayMessage()}</div>
-              <div style={{ color: M.tf, fontSize: 11 }}>No entries yet for {dateLabel}.</div>
+              <div style={{ color: M.t2, fontWeight: 600, marginBottom: 4 }}>{emptyMsg}</div>
+              <div style={{ color: M.tf, fontSize: 11 }}>{t('today.noEntriesHeader', { date: dateLabel })}</div>
             </div>
           )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, paddingTop: 8, borderTop: `1px solid ${M.s2}` }}>
-            <span style={{ fontSize: 12, color: M.t3 }}>Total:</span>
+            <span style={{ fontSize: 12, color: M.t3 }}>{t('today.totalLabel')}</span>
             <span style={{ fontSize: 17, fontWeight: 700, color: done ? M.gn : M.ac, fontFamily: 'monospace' }}>{fmtHours(todayH)}</span>
           </div>
         </div>
@@ -1219,7 +1460,7 @@ export default function App() {
     const canStart = !!(tCo && tPr && tD.trim())
     const stop = async () => {
       if (!canStart) {
-        addFloat('Fill client, project & task first', '#ef4444')
+        addFloat(t('form.fillFirst'), '#ef4444')
         return
       }
       const h = Math.max(1, Math.ceil(tSec / 60)) / 60
@@ -1233,7 +1474,7 @@ export default function App() {
         {tRun && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: M.pk, animation: 'pulse 1.2s ease-in-out infinite' }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: M.pk, letterSpacing: 1.5, textTransform: 'uppercase' }}>Recording</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: M.pk, letterSpacing: 1.5, textTransform: 'uppercase' }}>{t('timer.recording')}</span>
           </div>
         )}
 
@@ -1242,7 +1483,7 @@ export default function App() {
             {fmtClock(tSec)}
           </div>
           {(() => {
-            const v = vibe(tSec, tRun)
+            const v = vibe(tSec, tRun, lang)
             return (
               <div style={{ position: 'relative', textAlign: 'center', fontSize: 12, color: tRun ? M.ac : M.tf, fontWeight: tRun ? 600 : 400, letterSpacing: 0.2 }}>
                 <span style={{ position: 'relative', display: 'inline-block' }}>
@@ -1263,7 +1504,7 @@ export default function App() {
 
         {tRun && (
           <div style={{ background: M.ad, border: `1px solid ${M.am}`, borderRadius: 10, padding: '9px 13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 11, color: M.t2 }}>⭐ XP this session</span>
+            <span style={{ fontSize: 11, color: M.t2 }}>{t('timer.xpSession')}</span>
             <span style={{ fontSize: 14, fontWeight: 800, color: M.ac, fontFamily: 'monospace' }}>+{sessXP} XP</span>
           </div>
         )}
@@ -1275,18 +1516,18 @@ export default function App() {
                   <button
                     onClick={() => setTRun(true)}
                     style={{ padding: 13, background: M.btn, border: '1px solid transparent', borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: M.bsh }}
-                  >▶  Resume</button>
+                  >{t('timer.resume')}</button>
                   <button
                     onClick={() => void stopAndLogCurrent()}
                     style={{ padding: 13, background: M.gn, border: 'none', borderRadius: 11, color: M.id === 'dark' ? '#022c22' : '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: `0 4px 14px ${M.gn}55` }}
-                  >Stop &amp; Log</button>
+                  >{t('timer.stopLog')}</button>
                 </div>
               ) : (
                 <button
                   data-tour="timer-start"
                   onClick={() => setTRun(true)}
                   style={{ width: '100%', padding: 13, background: M.btn, border: '1px solid transparent', borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: M.bsh }}
-                >{tSec > 0 ? '▶  Resume' : '▶  Start timer'}</button>
+                >{tSec > 0 ? t('timer.resume') : t('timer.start')}</button>
               )
             )}
             {tRun && !canStart && (
@@ -1297,7 +1538,7 @@ export default function App() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ flex: 1, height: 1, background: M.b1 }} />
-              <span style={{ fontSize: 10, color: M.t2, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>What are you working on?</span>
+              <span style={{ fontSize: 10, color: M.t2, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{t('timer.whatWorking')}</span>
               <div style={{ flex: 1, height: 1, background: M.b1 }} />
             </div>
 
@@ -1305,8 +1546,9 @@ export default function App() {
               <Combobox
                 value={tCo}
                 items={companies}
-                placeholder={`Search client… (${companies.length})`}
+                placeholder={`${t('form.searchClient')} (${companies.length})`}
                 theme={M}
+                lang={lang}
                 onChange={async (id) => { setTCo(id); setTPr(''); if (id) await ensureProjects(id) }}
               />
             </div>
@@ -1316,8 +1558,9 @@ export default function App() {
                 <Combobox
                   value={tPr}
                   items={prList}
-                  placeholder={prList.length ? `Search project… (${prList.length})` : 'Loading…'}
+                  placeholder={prList.length ? `${t('form.searchProject')} (${prList.length})` : t('form.loadingProjects')}
                   theme={M}
+                  lang={lang}
                   onChange={setTPr}
                 />
               </div>
@@ -1329,25 +1572,29 @@ export default function App() {
                   data-tour="timer-description"
                   value={tD}
                   onChange={(e) => setTD(e.target.value)}
-                  placeholder="Task description *"
+                  placeholder={t('timer.taskDescription')}
                   style={{ padding: '11px 12px', background: M.s1, border: `1.5px solid ${tD.trim() ? M.ac : M.b2}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none', width: '100%' }}
                 />
                 <textarea
                   value={tNote}
                   onChange={(e) => setTNote(e.target.value)}
-                  placeholder="Internal notes (optional) — not shown on invoice"
+                  placeholder={t('timer.internalNotes')}
                   rows={2}
                   style={{ padding: '11px 12px', background: M.s1, border: `1.5px solid ${M.b2}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none', width: '100%', resize: 'none' }}
                 />
-                <div
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={tInv}
+                  aria-label={t('timer.invoiceable')}
                   onClick={() => setTInv((v) => !v)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: M.bg, border: `1px solid ${M.b1}`, borderRadius: 9, cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: M.bg, border: `1px solid ${M.b1}`, borderRadius: 9, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
                 >
                   <div style={{ width: 36, height: 20, borderRadius: 10, background: tInv ? M.ac : M.b1, display: 'flex', alignItems: 'center', padding: 2, transition: 'background .2s' }}>
                     <div style={{ width: 16, height: 16, borderRadius: 8, background: '#fff', transform: `translateX(${tInv ? 16 : 0}px)`, transition: 'transform .2s', boxShadow: '0 1px 3px rgba(0,0,0,.25)' }} />
                   </div>
-                  <span style={{ fontSize: 12, color: M.t1 }}>Invoiceable</span>
-                </div>
+                  <span style={{ fontSize: 12, color: M.t1 }}>{t('timer.invoiceable')}</span>
+                </button>
               </>
             )}
           </div>
@@ -1355,8 +1602,8 @@ export default function App() {
         {tRun && hasCtx && (
           <div style={{ background: M.s1, border: `1.5px solid ${M.am}`, borderRadius: 13, padding: '11px 13px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>Now tracking</span>
-              <button onClick={() => setTRun(false)} style={{ fontSize: 11, color: M.ac, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>change</button>
+              <span style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('timer.nowTracking')}</span>
+              <button onClick={() => setTRun(false)} style={{ fontSize: 11, color: M.ac, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>{t('timer.change')}</button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: M.co[0], flexShrink: 0 }} />
@@ -1369,7 +1616,7 @@ export default function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: tInv ? M.gb : M.s2, border: `1px solid ${tInv ? M.gd : M.b1}`, borderRadius: 6, padding: '3px 7px', flexShrink: 0 }}>
                 <div style={{ width: 5, height: 5, borderRadius: '50%', background: tInv ? M.gn : M.tf }} />
                 <span style={{ fontSize: 9, fontWeight: 700, color: tInv ? M.gn : M.t3, letterSpacing: 0.5 }}>
-                  {tInv ? 'BILL' : 'NO BILL'}
+                  {tInv ? t('entry.billShort') : t('entry.noBillShort')}
                 </span>
               </div>
             </div>
@@ -1385,8 +1632,37 @@ export default function App() {
 
         {tRun && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <button onClick={() => setTRun(false)} style={{ height: 46, background: M.s2, border: `1px solid ${M.b1}`, borderRadius: 12, color: M.t2, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⏸  Pause</button>
-            <button onClick={stop} style={{ height: 46, background: M.gn, border: 'none', borderRadius: 12, color: M.id === 'dark' ? '#022c22' : '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: `0 4px 14px ${M.gn}55` }}>Stop &amp; Log</button>
+            <button onClick={() => setTRun(false)} style={{ height: 46, background: M.s2, border: `1px solid ${M.b1}`, borderRadius: 12, color: M.t2, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⏸  {t('timer.pause')}</button>
+            <button onClick={stop} style={{ height: 46, background: M.gn, border: 'none', borderRadius: 12, color: M.id === 'dark' ? '#022c22' : '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: `0 4px 14px ${M.gn}55` }}>{t('timer.stopLog')}</button>
+          </div>
+        )}
+
+        {(tRun || tSec > 0) && (
+          <div style={{ borderRadius: 11, overflow: 'hidden', border: pendingCancelTimer ? `1px solid #ef4444` : '1px solid transparent' }}>
+            <button
+              onClick={() => setPendingCancelTimer((v) => !v)}
+              style={{
+                width: '100%', padding: '9px 0',
+                background: 'none', border: 'none',
+                color: pendingCancelTimer ? '#ef4444' : M.tf,
+                fontSize: 11, fontWeight: pendingCancelTimer ? 700 : 500,
+                cursor: 'pointer', letterSpacing: 0.3,
+              }}
+            >
+              {t('timer.cancel')}
+            </button>
+            <div style={{ maxHeight: pendingCancelTimer ? 44 : 0, overflow: 'hidden', transition: 'max-height .22s ease' }}>
+              <div style={{ display: 'flex' }}>
+                <button
+                  onClick={() => setPendingCancelTimer(false)}
+                  style={{ flex: 1, padding: '10px 0', background: M.s2, border: 'none', color: M.t2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                >{t('entry.cancel')}</button>
+                <button
+                  onClick={() => void cancelTimer()}
+                  style={{ flex: 1, padding: '10px 0', background: '#ef4444', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >{t('timer.cancelDiscard')}</button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -1407,8 +1683,8 @@ export default function App() {
     const co = companies.find((c) => c.id === fCo)
 
     const save = async () => {
-      if (!fCo || !fPr || !co || !prObj) return
-      await saveNewEntry(fCo, fPr, fH, fD, fInv, fNote.trim(), selectedDate, editingId)
+      if (!fCo || !fPr || !co || !prObj || !fD.trim()) return
+      await saveNewEntry(fCo, fPr, fH, fD, fInv, fNote.trim(), editingDate ?? selectedDate, editingId)
       resetLogForm()
       setTab('today')
     }
@@ -1417,17 +1693,21 @@ export default function App() {
       <div style={{ padding: '15px 14px 24px', display: 'flex', flexDirection: 'column', gap: 11 }}>
         {editingId && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: M.ad, border: `1px solid ${M.am}`, borderRadius: 10, padding: '9px 12px' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: M.at, letterSpacing: 0.5, textTransform: 'uppercase' }}>Editing entry</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: M.at, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              {editingDate
+                ? t('form.editingEntryOn', { date: editingDate.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' }) })
+                : t('form.editingEntry')}
+            </span>
             <button
               onClick={resetLogForm}
               style={{ background: 'none', border: 'none', color: M.ac, fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: '2px 4px' }}
-            >Cancel</button>
+            >{t('entry.cancel')}</button>
           </div>
         )}
         {recent.length > 0 && !editingId && (
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>Recent</div>
-            <div style={{ fontSize: 11, color: M.tf, marginBottom: 8 }}>▶ opens timer with task pre-selected</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>{t('today.recent')}</div>
+            <div style={{ fontSize: 11, color: M.tf, marginBottom: 8 }}>{t('today.opensTimer')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {recent.map((r, i) => (
                 <div key={r.id} style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1450,36 +1730,38 @@ export default function App() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ flex: 1, height: 1, background: M.b1 }} />
-          <span style={{ fontSize: 10, color: M.t3, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: 1 }}>or log manually</span>
+          <span style={{ fontSize: 10, color: M.t3, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: 1 }}>{t('today.orLogManually')}</span>
           <div style={{ flex: 1, height: 1, background: M.b1 }} />
         </div>
 
         <div>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>Client *</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('form.client')}</div>
           <Combobox
             value={fCo}
             items={companies}
-            placeholder={`Search client… (${companies.length})`}
+            placeholder={`${t('form.searchClient')} (${companies.length})`}
             theme={M}
+            lang={lang}
             onChange={async (id) => { setFCo(id); setFPr(''); if (id) await ensureProjects(id) }}
           />
         </div>
 
         {fCo && (
           <div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>Project *</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('form.project')}</div>
             <Combobox
               value={fPr}
               items={prList}
-              placeholder={prList.length ? `Search project… (${prList.length})` : 'Loading…'}
+              placeholder={prList.length ? `${t('form.searchProject')} (${prList.length})` : t('form.loadingProjects')}
               theme={M}
+              lang={lang}
               onChange={setFPr}
             />
           </div>
         )}
 
         <div data-tour="log-hours">
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>Hours *</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('form.hours')}</div>
           <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
             <button onClick={() => setFH((h) => Math.max(0.25, +(h - 0.25).toFixed(2)))} style={{ width: 46, height: 46, background: 'transparent', border: 'none', borderRight: `1px solid ${M.b1}`, color: M.t3, fontSize: 20, fontWeight: 200, cursor: 'pointer' }}>−</button>
             <input
@@ -1499,7 +1781,7 @@ export default function App() {
             <button onClick={() => setFH((h) => Math.min(24, +(h + 0.25).toFixed(2)))} style={{ width: 46, height: 46, background: 'transparent', border: 'none', borderLeft: `1px solid ${M.b1}`, color: M.t3, fontSize: 20, fontWeight: 200, cursor: 'pointer' }}>+</button>
           </div>
           <div style={{ textAlign: 'center', marginTop: 4, fontSize: 11, color: M.t3 }}>
-            Type <code>1:30</code> or <code>1.5</code>
+            {t('form.typeHoursHint')}
           </div>
           {prObj && parseFloat(prObj.hour_price) > 0 && (
             <div style={{ textAlign: 'center', marginTop: 4, fontSize: 11, color: M.t3, fontFamily: 'monospace' }}>
@@ -1510,12 +1792,12 @@ export default function App() {
 
         <div>
           <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
-            Description <span style={{ color: M.tf, fontWeight: 400, letterSpacing: 0, textTransform: 'none', fontSize: 10 }}>optional</span>
+            {t('form.description')} *
           </div>
           <textarea
             value={fD}
             onChange={(e) => setFD(e.target.value)}
-            placeholder="What did you work on?"
+            placeholder={t('form.descPlaceholder')}
             rows={2}
             style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none', resize: 'none' }}
           />
@@ -1523,32 +1805,41 @@ export default function App() {
 
         <div>
           <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
-            Internal notes <span style={{ color: M.tf, fontWeight: 400, letterSpacing: 0, textTransform: 'none', fontSize: 10 }}>optional · not shown on invoice</span>
+            {lang === 'sv' ? 'Interna anteckningar' : 'Internal notes'} <span style={{ color: M.tf, fontWeight: 400, letterSpacing: 0, textTransform: 'none', fontSize: 10 }}>{t('form.internalOptional')}</span>
           </div>
           <textarea
             value={fNote}
             onChange={(e) => setFNote(e.target.value)}
-            placeholder="Anything only internal to remember"
+            placeholder={t('form.internalPlaceholder')}
             rows={2}
             style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none', resize: 'none' }}
           />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10 }}>
-          <div
+          <button
+            type="button"
+            role="switch"
+            aria-checked={fInv}
+            aria-label={t('timer.invoiceable')}
             onClick={() => setFInv((v) => !v)}
-            style={{ width: 40, height: 22, borderRadius: 11, background: fInv ? M.ac : M.b1, display: 'flex', alignItems: 'center', padding: 2, cursor: 'pointer', transition: 'background .2s' }}
+            style={{ width: 40, height: 22, borderRadius: 11, background: fInv ? M.ac : M.b1, display: 'flex', alignItems: 'center', padding: 2, cursor: 'pointer', transition: 'background .2s', border: 'none' }}
           >
             <div style={{ width: 18, height: 18, borderRadius: 9, background: '#fff', transform: `translateX(${fInv ? 18 : 0}px)`, transition: 'transform .2s', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }} />
-          </div>
-          <span style={{ fontSize: 13, color: M.t1 }}>Invoiceable</span>
+          </button>
+          <span style={{ fontSize: 13, color: M.t1 }}>{t('timer.invoiceable')}</span>
         </div>
 
-        <button
-          onClick={save}
-          disabled={!fCo || !fPr}
-          style={{ width: '100%', height: 46, background: fCo && fPr ? M.btn : M.s3, border: 'none', borderRadius: 12, color: fCo && fPr ? '#fff' : M.t3, fontSize: 14, fontWeight: 700, cursor: fCo && fPr ? 'pointer' : 'default', boxShadow: fCo && fPr ? M.bsh : 'none' }}
-        >{editingId ? 'Save changes' : 'Save entry'}</button>
+        {(() => {
+          const canSave = !!(fCo && fPr && fD.trim())
+          return (
+            <button
+              onClick={save}
+              disabled={!canSave}
+              style={{ width: '100%', height: 46, background: canSave ? M.btn : M.s3, border: 'none', borderRadius: 12, color: canSave ? '#fff' : M.t3, fontSize: 14, fontWeight: 700, cursor: canSave ? 'pointer' : 'default', boxShadow: canSave ? M.bsh : 'none' }}
+            >{editingId ? t('form.saveChanges') : t('form.saveEntry')}</button>
+          )
+        })()}
       </div>
     )
   })()
@@ -1583,12 +1874,13 @@ export default function App() {
               xp, xpIntoLevel: xp - xpBase, xpPerLevel: xpNext - xpBase,
               streak, weekTotal,
               firstName: currentUser.username.trim().split(/\s+/)[0],
+              lang,
             })}
           </div>
         </div>
 
         <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 13, padding: 13 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 11 }}>This week</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 11 }}>{t('xp.thisWeek')}</div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 100, marginBottom: 8 }}>
             {weekH.map((h, i) => {
               const isFut = i > todayI, isToday = i === todayI, empty = !isFut && h === 0
@@ -1612,20 +1904,20 @@ export default function App() {
             })}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 9, borderTop: `1px solid ${M.s2}` }}>
-            <span style={{ fontSize: 11, color: M.t3 }}>{fmtHours(weekTotal)} this week</span>
+            <span style={{ fontSize: 11, color: M.t3 }}>{t('xp.thisWeekLine', { hours: fmtHours(weekTotal) })}</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: M.ac }}>+{Math.round(weekTotal * 8)} XP</span>
           </div>
         </div>
 
-        <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>Achievements</div>
+        <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('xp.achievements')}</div>
         <div data-tour="xp-achievements" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
           {ACHS.map((a) => {
             const got = unlocked.includes(a.id)
             return (
               <div key={a.id} style={{ background: got ? (M.id === 'dark' ? `${a.co}18` : `${a.co}10`) : M.s2, border: `1px solid ${got ? a.co + '44' : M.b1}`, borderRadius: 12, padding: '11px 6px', textAlign: 'center', opacity: got ? 1 : 0.4 }}>
                 <div style={{ fontSize: 22, marginBottom: 4, filter: got ? 'none' : 'grayscale(1)' }}>{a.e}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: got ? a.co : M.t3, lineHeight: 1.3 }}>{got ? a.n : 'Locked'}</div>
-                <div style={{ fontSize: 9, color: M.t3, marginTop: 2 }}>{a.d}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: got ? a.co : M.t3, lineHeight: 1.3 }}>{got ? achName(a.id, lang) : t('xp.locked')}</div>
+                <div style={{ fontSize: 9, color: M.t3, marginTop: 2 }}>{achDescription(a.id, lang)}</div>
                 {got && <div style={{ fontSize: 9, fontWeight: 700, color: a.co, marginTop: 3, fontFamily: 'monospace' }}>+{a.xp} XP</div>}
               </div>
             )
@@ -1639,9 +1931,11 @@ export default function App() {
     <MonthView
       M={M}
       goal={GOAL}
+      referenceDate={selectedDate}
       onPickDay={(d) => { setSelectedDate(d); setScale('day') }}
       onBackfillDay={(d) => { setSelectedDate(d); setScale('day'); setTab('log') }}
       firstName={currentUser.username.trim().split(/\s+/)[0]}
+      lang={lang}
     />
   )
   const weekView = (
@@ -1652,6 +1946,7 @@ export default function App() {
       onPickDay={(d) => { setSelectedDate(d); setScale('day') }}
       onBackfillDay={(d) => { setSelectedDate(d); setScale('day'); setTab('log') }}
       firstName={currentUser.username.trim().split(/\s+/)[0]}
+      lang={lang}
     />
   )
 
@@ -1690,7 +1985,7 @@ export default function App() {
         key="mode-top"
         className="mode-root"
         onDoubleClick={() => goSize('full')}
-        title="Double-click to open full sidebar"
+        title={t('top.dblClickToOpen')}
         style={{
           height: '100vh', width: '100vw', background: M.bg,
           display: 'flex', alignItems: 'stretch', gap: 0,
@@ -1749,7 +2044,7 @@ export default function App() {
         <div style={{ flex: 1, minWidth: 0, zIndex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
           {!tRun ? (
             (() => {
-              const msg = tSec > 0 ? 'PAUSED TASK' : 'NO TASK BEING WORKED ON'
+              const msg = tSec > 0 ? t('status.pausedTask') : t('status.notTracking')
               const sep = '   •   '
               const half = (msg + sep).repeat(30)
               return (
@@ -1789,7 +2084,7 @@ export default function App() {
                     )}
                   </>
                 ) : (
-                  <span style={{ fontSize: 10, color: M.t3, fontStyle: 'italic' }}>No task selected</span>
+                  <span style={{ fontSize: 10, color: M.t3, fontStyle: 'italic' }}>{t('timer.noTaskSelected')}</span>
                 )}
               </div>
 
@@ -1866,10 +2161,10 @@ export default function App() {
 
           <button
             onClick={() => goSize('full')}
-            title="Open sidebar"
+            title={lang === 'sv' ? 'Öppna sidomenyn' : 'Open sidebar'}
             style={{ height: 14, padding: '0 6px', borderRadius: 3, background: M.s2, border: `1px solid ${M.b1}`, color: M.t2, fontSize: 8, fontWeight: 600, cursor: 'pointer' }}
           >
-            Open
+            {lang === 'sv' ? 'Öppna' : 'Open'}
           </button>
         </div>
       </div>
@@ -1896,18 +2191,25 @@ export default function App() {
           ))}
         </div>
         <button
+          onClick={() => setLang(lang === 'en' ? 'sv' : 'en')}
+          title={t('lang.switchTo')}
+          style={{ width: 22, height: 22, borderRadius: 5, background: M.s2, border: `1px solid ${M.b1}`, fontSize: 12, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          {lang === 'en' ? '🇸🇪' : '🇬🇧'}
+        </button>
+        <button
           onClick={startIntroFresh}
-          title="Show intro"
+          title={t('footer.showIntro')}
           style={{ width: 22, height: 22, borderRadius: 5, background: M.s2, border: `1px solid ${M.b1}`, color: M.t3, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
         >
           ?
         </button>
         <button
           onClick={confirmSignOut}
-          title="Sign out"
+          title={t('footer.signOut')}
           style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: M.t3, fontSize: 12, cursor: 'pointer', padding: '4px 8px' }}
         >
-          <span>Sign out</span>
+          <span>{t('footer.signOut')}</span>
           <span style={{ fontSize: 13 }}>⎋</span>
         </button>
       </div>
@@ -1916,7 +2218,7 @@ export default function App() {
         <IntroOverlay
           M={M}
           step={introStep}
-          steps={INTRO_STEPS}
+          steps={introSteps}
           onAdvance={advanceIntro}
           onSkip={dismissIntro}
           canAdvance={introCanAdvance}
@@ -1929,14 +2231,21 @@ export default function App() {
             onClick={() => setConfirmation(null)}
             style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 200 }}
           />
-          <div style={{ position: 'absolute', bottom: 12, left: 12, right: 12, background: M.s1, border: `1.5px solid ${M.ac}`, borderRadius: 14, padding: '14px 16px', zIndex: 201, boxShadow: '0 12px 32px rgba(0,0,0,0.25)' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: M.t1, marginBottom: 6 }}>{confirmation.title}</div>
+          <div
+            ref={confirmationRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmation-title"
+            tabIndex={-1}
+            style={{ position: 'absolute', bottom: 12, left: 12, right: 12, background: M.s1, border: `1.5px solid ${M.ac}`, borderRadius: 14, padding: '14px 16px', zIndex: 201, boxShadow: '0 12px 32px rgba(0,0,0,0.25)' }}
+          >
+            <div id="confirmation-title" style={{ fontSize: 14, fontWeight: 700, color: M.t1, marginBottom: 6 }}>{confirmation.title}</div>
             <div style={{ fontSize: 12, color: M.t3, marginBottom: 12, lineHeight: 1.4 }}>{confirmation.body}</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => setConfirmation(null)}
                 style={{ flex: 1, padding: '9px 0', background: M.s2, border: `1px solid ${M.b1}`, borderRadius: 9, color: M.t2, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              >Cancel</button>
+              >{t('entry.cancel')}</button>
               <button
                 onClick={async () => { const fn = confirmation.onConfirm; setConfirmation(null); await fn() }}
                 style={{ flex: 1, padding: '9px 0', background: M.btn, border: 'none', borderRadius: 9, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
@@ -1954,9 +2263,9 @@ export default function App() {
         <div style={{ position: 'absolute', bottom: 14, left: 12, right: 12, background: M.s1, border: `1.5px solid ${ach.co}55`, borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11, zIndex: 100, animation: 'achIn .4s cubic-bezier(.34,1.56,.64,1)', boxShadow: `0 8px 32px ${ach.co}44` }}>
           <div style={{ width: 40, height: 40, borderRadius: 11, background: `${ach.co}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{ach.e}</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: ach.co, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>Achievement unlocked</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: M.t1, marginBottom: 2 }}>{ach.n}</div>
-            <div style={{ fontSize: 10, color: M.t3 }}>{ach.d}</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: ach.co, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>{t('xp.achievementUnlocked')}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: M.t1, marginBottom: 2 }}>{achName(ach.id, lang)}</div>
+            <div style={{ fontSize: 10, color: M.t3 }}>{achDescription(ach.id, lang)}</div>
           </div>
           <div style={{ fontSize: 12, fontWeight: 800, color: ach.co, fontFamily: 'monospace', background: `${ach.co}18`, borderRadius: 7, padding: '4px 9px' }}>+{ach.xp} XP</div>
         </div>

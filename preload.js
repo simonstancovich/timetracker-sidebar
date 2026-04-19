@@ -1,13 +1,19 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+const subscribe = (channel, mapArgs) => (cb) => {
+  const listener = mapArgs ? (_e, ...args) => cb(mapArgs(...args)) : () => cb()
+  ipcRenderer.on(channel, listener)
+  return () => ipcRenderer.removeListener(channel, listener)
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   // Auth
   checkAuth: () => ipcRenderer.invoke('check-auth'),
   openAuth: () => ipcRenderer.invoke('open-auth'),
   signOut: () => ipcRenderer.invoke('sign-out'),
-  onAuthSuccess: (cb) => ipcRenderer.on('auth-success', cb),
-  onSignedOut: (cb) => ipcRenderer.on('signed-out', cb),
-  onSessionLost: (cb) => ipcRenderer.on('session-lost', cb),
+  onAuthSuccess: subscribe('auth-success'),
+  onSignedOut: subscribe('signed-out'),
+  onSessionLost: subscribe('session-lost'),
 
   // API proxy — all calls go through main process (inherits session cookies)
   apiCall: (params, body) => ipcRenderer.invoke('api-call', { params, body }),
@@ -18,7 +24,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Window
   setSize: (size) => ipcRenderer.invoke('set-size', size),
-  onForcedSize: (cb) => ipcRenderer.on('forced-size', (_e, s) => cb(s)),
+  onForcedSize: subscribe('forced-size', (s) => s),
   setBlurCollapseDisabled: (disabled) => ipcRenderer.invoke('set-blur-collapse-disabled', disabled),
 
   // Microsoft Graph (calendar)
@@ -26,5 +32,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   graphSignIn: () => ipcRenderer.invoke('graph-sign-in'),
   graphSignOut: () => ipcRenderer.invoke('graph-sign-out'),
   graphMeetings: (opts) => ipcRenderer.invoke('graph-meetings', opts),
-  onGraphDeviceCode: (cb) => ipcRenderer.on('graph-device-code', (_e, code) => cb(code)),
+  onGraphDeviceCode: subscribe('graph-device-code', (code) => code),
 })

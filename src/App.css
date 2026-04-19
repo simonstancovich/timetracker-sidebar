@@ -11,6 +11,15 @@ body {
 
 button, input, select, textarea { font-family: inherit; }
 
+button:focus { outline: none; }
+button:focus-visible,
+[role="switch"]:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
 input, textarea, select {
   transition: border-color .15s, box-shadow .15s;
 }
@@ -26,6 +35,9 @@ input::placeholder, textarea::placeholder {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: .3; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 @keyframes skeletonShimmer {
   0% { background-position: -150% 0; }

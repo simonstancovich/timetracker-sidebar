@@ -255,8 +255,20 @@ function createTray() {
   });
 }
 
+const USER_SCOPED_STORE_KEYS = [
+  "xp",
+  "unlocked",
+  "streak",
+  "lastLoggedDate",
+  "timer",
+  "logForm",
+  "currentUser",
+  "achStats",
+];
+
 async function signOut() {
   await session.fromPartition("persist:timetracker").clearStorageData();
+  for (const key of USER_SCOPED_STORE_KEYS) store.delete(key);
   mainWindow?.webContents.send("signed-out");
 }
 

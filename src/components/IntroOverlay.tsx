@@ -1,4 +1,8 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
+import { useModal } from '../lib/useModal'
+import type { IntroStep } from '../lib/introSteps'
+
+export type { IntroStep }
 
 type Theme = {
   bg: string
@@ -11,16 +15,6 @@ type Theme = {
   ac: string
   btn: string
   bsh: string
-}
-
-export type IntroStep = {
-  target: string | null
-  title: string
-  body: string
-  hint?: string
-  nextLabel?: string
-  needsManualNext?: boolean
-  readOnly?: boolean
 }
 
 const WIGGLE_EMOJIS = ['⏱️', '⏰', '🕰️', '⌛']
@@ -61,6 +55,7 @@ export function IntroOverlay({
   const isLast = step === steps.length - 1
   const isFirst = step === 0
   const isFullScreen = !current.target
+  const modalRef = useModal<HTMLDivElement>({ enabled: true, onClose: onSkip })
 
   const [emojiIdx, setEmojiIdx] = useState(0)
   useEffect(() => {
@@ -99,6 +94,11 @@ export function IntroOverlay({
   if (isFullScreen) {
     return (
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="intro-fullscreen-title"
+        tabIndex={-1}
         style={{
           position: 'absolute',
           inset: 0,
@@ -120,7 +120,7 @@ export function IntroOverlay({
           </span>
         </div>
 
-        <h1 className="intro-in" style={{ margin: 0, fontSize: 22, color: M.t1, fontWeight: 800, lineHeight: 1.25, maxWidth: 320 }}>
+        <h1 id="intro-fullscreen-title" className="intro-in" style={{ margin: 0, fontSize: 22, color: M.t1, fontWeight: 800, lineHeight: 1.25, maxWidth: 320 }}>
           {current.title}
         </h1>
 
@@ -248,6 +248,11 @@ export function IntroOverlay({
       />
 
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="intro-tooltip-title"
+        tabIndex={-1}
         className="intro-in"
         style={{
           position: 'fixed',
@@ -266,7 +271,7 @@ export function IntroOverlay({
         <div style={{ fontSize: 10, color: M.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
           Step {step} of {steps.length - 2}
         </div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: M.t1, marginBottom: 4 }}>{current.title}</div>
+        <div id="intro-tooltip-title" style={{ fontSize: 14, fontWeight: 700, color: M.t1, marginBottom: 4 }}>{current.title}</div>
         <div style={{ fontSize: 12, color: M.t2, lineHeight: 1.45, marginBottom: current.hint ? 4 : 10 }}>{current.body}</div>
         {current.hint && (
           <div style={{ fontSize: 11, color: M.t3, fontStyle: 'italic', marginBottom: 10 }}>{current.hint}</div>
