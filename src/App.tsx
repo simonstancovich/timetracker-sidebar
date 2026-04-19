@@ -29,7 +29,7 @@ import { IntroOverlay } from './components/IntroOverlay'
 import { MeetingsWidget } from './components/MeetingsWidget'
 import { MonthView } from './components/MonthView'
 import { WeekView } from './components/WeekView'
-import { light as L, dark as D, type Theme } from './theme'
+import { light as L, dark as D, type Theme, lightTheme, darkTheme } from './theme'
 
 // Language-agnostic achievement records. Localized name + description live
 // in /locales/{lang}.json under `achievements.{id}.{name,description}` and
@@ -963,8 +963,13 @@ export default function App() {
     return g
   }, [entries])
 
+  // Vanilla-extract theme class — applied to every top-level return so CSS
+  // custom properties resolve correctly in both early-return branches and the
+  // main app render.
+  const themeClass = mode === 'dark' ? darkTheme : lightTheme
+
   const spinner = (
-    <div style={{
+    <div className={themeClass} style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       gap: 14, padding: 24, background: M.bg, minHeight: '100vh',
     }}>
@@ -973,7 +978,7 @@ export default function App() {
     </div>
   )
   if (authed === null) return spinner
-  if (!authed) return <LoginScreen lang={lang} M={M} onLogin={() => window.electronAPI.openAuth()} />
+  if (!authed) return <div className={themeClass}><LoginScreen lang={lang} onLogin={() => window.electronAPI.openAuth()} /></div>
   if (!currentUser) return spinner
 
   // ─── Shared UI helpers ────────────────────────────────────────────────
@@ -1821,7 +1826,7 @@ export default function App() {
       <>
       <div
         key="mode-top"
-        className="mode-root"
+        className={`mode-root ${themeClass}`}
         onDoubleClick={() => goSize('full')}
         title={t('top.dblClickToOpen')}
         style={{
@@ -2013,7 +2018,7 @@ export default function App() {
 
   return (
     <>
-    <div key="mode-full" className={`mode-root ${M.id === 'dark' ? 'app-dark-glow' : ''}`} style={{ height: '100vh', background: M.id === 'dark' ? undefined : M.bg, fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif", color: M.t1, position: 'relative', overflow: 'hidden', boxShadow: warnColor ? `inset 0 0 0 2px ${warnColor}` : undefined, transition: 'box-shadow 200ms ease-out', display: 'flex', flexDirection: 'column' }}>
+    <div key="mode-full" className={`mode-root ${themeClass} ${M.id === 'dark' ? 'app-dark-glow' : ''}`} style={{ height: '100vh', background: M.id === 'dark' ? undefined : M.bg, fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif", color: M.t1, position: 'relative', overflow: 'hidden', boxShadow: warnColor ? `inset 0 0 0 2px ${warnColor}` : undefined, transition: 'box-shadow 200ms ease-out', display: 'flex', flexDirection: 'column' }}>
       {hdr}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
         {views[tab]}
