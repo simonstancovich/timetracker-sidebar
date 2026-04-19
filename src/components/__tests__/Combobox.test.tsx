@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18n from 'i18next'
 import { Combobox } from '../Combobox'
 
 const theme = {
@@ -17,6 +18,8 @@ const items = [
 ]
 
 describe('<Combobox />', () => {
+  afterEach(async () => { await i18n.changeLanguage('en') })
+
   it('renders the placeholder when nothing is selected', () => {
     render(<Combobox value="" items={items} onChange={() => {}} placeholder="Search client…" theme={theme} />)
     expect(screen.getByPlaceholderText('Search client…')).toBeInTheDocument()
@@ -59,8 +62,9 @@ describe('<Combobox />', () => {
     expect(screen.getByText('No matches')).toBeInTheDocument()
   })
 
-  it('shows "Inga träffar" (SV) when lang=sv and nothing matches', async () => {
-    render(<Combobox value="" items={items} onChange={() => {}} theme={theme} lang="sv" />)
+  it('shows "Inga träffar" (SV) when i18n is in Swedish mode and nothing matches', async () => {
+    await i18n.changeLanguage('sv')
+    render(<Combobox value="" items={items} onChange={() => {}} theme={theme} />)
     const input = screen.getByRole('textbox')
     await userEvent.click(input)
     await userEvent.type(input, 'zzzz')

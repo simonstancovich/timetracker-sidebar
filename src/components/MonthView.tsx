@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadTimeEntries, TimeEntry } from '../api'
 import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { monthInsight } from '../lib/personality'
-import { Lang, t as tr } from '../lib/i18n'
+import { useTranslation, type Lang } from '../lib/i18n'
 
 type Theme = {
   bg: string
@@ -32,7 +32,6 @@ interface Props {
   onPickDay: (date: Date) => void
   onBackfillDay?: (date: Date) => void
   firstName?: string
-  lang?: Lang
 }
 
 function isoWeekOf(d: Date): number {
@@ -51,8 +50,10 @@ const fmtHours = (h: number) => {
   return `${hh}:${String(mm).padStart(2, '0')}`
 }
 
-export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName, lang = 'en' }: Props) {
-  const t = (k: Parameters<typeof tr>[0], v?: Parameters<typeof tr>[2]) => tr(k, lang, v)
+export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName }: Props) {
+  const { t, i18n } = useTranslation()
+  const lang = i18n.language as Lang
+  const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
   const anchor = useMemo(
     () => new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1),
     [referenceDate],
@@ -391,10 +392,10 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
               <button
                 key={dateKey(d)}
                 onClick={() => (onBackfillDay || onPickDay)(d)}
-                title={d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}
+                title={d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}
                 style={{ background: M.s1, border: `1px solid ${M.b1}`, color: M.t2, borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
               >
-                {d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'short', day: 'numeric' })}
+                {d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' })}
               </button>
             ))}
             {missingDays.length > 5 && (

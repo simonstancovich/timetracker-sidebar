@@ -7,23 +7,29 @@
 // forms when we need them, and keeps the door open to a translator workflow.
 
 import i18n from 'i18next'
+import { initReactI18next } from 'react-i18next'
 import enResources from '../locales/en.json'
 import svResources from '../locales/sv.json'
 
 export type Lang = 'en' | 'sv'
 
 if (!i18n.isInitialized) {
-  void i18n.init({
-    resources: {
-      en: { translation: enResources },
-      sv: { translation: svResources },
-    },
-    lng: 'en',
-    fallbackLng: 'en',
-    interpolation: { escapeValue: false },
-    returnNull: false,
-  })
+  void i18n
+    .use(initReactI18next)
+    .init({
+      resources: {
+        en: { translation: enResources },
+        sv: { translation: svResources },
+      },
+      lng: 'en',
+      fallbackLng: 'en',
+      interpolation: { escapeValue: false },
+      returnNull: false,
+    })
 }
+
+// Re-export useTranslation so call sites import from one place.
+export { useTranslation } from 'react-i18next'
 
 // Back-compat: keep the (key, lang, vars) signature so existing call sites
 // don't have to migrate. Internally uses i18next's per-language fixed-T.

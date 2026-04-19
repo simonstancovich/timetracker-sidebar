@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadTimeEntries, TimeEntry } from '../api'
 import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { weekInsight } from '../lib/personality'
-import { Lang, t as tr } from '../lib/i18n'
+import { useTranslation, type Lang } from '../lib/i18n'
 
 type Theme = {
   bg: string
@@ -26,7 +26,6 @@ interface Props {
   onPickDay: (d: Date) => void
   onBackfillDay?: (d: Date) => void
   firstName?: string
-  lang?: Lang
 }
 
 const DAYS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']
@@ -45,8 +44,10 @@ function mondayOf(d: Date): Date {
   return out
 }
 
-export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName, lang = 'en' }: Props) {
-  const t = (k: Parameters<typeof tr>[0], v?: Parameters<typeof tr>[2]) => tr(k, lang, v)
+export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName }: Props) {
+  const { t, i18n } = useTranslation()
+  const lang = i18n.language as Lang
+  const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
   const [loading, setLoading] = useState(false)
   const [entriesByDate, setEntriesByDate] = useState<Record<string, TimeEntry[]>>({})
   const [prevWeekTotal, setPrevWeekTotal] = useState<number | null>(null)
@@ -199,7 +200,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
     workDayCount: workDays.length,
     billable,
     prevWeekTotal,
-    bestDayName: bestDay ? bestDay.date.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long' }) : null,
+    bestDayName: bestDay ? bestDay.date.toLocaleDateString(locale, { weekday: 'long' }) : null,
     bestDayHours: bestDay?.hours,
     topClientName: topClient?.name,
     topClientShare: topClient && weekTotal > 0 ? topClient.hours / weekTotal : undefined,
@@ -234,7 +235,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
           </div>
           <div style={{ fontSize: 11, color: M.t2, lineHeight: 1.5 }}>
             {overtimeHours > 0 && <div>· <strong>{fmtHours(overtimeHours)}</strong> {t('week.overtime', { goal: fmtHours(weeklyGoal) })}</div>}
-            {longDays.length > 0 && <div>· {t(longDays.length === 1 ? 'week.overTenDays' : 'week.overTenDaysPlural', { n: longDays.length })} ({longDays.map((d) => d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'short' })).join(', ')})</div>}
+            {longDays.length > 0 && <div>· {t(longDays.length === 1 ? 'week.overTenDays' : 'week.overTenDaysPlural', { n: longDays.length })} ({longDays.map((d) => d.toLocaleDateString(locale, { weekday: 'short' })).join(', ')})</div>}
             {weekendHours > 0 && <div>· <strong>{fmtHours(weekendHours)}</strong> {t('week.weekendHours')}</div>}
           </div>
         </div>
@@ -318,7 +319,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
               key={k}
               onClick={() => onPickDay(d)}
               disabled={!loaded}
-              title={holiday ? `${d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'short' })} · ${holiday}` : d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}
+              title={holiday ? `${d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })} · ${holiday}` : d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}
               style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', cursor: loaded ? 'pointer' : 'default', padding: 0 }}
             >
               <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', minHeight: 0 }}>
@@ -383,10 +384,10 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
               <button
                 key={dateKey(d)}
                 onClick={() => (onBackfillDay || onPickDay)(d)}
-                title={d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}
+                title={d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}
                 style={{ background: M.s1, border: `1px solid ${M.b1}`, color: M.t2, borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
               >
-                {d.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'short', day: 'numeric' })}
+                {d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' })}
               </button>
             ))}
           </div>
@@ -396,7 +397,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
       {bestDay && (
         <div style={{ fontSize: 11, color: M.t3, textAlign: 'center', fontStyle: 'italic' }}>
           {lang === 'sv' ? 'Starkaste dagen: ' : 'Strongest day: '}
-          <strong style={{ color: M.t2 }}>{bestDay.date.toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB', { weekday: 'long' })}</strong>
+          <strong style={{ color: M.t2 }}>{bestDay.date.toLocaleDateString(locale, { weekday: 'long' })}</strong>
           {lang === 'sv' ? ' med ' : ' with '}
           <strong style={{ color: M.gn }}>{fmtHours(bestDay.hours)}</strong>
         </div>

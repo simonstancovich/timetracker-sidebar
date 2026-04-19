@@ -22,7 +22,7 @@ import { pickGreeting } from './lib/greetingMessages'
 import { getTimerInsight } from './lib/timerInsights'
 import { emptyTodayMessage, saveCheer, xpCoachNote } from './lib/personality'
 import { getHolidays, isWorkingDay } from './lib/swedishHolidays'
-import { Lang, t as tr, setLang as setI18nLang, achName, achDescription } from './lib/i18n'
+import { Lang, useTranslation, setLang as setI18nLang, achName, achDescription } from './lib/i18n'
 import { useModal } from './lib/useModal'
 import { buildIntroSteps } from './lib/introSteps'
 import { IntroOverlay } from './components/IntroOverlay'
@@ -143,7 +143,7 @@ export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null)
   const [mode, setMode] = useState<'light' | 'dark'>('light')
   const [lang, setLang] = useState<Lang>('en')
-  const t = (key: Parameters<typeof tr>[0], vars?: Parameters<typeof tr>[2]) => tr(key, lang, vars)
+  const { t } = useTranslation()
   const M: Theme = mode === 'light' ? L : D
 
   const [tab, setTab] = useState<'today' | 'timer' | 'log' | 'xp'>('today')
@@ -978,7 +978,7 @@ export default function App() {
     </div>
   )
   if (authed === null) return spinner
-  if (!authed) return <div className={themeClass}><LoginScreen lang={lang} onLogin={() => window.electronAPI.openAuth()} /></div>
+  if (!authed) return <div className={themeClass}><LoginScreen onLogin={() => window.electronAPI.openAuth()} /></div>
   if (!currentUser) return spinner
 
   // ─── Shared UI helpers ────────────────────────────────────────────────
@@ -1165,7 +1165,6 @@ export default function App() {
 
           <MeetingsWidget
             M={M}
-            lang={lang}
             onStartForMeeting={(title) => {
               setTD(title)
               setTab('timer')
@@ -1391,7 +1390,6 @@ export default function App() {
                 items={companies}
                 placeholder={`${t('form.searchClient')} (${companies.length})`}
                 theme={M}
-                lang={lang}
                 onChange={async (id) => { setTCo(id); setTPr(''); if (id) await ensureProjects(id) }}
               />
             </div>
@@ -1403,7 +1401,6 @@ export default function App() {
                   items={prList}
                   placeholder={prList.length ? `${t('form.searchProject')} (${prList.length})` : t('form.loadingProjects')}
                   theme={M}
-                  lang={lang}
                   onChange={setTPr}
                 />
               </div>
@@ -1584,7 +1581,6 @@ export default function App() {
             items={companies}
             placeholder={`${t('form.searchClient')} (${companies.length})`}
             theme={M}
-            lang={lang}
             onChange={async (id) => { setFCo(id); setFPr(''); if (id) await ensureProjects(id) }}
           />
         </div>
@@ -1597,7 +1593,6 @@ export default function App() {
               items={prList}
               placeholder={prList.length ? `${t('form.searchProject')} (${prList.length})` : t('form.loadingProjects')}
               theme={M}
-              lang={lang}
               onChange={setFPr}
             />
           </div>
@@ -1778,7 +1773,6 @@ export default function App() {
       onPickDay={(d) => { setSelectedDate(d); setScale('day') }}
       onBackfillDay={(d) => { setSelectedDate(d); setScale('day'); setTab('log') }}
       firstName={currentUser.username.trim().split(/\s+/)[0]}
-      lang={lang}
     />
   )
   const weekView = (
@@ -1789,7 +1783,6 @@ export default function App() {
       onPickDay={(d) => { setSelectedDate(d); setScale('day') }}
       onBackfillDay={(d) => { setSelectedDate(d); setScale('day'); setTab('log') }}
       firstName={currentUser.username.trim().split(/\s+/)[0]}
-      lang={lang}
     />
   )
 

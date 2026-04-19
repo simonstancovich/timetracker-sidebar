@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { t as tr, type Lang } from '../lib/i18n'
+import { useTranslation } from '../lib/i18n'
 
 interface Theme {
   bg: string; s1: string; s2: string; ac: string; ad: string; at: string
@@ -15,10 +15,10 @@ interface Props {
   placeholder?: string
   theme: Theme
   maxResults?: number
-  lang?: Lang
 }
 
-export function Combobox({ value, items, onChange, placeholder, theme, maxResults = 40, lang = 'en' }: Props) {
+export function Combobox({ value, items, onChange, placeholder, theme, maxResults = 40 }: Props) {
+  const { t } = useTranslation()
   const selected = items.find((i) => i.id === value)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -99,7 +99,7 @@ export function Combobox({ value, items, onChange, placeholder, theme, maxResult
           }}
         >
           {filtered.length === 0 ? (
-            <div style={{ padding: '10px 12px', fontSize: 12, color: theme.t3 }}>{tr('form.noMatches', lang)}</div>
+            <div style={{ padding: '10px 12px', fontSize: 12, color: theme.t3 }}>{t('form.noMatches')}</div>
           ) : (
             filtered.map((item, i) => (
               <div

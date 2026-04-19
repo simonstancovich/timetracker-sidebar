@@ -1,9 +1,12 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18n from 'i18next'
 import { LoginScreen } from '../LoginScreen'
 
 describe('<LoginScreen />', () => {
+  afterEach(async () => { await i18n.changeLanguage('en') })
+
   it('renders the product name and EN copy by default', () => {
     render(<LoginScreen onLogin={() => {}} />)
     expect(screen.getByText('DevCore TimeTracker')).toBeInTheDocument()
@@ -13,8 +16,9 @@ describe('<LoginScreen />', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders the SV copy when lang=sv', () => {
-    render(<LoginScreen onLogin={() => {}} lang="sv" />)
+  it('renders the SV copy when i18n is in Swedish mode', async () => {
+    await i18n.changeLanguage('sv')
+    render(<LoginScreen onLogin={() => {}} />)
     expect(screen.getByRole('button', { name: 'Logga in' })).toBeInTheDocument()
     expect(
       screen.getByText('Logga in med ditt DevCore-konto för att börja spåra tid.'),

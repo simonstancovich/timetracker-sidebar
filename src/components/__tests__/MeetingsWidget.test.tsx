@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import i18n from 'i18next'
 import { MeetingsWidget } from '../MeetingsWidget'
 
 const M = {
@@ -29,6 +30,8 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 3, 19, 10, 0, 0))
 })
 
+afterEach(async () => { await i18n.changeLanguage('en') })
+
 describe('<MeetingsWidget />', () => {
   it('renders the not-configured notice when configured=false', async () => {
     mockApi({
@@ -49,9 +52,10 @@ describe('<MeetingsWidget />', () => {
     expect(screen.getByRole('button', { name: 'Sign in with Microsoft' })).toBeInTheDocument()
   })
 
-  it('renders the SV connect copy when lang=sv', async () => {
+  it('renders the SV connect copy when i18n is in Swedish mode', async () => {
+    await i18n.changeLanguage('sv')
     mockApi()
-    render(<MeetingsWidget M={M as any} lang="sv" />)
+    render(<MeetingsWidget M={M as any} />)
     await waitFor(() => {
       expect(screen.getByText('Anslut din kalender')).toBeInTheDocument()
     })

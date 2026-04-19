@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { t as tr, type Lang } from '../lib/i18n'
+import { useTranslation } from '../lib/i18n'
 
 type Theme = {
   bg: string
@@ -22,20 +22,20 @@ type Theme = {
 interface Props {
   M: Theme
   onStartForMeeting?: (title: string) => void
-  lang?: Lang
 }
 
-const fmtTime = (iso: string, lang: Lang) => {
+const fmtTime = (iso: string, locale: string) => {
   const d = new Date(iso)
-  return d.toLocaleTimeString(lang === 'sv' ? 'sv-SE' : 'en-GB', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 }
 
 const minutesUntil = (iso: string) => {
   return Math.round((new Date(iso).getTime() - Date.now()) / 60000)
 }
 
-export function MeetingsWidget({ M, onStartForMeeting, lang = 'en' }: Props) {
-  const t = (k: Parameters<typeof tr>[0], v?: Parameters<typeof tr>[2]) => tr(k, lang, v)
+export function MeetingsWidget({ M, onStartForMeeting }: Props) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'sv' ? 'sv-SE' : 'en-GB'
   const [status, setStatus] = useState<GraphStatus | null>(null)
   const [meetings, setMeetings] = useState<GraphMeeting[]>([])
   const [loading, setLoading] = useState(false)
@@ -139,10 +139,10 @@ export function MeetingsWidget({ M, onStartForMeeting, lang = 'en' }: Props) {
           <div style={{ background: inProgress ? `${M.gn}15` : soon ? `${M.pk}15` : M.bg, border: `1px solid ${inProgress ? `${M.gn}55` : soon ? `${M.pk}55` : M.b1}`, borderRadius: 9, padding: '10px 11px', display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: inProgress ? M.gn : soon ? M.pk : M.ac }}>
-                {inProgress ? t('cal.now') : mins < 60 ? t('cal.inMin', { n: mins }) : t('cal.atTime', { time: fmtTime(next.start.dateTime, lang) })}
+                {inProgress ? t('cal.now') : mins < 60 ? t('cal.inMin', { n: mins }) : t('cal.atTime', { time: fmtTime(next.start.dateTime, locale) })}
               </div>
               <div style={{ fontSize: 10, color: M.t3, fontFamily: 'monospace' }}>
-                {fmtTime(next.start.dateTime, lang)}–{fmtTime(next.end.dateTime, lang)}
+                {fmtTime(next.start.dateTime, locale)}–{fmtTime(next.end.dateTime, locale)}
               </div>
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, color: M.t1, lineHeight: 1.3 }}>
@@ -183,7 +183,7 @@ export function MeetingsWidget({ M, onStartForMeeting, lang = 'en' }: Props) {
                 {m.subject || t('cal.noSubject')}
               </span>
               <span style={{ color: M.t3, fontFamily: 'monospace', flexShrink: 0 }}>
-                {fmtTime(m.start.dateTime, lang)}
+                {fmtTime(m.start.dateTime, locale)}
               </span>
             </div>
           ))}
