@@ -3,7 +3,7 @@ import {
   colors, pickColor, chartColors, alpha,
   light, dark, themes,
   fontFamily, fontSize, fontWeight, lineHeight, letterSpacing,
-  spacing, radii, shadows, zIndex, duration, easing, transitions,
+  spacing, widths, radii, shadows, zIndex, duration, easing, transitions,
 } from './index'
 
 describe('colors — catalog shape', () => {
@@ -157,11 +157,21 @@ describe('spacing', () => {
     expect(spacing.lg).toBeLessThan(spacing.xl)
     expect(spacing.xl).toBeLessThan(spacing['2xl'])
   })
+})
 
-  it('numeric step scale grows monotonically', () => {
-    expect(spacing['1']).toBeLessThan(spacing['2'])
-    expect(spacing['2']).toBeLessThan(spacing['3'])
-    expect(spacing['3']).toBeLessThan(spacing['4'])
+describe('widths', () => {
+  it('numeric widths grow monotonically from narrow to lg', () => {
+    expect(widths.narrow).toBeLessThan(widths.prose)
+    expect(widths.prose).toBeLessThan(widths.md)
+    expect(widths.md).toBeLessThan(widths.lg)
+  })
+
+  it('exposes a full token as "100%"', () => {
+    expect(widths.full).toBe('100%')
+  })
+
+  it('prose is 280 (the readable-column default used by LoginScreen)', () => {
+    expect(widths.prose).toBe(280)
   })
 })
 

@@ -26,7 +26,7 @@ export const variant = styleVariants({
 
 export const size = styleVariants({
   md: {
-    padding: `${spacing.md}px ${spacing['7']}px`,
+    padding: `${spacing.md}px ${spacing.xl}px`,
     fontSize: fontSize.lg,
     borderRadius: radii['3xl'],
   },

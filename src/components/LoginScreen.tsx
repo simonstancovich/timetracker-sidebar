@@ -1,22 +1,22 @@
-import { useTranslation } from '../lib/i18n'
-import { Stack, IconTile, Heading, Text, Button } from '../primitives'
+import { useTranslation } from "../lib/i18n";
+import { Stack, IconTile, Heading, Text, Button } from "../primitives";
 
 interface Props {
-  onLogin: () => void
+  onLogin: () => void;
 }
 
 export function LoginScreen({ onLogin }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
   return (
     <Stack align="center" justify="center" gap="lg" padding="xl" fullHeight>
       <IconTile size="xl">⏱</IconTile>
       <Stack align="center" gap="xs">
         <Heading level={1}>DevCore TimeTracker</Heading>
         <Text color="tertiary" align="center" maxWidth="prose">
-          {t('login.pitch')}
+          {t("login.pitch")}
         </Text>
       </Stack>
-      <Button onClick={onLogin}>{t('login.signIn')}</Button>
+      <Button onClick={onLogin}>{t("login.signIn")}</Button>
     </Stack>
-  )
+  );
 }

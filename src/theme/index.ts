@@ -14,6 +14,7 @@ export {
 // Other token categories.
 export { fontFamily, fontSize, fontWeight, lineHeight, letterSpacing } from './typography'
 export { spacing } from './spacing'
+export { widths } from './widths'
 export { radii } from './radii'
 export { shadows } from './shadows'
 export { zIndex } from './zIndex'
