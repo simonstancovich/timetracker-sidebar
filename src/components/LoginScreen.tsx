@@ -12,7 +12,7 @@ export function LoginScreen({ onLogin }: Props) {
       <IconTile size="xl">⏱</IconTile>
       <Stack align="center" gap="xs">
         <Heading level={1}>DevCore TimeTracker</Heading>
-        <Text color="tertiary" align="center" maxWidth={280}>
+        <Text color="tertiary" align="center" maxWidth="prose">
           {t('login.pitch')}
         </Text>
       </Stack>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from '../lib/i18n'
 
 interface Theme {
@@ -50,7 +50,7 @@ export function Combobox({ value, items, onChange, placeholder, theme, maxResult
     inputRef.current?.blur()
   }
 
-  const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHighlight((h) => Math.min(filtered.length - 1, h + 1)) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((h) => Math.max(0, h - 1)) }
     else if (e.key === 'Enter') {

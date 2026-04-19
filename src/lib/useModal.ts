@@ -43,10 +43,10 @@ export function useModal<T extends HTMLElement>({
       if (e.key !== 'Tab') return
       const node = containerRef.current
       if (!node) return
-      const els = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE))
+      const els: HTMLElement[] = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE))
       if (els.length === 0) { e.preventDefault(); return }
-      const first = els[0]
-      const last = els[els.length - 1]
+      const first = els[0]!
+      const last = els[els.length - 1]!
       const active = document.activeElement as HTMLElement | null
       if (!active || !node.contains(active)) {
         e.preventDefault()

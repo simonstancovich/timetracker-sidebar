@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState, type CSSProperties, type SyntheticEvent } from 'react'
 import { useModal } from '../lib/useModal'
 import type { IntroStep } from '../lib/introSteps'
 
@@ -198,13 +198,13 @@ export function IntroOverlay({
   const tooltipTop = tooltipBelow ? holeBottom + 10 : Math.max(10, holeTop - 10 - 140)
   const tooltipLeft = Math.max(10, Math.min(holeLeft, window.innerWidth - tooltipMaxW - 10))
 
-  const maskBase: React.CSSProperties = {
+  const maskBase: CSSProperties = {
     position: 'fixed',
     background: 'rgba(0,0,0,0.62)',
     zIndex: 499,
     pointerEvents: 'auto',
   }
-  const swallow = (e: React.SyntheticEvent) => e.stopPropagation()
+  const swallow = (e: SyntheticEvent) => e.stopPropagation()
 
   return (
     <>

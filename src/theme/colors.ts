@@ -233,5 +233,9 @@ export const dark = {
   co: colors.chart.dark,
 } as const;
 
-export type Theme = typeof light;
+// Theme is the union so consumers can switch on `M.id` and still have both
+// literal records as acceptable values. Without the union, TS narrows Theme
+// to just light's shape and comparisons like `M.id === 'dark'` are statically
+// never-true.
+export type Theme = typeof light | typeof dark;
 export const themes: Record<Mode, Theme> = { light, dark };

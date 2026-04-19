@@ -28,3 +28,14 @@ export const align = styleVariants({
   center: { textAlign: 'center' },
   right:  { textAlign: 'right' },
 })
+
+// Token-backed reading-width buckets. Raw numeric props were removed to keep
+// the design system closed — add a new bucket here rather than pass a number
+// at a call site.
+export const maxWidth = styleVariants({
+  narrow: { maxWidth: 200 },
+  prose:  { maxWidth: 280 },
+  md:     { maxWidth: 400 },
+  lg:     { maxWidth: 640 },
+  full:   { maxWidth: '100%' },
+})

@@ -128,8 +128,8 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
     return () => { cancelled = true }
   }, [year, month])
 
-  const monthTotal = useMemo(
-    () => Object.values(hoursByDate).reduce((s, h) => s + h, 0),
+  const monthTotal = useMemo<number>(
+    () => (Object.values(hoursByDate) as number[]).reduce((s, h) => s + h, 0),
     [hoursByDate],
   )
   const workingDays = useMemo(() => {
@@ -192,14 +192,14 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
 
   const billable = useMemo(() => {
     let b = 0
-    for (const rows of Object.values(entriesByDate)) {
+    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
       for (const r of rows) if (r.invoice === '1') b += parseFloat(r.hour || '0')
     }
     return b
   }, [entriesByDate])
   const earnings = useMemo(() => {
     let total = 0
-    for (const rows of Object.values(entriesByDate)) {
+    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
       for (const r of rows) {
         if (r.invoice !== '1') continue
         total += parseFloat(r.hour || '0') * parseFloat(r.hour_price || '0')
@@ -212,7 +212,7 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
 
   const clientTotals = useMemo(() => {
     const m: Record<string, { name: string; hours: number }> = {}
-    for (const rows of Object.values(entriesByDate)) {
+    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
       for (const r of rows) {
         const key = r._company_id
         if (!m[key]) m[key] = { name: r.company, hours: 0 }
@@ -224,7 +224,7 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
 
   const projectTotals = useMemo(() => {
     const m: Record<string, { name: string; company: string; hours: number }> = {}
-    for (const rows of Object.values(entriesByDate)) {
+    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
       for (const r of rows) {
         const key = r._project_id
         if (!m[key]) m[key] = { name: r.project, company: r.company, hours: 0 }

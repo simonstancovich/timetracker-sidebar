@@ -97,20 +97,20 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
     return () => { cancelled = true }
   }, [prevWeekDates])
 
-  const hoursByDate = useMemo(() => {
+  const hoursByDate = useMemo<Record<string, number>>(() => {
     const o: Record<string, number> = {}
-    for (const [k, rows] of Object.entries(entriesByDate)) {
+    for (const [k, rows] of Object.entries(entriesByDate) as [string, TimeEntry[]][]) {
       o[k] = rows.reduce((s, e) => s + (parseFloat(e.hour) || 0), 0)
     }
     return o
   }, [entriesByDate])
 
-  const weekTotal = Object.values(hoursByDate).reduce((s, h) => s + h, 0)
+  const weekTotal: number = (Object.values(hoursByDate) as number[]).reduce((s, h) => s + h, 0)
   const workDays = weekDates.filter((d) => isWorkingDay(d, holidays) && d <= new Date())
   const hit = workDays.filter((d) => (hoursByDate[dateKey(d)] || 0) >= goal).length
   const billable = useMemo(() => {
     let b = 0
-    for (const rows of Object.values(entriesByDate)) {
+    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
       for (const r of rows) if (r.invoice === '1') b += parseFloat(r.hour || '0')
     }
     return b
@@ -119,7 +119,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
   // Group entries by client for the week
   const clientTotals = useMemo(() => {
     const m: Record<string, { name: string; hours: number }> = {}
-    for (const rows of Object.values(entriesByDate)) {
+    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
       for (const r of rows) {
         const key = r._company_id
         if (!m[key]) m[key] = { name: r.company, hours: 0 }
@@ -131,7 +131,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
 
   const projectTotals = useMemo(() => {
     const m: Record<string, { name: string; company: string; hours: number }> = {}
-    for (const rows of Object.values(entriesByDate)) {
+    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
       for (const r of rows) {
         const key = r._project_id
         if (!m[key]) m[key] = { name: r.project, company: r.company, hours: 0 }
@@ -143,7 +143,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
 
   const earnings = useMemo(() => {
     let total = 0
-    for (const rows of Object.values(entriesByDate)) {
+    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
       for (const r of rows) {
         if (r.invoice !== '1') continue
         total += parseFloat(r.hour || '0') * parseFloat(r.hour_price || '0')

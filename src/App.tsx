@@ -745,7 +745,7 @@ export default function App() {
       d.setDate(d.getDate() + i)
       return d
     })
-    Promise.all(days.map((d) => loadTimeEntries(d).catch(() => [])))
+    Promise.all(days.map((d) => loadTimeEntries(d).catch((): TimeEntry[] => [])))
       .then((all) =>
         setWeekH(all.map((rows) => rows.reduce((s, e) => s + parseFloat(e.hour || '0'), 0))),
       )
@@ -1174,7 +1174,7 @@ export default function App() {
           <div style={{ height: 1, background: M.s2 }} />
 
           <div data-tour="today-entries" style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-          {Object.entries(groups).map(([co, g], gi) => (
+          {(Object.entries(groups) as [string, { cid: string; h: number; entries: TimeEntry[] }][]).map(([co, g], gi) => (
             <div key={co} style={{ paddingLeft: 11, borderLeft: `3px solid ${M.co[gi % M.co.length]}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: M.co[gi % M.co.length] }}>{co}</span>

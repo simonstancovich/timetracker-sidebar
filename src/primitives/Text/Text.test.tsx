@@ -27,8 +27,21 @@ describe('<Text />', () => {
     expect((container.firstChild as HTMLElement).className).toContain(s.align.center)
   })
 
-  it('applies maxWidth inline when passed', () => {
-    const { container } = render(<Text maxWidth={280}>x</Text>)
-    expect((container.firstChild as HTMLElement).style.maxWidth).toBe('280px')
+  it('applies the maxWidth variant class when passed a token', () => {
+    const { container } = render(<Text maxWidth="prose">x</Text>)
+    expect((container.firstChild as HTMLElement).className).toContain(s.maxWidth.prose)
+  })
+
+  it('omits the maxWidth class when prop is undefined', () => {
+    const { container } = render(<Text>x</Text>)
+    const el = container.firstChild as HTMLElement
+    expect(el.className).not.toContain(s.maxWidth.prose)
+    expect(el.className).not.toContain(s.maxWidth.narrow)
+  })
+
+  it('never emits an inline style attribute (primitives stay class-based)', () => {
+    const { container } = render(<Text maxWidth="md" color="pink" align="center">x</Text>)
+    const el = container.firstChild as HTMLElement
+    expect(el.getAttribute('style')).toBeNull()
   })
 })

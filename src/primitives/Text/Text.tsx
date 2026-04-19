@@ -3,11 +3,12 @@ import * as s from './Text.css'
 
 export type TextColor = keyof typeof s.color
 export type TextAlign = keyof typeof s.align
+export type TextMaxWidth = keyof typeof s.maxWidth
 
 interface Props {
   color?: TextColor
   align?: TextAlign
-  maxWidth?: number | string
+  maxWidth?: TextMaxWidth
   className?: string
   children: ReactNode
 }
@@ -19,10 +20,12 @@ export function Text({
   className,
   children,
 }: Props) {
-  const classes = [s.root, s.color[color], s.align[align], className].filter(Boolean).join(' ')
-  return (
-    <p className={classes} style={maxWidth !== undefined ? { maxWidth } : undefined}>
-      {children}
-    </p>
-  )
+  const classes = [
+    s.root,
+    s.color[color],
+    s.align[align],
+    maxWidth && s.maxWidth[maxWidth],
+    className,
+  ].filter(Boolean).join(' ')
+  return <p className={classes}>{children}</p>
 }

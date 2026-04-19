@@ -10,6 +10,7 @@ type Theme = {
   t1: string
   t2: string
   t3: string
+  tf: string
   ac: string
   ad: string
   at: string
