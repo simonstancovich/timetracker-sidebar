@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fmtHours, parseHoursInput } from './hours'
+import { fmtHours, parseHoursInput, roundUpToQuarter } from './hours'
 
 describe('fmtHours', () => {
   it('formats whole hours', () => {
@@ -66,5 +66,31 @@ describe('parseHoursInput', () => {
 
   it('trims surrounding whitespace', () => {
     expect(parseHoursInput('  1:30  ')).toBe(1.5)
+  })
+})
+
+describe('roundUpToQuarter', () => {
+  it('leaves exact quarter values unchanged', () => {
+    expect(roundUpToQuarter(0.25)).toBe(0.25)
+    expect(roundUpToQuarter(0.5)).toBe(0.5)
+    expect(roundUpToQuarter(1)).toBe(1)
+    expect(roundUpToQuarter(1.75)).toBe(1.75)
+  })
+
+  it('rounds partial quarters up', () => {
+    expect(roundUpToQuarter(0.1)).toBe(0.25)
+    expect(roundUpToQuarter(0.26)).toBe(0.5)
+    expect(roundUpToQuarter(1.1)).toBe(1.25)
+    expect(roundUpToQuarter(1.51)).toBe(1.75)
+  })
+
+  it('enforces a 15-minute minimum', () => {
+    expect(roundUpToQuarter(0)).toBe(0.25)
+    expect(roundUpToQuarter(0.01)).toBe(0.25)
+  })
+
+  it('guards against NaN / negatives', () => {
+    expect(roundUpToQuarter(NaN)).toBe(0.25)
+    expect(roundUpToQuarter(-1)).toBe(0.25)
   })
 })

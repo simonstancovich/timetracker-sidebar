@@ -14,7 +14,7 @@ import {
   saveTimeEntry,
 } from "./api";
 import { formatLocalDate } from "./lib/date";
-import { fmtHours, parseHoursInput } from "./lib/hours";
+import { fmtHours, parseHoursInput, roundUpToQuarter } from "./lib/hours";
 import {
   ACHS,
   CHECKS,
@@ -1003,7 +1003,13 @@ export default function App() {
     if (!currentUser) return;
     const co = companies.find((c) => c.id === cid);
     const pr = (projectCache[cid] || []).find((p) => p.id === prid);
-    if (!co || !pr) return;
+    if (!co || !pr) {
+      addFloat(t("form.saveFailed", { err: "missing client/project" }), "#ef4444");
+      return;
+    }
+
+    // Billing policy: every save lands on a 15-minute boundary, rounded up.
+    hours = roundUpToQuarter(hours);
 
     const payload = buildSavePayload({
       company: co,
@@ -1038,6 +1044,13 @@ export default function App() {
     if (savedDateISO === todayISOStr) {
       const fresh = await loadTimeEntries(new Date());
       setEntries(fresh);
+    }
+    // If History's Daily drill-down is showing this date, reload it too so
+    // the user sees their just-saved past-day entry immediately.
+    if (savedDateISO === fmtDateISO(selectedDate) && historyScale === "day") {
+      loadTimeEntries(selectedDate)
+        .then(setDayEntries)
+        .catch(() => {});
     }
     // Only bump weekH for today's entries (weekH is current week Mon–Fri)
     setWeekH((w) => {
@@ -2863,11 +2876,22 @@ export default function App() {
     const co = companies.find((c) => c.id === fCo);
     const pickedDate = editingDate ?? selectedDate;
     const save = async () => {
-      if (!fCo || !fPr || !co || !prObj || !fD.trim()) return;
+      if (!fCo || !fPr || !fD.trim()) {
+        addFloat(t("form.fillFirst"), "#ef4444");
+        return;
+      }
+      if (!co || !prObj) {
+        addFloat(t("form.saveFailed", { err: "missing client/project" }), "#ef4444");
+        return;
+      }
+      // Commit any pending input by parsing fHInput so a user who clicks Save
+      // without blurring the hours input still gets their typed value saved.
+      const parsed = parseHoursInput(fHInput);
+      const liveHours = parsed == null ? fH : Math.max(0, Math.min(24, parsed));
       await saveNewEntry(
         fCo,
         fPr,
-        fH,
+        liveHours,
         fD,
         fInv,
         fNote.trim(),

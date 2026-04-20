@@ -10,6 +10,15 @@ export function fmtHours(h: number): string {
   return `${hh}:${String(mm).padStart(2, '0')}`
 }
 
+// Round decimal hours UP to the nearest 15-minute block (0.25 h). Minimum is
+// 0.25 h (15 min) so any logged work is at least that. The billing convention
+// for this team is "always round up" — a 16-minute task bills as 30 min, not
+// 15.
+export function roundUpToQuarter(h: number): number {
+  if (!Number.isFinite(h) || h <= 0) return 0.25
+  return Math.max(0.25, +((Math.ceil(h * 4) / 4).toFixed(2)))
+}
+
 // Accepts "1.5", "1,5", "1:30", "01:30:00", etc. Returns decimal hours or null.
 export function parseHoursInput(raw: string): number | null {
   const s = raw.trim()
