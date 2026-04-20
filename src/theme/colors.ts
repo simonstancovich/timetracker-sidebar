@@ -138,9 +138,6 @@ const BORDER_MAP: Record<
   green: { light: "greenLight", dark: "greenDark" },
 };
 
-// Overloaded resolver. `pickColor('typography', 'pink', 'light')` returns the
-// pink500 hex; `pickColor('background', 'page', 'dark')` returns the dark page
-// hex. Each category has its own valid `name` set, enforced at the type level.
 export function pickColor(
   category: "typography",
   name: TypoName,
@@ -169,11 +166,6 @@ export function pickColor(
 }
 
 export const chartColors = (mode: Mode) => colors.chart[mode];
-
-// ─── Back-compat: light/dark theme records ────────────────────────────────
-// Existing inline styles read `M.bg`, `M.s1`, `M.t1`, etc. These records keep
-// the old API working by mapping the cryptic short names to the new catalog.
-// New code should prefer `pickColor(...)` instead.
 
 export const light = {
   id: "light",
@@ -233,9 +225,5 @@ export const dark = {
   co: colors.chart.dark,
 } as const;
 
-// Theme is the union so consumers can switch on `M.id` and still have both
-// literal records as acceptable values. Without the union, TS narrows Theme
-// to just light's shape and comparisons like `M.id === 'dark'` are statically
-// never-true.
 export type Theme = typeof light | typeof dark;
 export const themes: Record<Mode, Theme> = { light, dark };
