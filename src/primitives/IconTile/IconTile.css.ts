@@ -10,9 +10,6 @@ export const root = style({
   boxShadow: vars.shadow.brand,
 })
 
-// Each size composes token values across the box dimension, corner rounding,
-// and icon glyph size. Keeping these three axes coupled per size preserves
-// visual proportions; change a size by editing one line, not three.
 export const size = styleVariants({
   sm: { width: sizes.sm, height: sizes.sm, borderRadius: radii.sm,    fontSize: fontSize.lg },
   md: { width: sizes.md, height: sizes.md, borderRadius: radii.md,    fontSize: fontSize['3xl'] },
