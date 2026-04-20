@@ -637,15 +637,24 @@ export default function App() {
   useEffect(() => { if (authed) window.electronAPI.storeSet('streak', streak) }, [streak, authed])
   useEffect(() => { if (authed && achStatsLoaded) window.electronAPI.storeSet('achStats', achStats) }, [achStats, authed, achStatsLoaded])
 
-  // Dequeue achievement toasts one at a time so stacked unlocks don't collide.
+  // Dequeue: when no toast is showing and the queue has items, pop the next
+  // one into `ach`. The dismiss timer is a separate effect (below) so the
+  // cleanup here doesn't kill it on the first re-render.
   useEffect(() => {
     if (ach || pendingAchs.length === 0) return
     const [next, ...rest] = pendingAchs
     setAch(next)
     setPendingAchs(rest)
+  }, [ach, pendingAchs])
+
+  // Auto-dismiss the currently-shown toast after 3.2s. Runs whenever `ach`
+  // becomes truthy; cleanup runs when `ach` flips back to null (via this
+  // timeout) or when a new toast replaces it.
+  useEffect(() => {
+    if (!ach) return
     const id = window.setTimeout(() => setAch(null), 3200)
     return () => clearTimeout(id)
-  }, [ach, pendingAchs])
+  }, [ach])
 
   // Persist timer on control/field changes (NOT on tSec tick — startedAt covers elapsed).
   useEffect(() => {
