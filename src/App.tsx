@@ -1021,13 +1021,12 @@ export default function App() {
   // ─── Header ────────────────────────────────────────────────────────────
   const hdr = (
     <div style={{ padding: '12px 14px 0', background: M.bg, borderBottom: `1px solid ${M.b1}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: M.lo, letterSpacing: -0.4, whiteSpace: 'nowrap', flexShrink: 0 }}>DevCore Time</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 11, color: M.t3, height: 22 }}>
-            <span style={{ whiteSpace: 'nowrap', color: M.t3 }}>{clockDate}</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: M.t1, fontSize: 12 }}>{clockTime}</span>
-          </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 11, color: M.t3, minWidth: 0 }}>
+          <span style={{ whiteSpace: 'nowrap', color: M.t3, overflow: 'hidden', textOverflow: 'ellipsis' }}>{clockDate}</span>
+          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: M.t1, fontSize: 13 }}>{clockTime}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: done ? M.gn : todayH > 0 ? M.t1 : M.tf, fontFamily: 'monospace', display: 'inline-flex', alignItems: 'center', height: 22, lineHeight: 1 }}>{fmtHours(todayH)}</span>
           <button
             type="button"
@@ -1052,10 +1051,6 @@ export default function App() {
               {tRun ? fmtClock(tSec) : tSec > 0 ? t('status.paused') : t('status.idle')}
             </span>
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: M.pb, border: `1px solid ${M.pp}`, borderRadius: 100, padding: '0 7px', height: 22 }}>
-            <div style={{ width: 5, height: 5, borderRadius: '50%', background: M.pv }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: M.pk, fontFamily: 'monospace' }}>{streak}d</span>
-          </div>
           <button
             onClick={() => goSize('top')}
             title={t('header.minimizeTopBar')}
@@ -1087,20 +1082,32 @@ export default function App() {
     `${pbarDate.getFullYear()}-${String(pbarDate.getMonth() + 1).padStart(2, '0')}-${String(pbarDate.getDate()).padStart(2, '0')}`,
   )
 
+  const streakBadge = streak > 0 ? (
+    <span style={{ fontSize: 10, fontWeight: 700, color: M.pk, fontFamily: 'monospace', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+      <span style={{ fontSize: 11 }}>🔥</span>{streak}d
+    </span>
+  ) : null
+
   const pbar = pbarDayOff ? (
-    <div style={{ padding: '10px 14px 10px', borderBottom: `1px solid ${M.s2}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ padding: '10px 14px 10px', borderBottom: `1px solid ${M.s2}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
       <span style={{ fontSize: 11, color: M.t3 }}>{t('today.hoursLogged', { hours: fmtHours(todayH) })}</span>
-      <span style={{ fontSize: 11, fontWeight: 700, color: M.t3 }}>
-        {pbarHolidayName ? `🎉 ${pbarHolidayName}` : `🌴 ${lang === 'sv' ? 'Ledig dag' : 'Day off'}`}
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {streakBadge}
+        <span style={{ fontSize: 11, fontWeight: 700, color: M.t3 }}>
+          {pbarHolidayName ? `🎉 ${pbarHolidayName}` : `🌴 ${lang === 'sv' ? 'Ledig dag' : 'Day off'}`}
+        </span>
+      </div>
     </div>
   ) : (
     <div style={{ padding: '10px 14px 10px', borderBottom: `1px solid ${M.s2}` }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 10 }}>
         <span style={{ fontSize: 11, color: M.t3 }}>{t('today.hoursLogged', { hours: fmtHours(todayH) })}</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: done ? M.gn : M.t2 }}>
-          {done ? t('today.goalReached') : t('today.toGo', { hours: fmtHours(GOAL - todayH) })}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {streakBadge}
+          <span style={{ fontSize: 11, fontWeight: 700, color: done ? M.gn : M.t2 }}>
+            {done ? t('today.goalReached') : t('today.toGo', { hours: fmtHours(GOAL - todayH) })}
+          </span>
+        </div>
       </div>
       <div style={{ height: 5, background: M.s2, borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${gpct}%`, background: done ? M.gn : M.ac, borderRadius: 3, transition: 'width .5s' }} />
