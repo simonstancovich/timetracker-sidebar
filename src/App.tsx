@@ -149,19 +149,22 @@ export default function App() {
   const [tab, setTab] = useState<'today' | 'timer' | 'history' | 'xp'>('today')
   // History tab navigates independently; selectedDate drives week/month anchors.
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [historyScale, setHistoryScale] = useState<'week' | 'month'>('week')
+  const [historyScale, setHistoryScale] = useState<'day' | 'week' | 'month'>('week')
 
-  // Inline expandable "+ Log past time" form on the Timer tab.
+  // Full-screen "+ Log past time" / edit form, shown in place of the active
+  // tab when true (no tab button — entered from the Timer pill or by double-
+  // clicking an entry). Behaves like the removed +Log tab used to.
   const [logOpen, setLogOpen] = useState(false)
 
-  // When the user clicks a day in Week/Month, Today switches to show that
-  // day's entries. null = today.
-  const [viewDate, setViewDate] = useState<Date | null>(null)
-  const [viewDateEntries, setViewDateEntries] = useState<TimeEntry[]>([])
-  const [viewDateLoading, setViewDateLoading] = useState(false)
+  // History tab's selectedDate also drives a Daily drill-down when the user
+  // clicks a day inside Week or Month. Daily-view entries are loaded on demand.
+  const [dayEntries, setDayEntries] = useState<TimeEntry[]>([])
+  const [dayEntriesLoading, setDayEntriesLoading] = useState(false)
 
   const stepHistoryDate = (dir: 1 | -1) => {
-    if (historyScale === 'week') {
+    if (historyScale === 'day') {
+      setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() + dir); return n })
+    } else if (historyScale === 'week') {
       setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() + 7 * dir); return n })
     } else {
       setSelectedDate((d) => new Date(d.getFullYear(), d.getMonth() + dir, 1))
@@ -169,6 +172,9 @@ export default function App() {
   }
   const historyIsOnCurrent = (() => {
     const now = new Date()
+    if (historyScale === 'day') {
+      return fmtDateISO(selectedDate) === fmtDateISO(now)
+    }
     if (historyScale === 'week') {
       const monA = new Date(selectedDate); monA.setDate(monA.getDate() - ((monA.getDay() + 6) % 7)); monA.setHours(0,0,0,0)
       const monB = new Date(now); monB.setDate(monB.getDate() - ((monB.getDay() + 6) % 7)); monB.setHours(0,0,0,0)
@@ -413,7 +419,6 @@ export default function App() {
     setFD(entry.description || '')
     setFNote(entry.internal_description || '')
     setFInv(entry.invoice === '1')
-    setTab('timer')
     setLogOpen(true)
   }
 
@@ -750,16 +755,16 @@ export default function App() {
     return () => { cancelled = true }
   }, [authed, nowTick])
 
-  // ─── Load entries for a viewed past day (Today tab, when viewDate set) ─
+  // ─── Load entries for History → Daily drill-down ──────────────────────
   useEffect(() => {
-    if (!authed || !viewDate) return
+    if (!authed || historyScale !== 'day' || tab !== 'history') return
     let cancelled = false
-    setViewDateLoading(true)
-    loadTimeEntries(viewDate)
-      .then((list) => { if (!cancelled) { setViewDateEntries(list); setViewDateLoading(false) } })
-      .catch(() => { if (!cancelled) setViewDateLoading(false) })
+    setDayEntriesLoading(true)
+    loadTimeEntries(selectedDate)
+      .then((list) => { if (!cancelled) { setDayEntries(list); setDayEntriesLoading(false) } })
+      .catch(() => { if (!cancelled) setDayEntriesLoading(false) })
     return () => { cancelled = true }
-  }, [authed, viewDate, entries])
+  }, [authed, historyScale, tab, selectedDate, entries])
 
   // ─── Load week hours (Mon–Fri containing selectedDate) ─────────────────
   useEffect(() => {
@@ -1126,98 +1131,56 @@ export default function App() {
     const subtitle = isDayOff
       ? (holidayName ? t('today.dayOffHoliday', { holiday: holidayName }) : t('today.dayOff'))
       : (done ? t('today.goalReachedLine') : t('today.leftToHit', { hours: fmtHours(GOAL - todayH), goal: GOAL }))
-
-    // Past-day inspection: when viewDate is set we show that day's entries
-    // (loaded into viewDateEntries), skipping today-only widgets.
-    const isPastDay = viewDate !== null
-    const dispEntries = isPastDay ? viewDateEntries : entries
-    const dispH = isPastDay ? dispEntries.reduce((s, e) => s + parseFloat(e.hour || '0'), 0) : todayH
-    const dispLoading = isPastDay ? viewDateLoading : entriesLoading
-    const dispGroups: Record<string, { cid: string; h: number; entries: TimeEntry[] }> = isPastDay
-      ? (() => {
-          const g: Record<string, { cid: string; h: number; entries: TimeEntry[] }> = {}
-          dispEntries.forEach((e) => {
-            const key = e.company
-            if (!g[key]) g[key] = { cid: e._company_id, h: 0, entries: [] }
-            g[key].h = +(g[key].h + parseFloat(e.hour || '0')).toFixed(2)
-            g[key].entries.push(e)
-          })
-          return g
-        })()
-      : groups
-    const dispDone = isPastDay ? dispH >= GOAL : done
-    const viewLabel = viewDate ? viewDate.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' }) : ''
-
     return (
       <div style={{ paddingBottom: 24 }}>
-        {isPastDay ? (
-          <div style={{ padding: '12px 14px 4px', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span style={{ fontSize: 18 }}>📅</span>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 1, textTransform: 'uppercase' }}>{t('today.viewing')}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: M.t1, letterSpacing: -0.3, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{viewLabel}</div>
-              </div>
+        {firstName && (
+          <div style={{ padding: '12px 14px 4px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <span style={{ fontSize: 18, lineHeight: 1.1 }}>{emoji}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: M.t1, letterSpacing: -0.3, lineHeight: 1.1 }}>{greeting}, {firstName}</div>
+              <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>{subtitle}</div>
+              {greetingMsg && (
+                <div style={{ fontSize: 11, color: M.ac, marginTop: 4, fontStyle: 'italic', opacity: 0.85 }}>
+                  {greetingMsg}
+                </div>
+              )}
             </div>
-            <button
-              onClick={() => setViewDate(null)}
-              style={{ background: M.s2, border: `1px solid ${M.b1}`, color: M.t2, borderRadius: 999, padding: '6px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-            >{t('today.backToToday')}</button>
           </div>
-        ) : (
-          firstName && (
-            <div style={{ padding: '12px 14px 4px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              <span style={{ fontSize: 18, lineHeight: 1.1 }}>{emoji}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: M.t1, letterSpacing: -0.3, lineHeight: 1.1 }}>{greeting}, {firstName}</div>
-                <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>{subtitle}</div>
-                {greetingMsg && (
-                  <div style={{ fontSize: 11, color: M.ac, marginTop: 4, fontStyle: 'italic', opacity: 0.85 }}>
-                    {greetingMsg}
-                  </div>
-                )}
-              </div>
-            </div>
-          )
         )}
-        {!isPastDay && pbar}
+        {pbar}
         <div style={{ padding: '12px 14px 0', display: 'flex', flexDirection: 'column', gap: 11 }}>
-          {!isPastDay && (
-            <div data-tour="today-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1.7fr 1fr', gap: 6 }}>
-              <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 11, padding: '11px 6px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: M.ac }}>{fmtHours(todayH)}</div>
-                <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>{t('today.stat.today')}</div>
-              </div>
-              <div style={{ background: M.pb, border: `2px solid ${M.pp}`, borderRadius: 11, padding: '10px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 800, color: M.pk, letterSpacing: -1, lineHeight: 1 }}>{streak}d</div>
-                  <div style={{ fontSize: 9, color: M.pk, marginTop: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, opacity: .7 }}>{t('today.stat.streak')}</div>
-                </div>
-                <div style={{ fontSize: 20, lineHeight: 1, position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>🔥</div>
-              </div>
-              <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 11, padding: '11px 6px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: M.t3 }}>
-                  {fmtHours(weekTotal)}
-                </div>
-                <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>{t('today.stat.week')}</div>
-              </div>
+          <div data-tour="today-stats" style={{ display: 'grid', gridTemplateColumns: '1fr 1.7fr 1fr', gap: 6 }}>
+            <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 11, padding: '11px 6px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: M.ac }}>{fmtHours(todayH)}</div>
+              <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>{t('today.stat.today')}</div>
             </div>
-          )}
+            <div style={{ background: M.pb, border: `2px solid ${M.pp}`, borderRadius: 11, padding: '10px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 800, color: M.pk, letterSpacing: -1, lineHeight: 1 }}>{streak}d</div>
+                <div style={{ fontSize: 9, color: M.pk, marginTop: 4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, opacity: .7 }}>{t('today.stat.streak')}</div>
+              </div>
+              <div style={{ fontSize: 20, lineHeight: 1, position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>🔥</div>
+            </div>
+            <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 11, padding: '11px 6px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: M.t3 }}>
+                {fmtHours(weekTotal)}
+              </div>
+              <div style={{ fontSize: 9, color: M.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 }}>{t('today.stat.week')}</div>
+            </div>
+          </div>
 
-          {!isPastDay && (
-            <MeetingsWidget
-              M={M}
-              onStartForMeeting={(title) => {
-                setTD(title)
-                setTab('timer')
-              }}
-            />
-          )}
+          <MeetingsWidget
+            M={M}
+            onStartForMeeting={(title) => {
+              setTD(title)
+              setTab('timer')
+            }}
+          />
 
           <div style={{ height: 1, background: M.s2 }} />
 
           <div data-tour="today-entries" style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-          {(Object.entries(dispGroups) as [string, { cid: string; h: number; entries: TimeEntry[] }][]).map(([co, g], gi) => (
+          {(Object.entries(groups) as [string, { cid: string; h: number; entries: TimeEntry[] }][]).map(([co, g], gi) => (
             <div key={co} style={{ paddingLeft: 11, borderLeft: `3px solid ${M.co[gi % M.co.length]}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: M.co[gi % M.co.length] }}>{co}</span>
@@ -1310,24 +1273,24 @@ export default function App() {
             </div>
           ))}
 
-          {dispEntries.length === 0 && dispLoading && (
+          {entries.length === 0 && entriesLoading && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0' }}>
               <div className="skeleton" style={{ height: 18, width: '40%', borderRadius: 6 }} />
               <div className="skeleton" style={{ height: 52, borderRadius: 11 }} />
               <div className="skeleton" style={{ height: 52, borderRadius: 11 }} />
             </div>
           )}
-          {dispEntries.length === 0 && !dispLoading && (
+          {entries.length === 0 && !entriesLoading && (
             <div style={{ textAlign: 'center', padding: '28px 12px', fontSize: 13, lineHeight: 1.5 }}>
-              <div style={{ color: M.t2, fontWeight: 600, marginBottom: 4 }}>{isPastDay ? t('today.noEntriesForDay') : emptyMsg}</div>
-              <div style={{ color: M.tf, fontSize: 11 }}>{t('today.noEntriesHeader', { date: (viewDate ?? new Date()).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' }) })}</div>
+              <div style={{ color: M.t2, fontWeight: 600, marginBottom: 4 }}>{emptyMsg}</div>
+              <div style={{ color: M.tf, fontSize: 11 }}>{t('today.noEntriesHeader', { date: new Date().toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' }) })}</div>
             </div>
           )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, paddingTop: 8, borderTop: `1px solid ${M.s2}` }}>
             <span style={{ fontSize: 12, color: M.t3 }}>{t('today.totalLabel')}</span>
-            <span style={{ fontSize: 17, fontWeight: 700, color: dispDone ? M.gn : M.ac, fontFamily: 'monospace' }}>{fmtHours(dispH)}</span>
+            <span style={{ fontSize: 17, fontWeight: 700, color: done ? M.gn : M.ac, fontFamily: 'monospace' }}>{fmtHours(todayH)}</span>
           </div>
         </div>
       </div>
@@ -1549,197 +1512,199 @@ export default function App() {
           </div>
         )}
 
-        {!logOpen && (
+        <button
+          data-tour="log-pill"
+          onClick={() => setLogOpen(true)}
+          style={{
+            alignSelf: 'center', marginTop: 8,
+            padding: '8px 18px', borderRadius: 999,
+            background: 'transparent', border: `1px solid ${M.b1}`,
+            color: M.t2, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          }}
+        >{t('timer.logPastTime')}</button>
+      </div>
+    )
+  })()
+
+  // ─── Log view (full-tab; shown when logOpen=true, no tab button) ───────
+  const logView = (() => {
+    const recent: TimeEntry[] = []
+    const seen = new Set<string>()
+    entries.forEach((e) => {
+      const k = e._company_id + ':' + e._project_id
+      if (!seen.has(k) && recent.length < 3) { seen.add(k); recent.push(e) }
+    })
+    const prList = projectCache[fCo] || []
+    const prObj = prList.find((p) => p.id === fPr)
+    const co = companies.find((c) => c.id === fCo)
+    const pickedDate = editingDate ?? selectedDate
+    const save = async () => {
+      if (!fCo || !fPr || !co || !prObj || !fD.trim()) return
+      await saveNewEntry(fCo, fPr, fH, fD, fInv, fNote.trim(), pickedDate, editingId)
+      resetLogForm()
+      setLogOpen(false)
+    }
+    const canSave = !!(fCo && fPr && fD.trim())
+
+    return (
+      <div style={{ padding: '15px 14px 24px', display: 'flex', flexDirection: 'column', gap: 11 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <button
-            data-tour="log-pill"
-            onClick={() => setLogOpen(true)}
-            style={{
-              alignSelf: 'center', marginTop: 8,
-              padding: '8px 18px', borderRadius: 999,
-              background: 'transparent', border: `1px solid ${M.b1}`,
-              color: M.t2, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            onClick={() => { resetLogForm(); setLogOpen(false) }}
+            title={t('form.back')}
+            style={{ background: M.s2, border: `1px solid ${M.b1}`, color: M.t2, borderRadius: 999, padding: '6px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+          >← {t('form.back')}</button>
+          <span style={{ fontSize: 11, fontWeight: 700, color: editingId ? M.at : M.t2, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, textAlign: 'right' }}>
+            {editingId
+              ? t('form.editingEntryOn', { date: pickedDate.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' }) })
+              : t('timer.logPastTime')}
+          </span>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('timer.logFormDate')}</div>
+          <input
+            type="date"
+            value={formatLocalDate(pickedDate)}
+            onChange={(e) => {
+              const [y, m, d] = e.target.value.split('-').map(Number)
+              if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return
+              const next = new Date(y, m - 1, d)
+              if (editingId) setEditingDate(next); else setSelectedDate(next)
             }}
-          >{t('timer.logPastTime')}</button>
-        )}
-        {logOpen && (() => {
-          const recent: TimeEntry[] = []
-          const seen = new Set<string>()
-          entries.forEach((e) => {
-            const k = e._company_id + ':' + e._project_id
-            if (!seen.has(k) && recent.length < 3) { seen.add(k); recent.push(e) }
-          })
-          const logPrList = projectCache[fCo] || []
-          const logPrObj = logPrList.find((p) => p.id === fPr)
-          const logCo = companies.find((c) => c.id === fCo)
-          const pickedDate = editingDate ?? selectedDate
-          const saveLog = async () => {
-            if (!fCo || !fPr || !logCo || !logPrObj || !fD.trim()) return
-            await saveNewEntry(fCo, fPr, fH, fD, fInv, fNote.trim(), pickedDate, editingId)
-            resetLogForm()
-            setLogOpen(false)
-          }
-          const canSave = !!(fCo && fPr && fD.trim())
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginTop: 6, paddingTop: 14, borderTop: `1px solid ${M.s2}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: editingId ? M.ad : M.s2, border: `1px solid ${editingId ? M.am : M.b1}`, borderRadius: 10, padding: '9px 12px' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: editingId ? M.at : M.t2, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-                  {editingId
-                    ? t('form.editingEntryOn', { date: pickedDate.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' }) })
-                    : t('timer.logPastTime')}
-                </span>
-                <button
-                  onClick={() => { resetLogForm(); setLogOpen(false) }}
-                  style={{ background: 'none', border: 'none', color: editingId ? M.ac : M.t3, fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: '2px 4px' }}
-                >{editingId ? t('entry.cancel') : t('timer.hideLogForm')}</button>
-              </div>
+            style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none' }}
+          />
+        </div>
 
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('timer.logFormDate')}</div>
-                <input
-                  type="date"
-                  value={formatLocalDate(pickedDate)}
-                  onChange={(e) => {
-                    const [y, m, d] = e.target.value.split('-').map(Number)
-                    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return
-                    const next = new Date(y, m - 1, d)
-                    if (editingId) setEditingDate(next); else setSelectedDate(next)
-                  }}
-                  style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none' }}
-                />
-              </div>
-
-              {recent.length > 0 && !editingId && (
-                <div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>{t('today.recent')}</div>
-                  <div style={{ fontSize: 11, color: M.tf, marginBottom: 8 }}>{t('today.opensTimer')}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    {recent.map((r, i) => (
-                      <div key={r.id} style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: M.co[i % M.co.length], flexShrink: 0 }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: M.t1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.company}</div>
-                          <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>{r.project}</div>
-                        </div>
-                        <button
-                          onClick={() => switchTaskGuarded(r._company_id, r._project_id, r.description)}
-                          style={{ width: 34, height: 34, borderRadius: '50%', background: M.btn, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: M.bsh }}
-                        >
-                          <svg width="11" height="13" viewBox="0 0 13 15" fill="none" style={{ marginLeft: 2 }}><path d="M1.5 1.5L11.5 7.5L1.5 13.5V1.5Z" fill="white" stroke="white" strokeWidth="1.2" strokeLinejoin="round" /></svg>
-                        </button>
-                      </div>
-                    ))}
+        {recent.length > 0 && !editingId && (
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>{t('today.recent')}</div>
+            <div style={{ fontSize: 11, color: M.tf, marginBottom: 8 }}>{t('today.opensTimer')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {recent.map((r, i) => (
+                <div key={r.id} style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: M.co[i % M.co.length], flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: M.t1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.company}</div>
+                    <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>{r.project}</div>
                   </div>
+                  <button
+                    onClick={() => switchTaskGuarded(r._company_id, r._project_id, r.description)}
+                    style={{ width: 34, height: 34, borderRadius: '50%', background: M.btn, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: M.bsh }}
+                  >
+                    <svg width="11" height="13" viewBox="0 0 13 15" fill="none" style={{ marginLeft: 2 }}><path d="M1.5 1.5L11.5 7.5L1.5 13.5V1.5Z" fill="white" stroke="white" strokeWidth="1.2" strokeLinejoin="round" /></svg>
+                  </button>
                 </div>
-              )}
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ flex: 1, height: 1, background: M.b1 }} />
-                <span style={{ fontSize: 10, color: M.t3, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: 1 }}>{t('today.orLogManually')}</span>
-                <div style={{ flex: 1, height: 1, background: M.b1 }} />
-              </div>
-
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('form.client')}</div>
-                <Combobox
-                  value={fCo}
-                  items={companies}
-                  placeholder={`${t('form.searchClient')} (${companies.length})`}
-                  theme={M}
-                  onChange={async (id) => { setFCo(id); setFPr(''); if (id) await ensureProjects(id) }}
-                />
-              </div>
-
-              {fCo && (
-                <div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('form.project')}</div>
-                  <Combobox
-                    value={fPr}
-                    items={logPrList}
-                    placeholder={logPrList.length ? `${t('form.searchProject')} (${logPrList.length})` : t('form.loadingProjects')}
-                    theme={M}
-                    onChange={setFPr}
-                  />
-                </div>
-              )}
-
-              <div data-tour="log-hours">
-                <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('form.hours')}</div>
-                <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-                  <button onClick={() => setFH((h) => Math.max(0.25, +(h - 0.25).toFixed(2)))} style={{ width: 46, height: 46, background: 'transparent', border: 'none', borderRight: `1px solid ${M.b1}`, color: M.t3, fontSize: 20, fontWeight: 200, cursor: 'pointer' }}>−</button>
-                  <input
-                    value={fHInput}
-                    onChange={(e) => setFHInput(e.target.value)}
-                    onBlur={() => {
-                      const parsed = parseHoursInput(fHInput)
-                      if (parsed == null) { setFHInput(fmtHours(fH)); return }
-                      const clamped = Math.max(0, Math.min(24, parsed))
-                      setFH(clamped)
-                      setFHInput(fmtHours(clamped))
-                    }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur() }}
-                    onFocus={(e) => e.currentTarget.select()}
-                    style={{ flex: 1, textAlign: 'center', fontFamily: 'monospace', fontSize: 22, fontWeight: 700, color: M.t1, letterSpacing: -1, background: 'transparent', border: 'none', outline: 'none', width: '100%', padding: 0 }}
-                  />
-                  <button onClick={() => setFH((h) => Math.min(24, +(h + 0.25).toFixed(2)))} style={{ width: 46, height: 46, background: 'transparent', border: 'none', borderLeft: `1px solid ${M.b1}`, color: M.t3, fontSize: 20, fontWeight: 200, cursor: 'pointer' }}>+</button>
-                </div>
-                <div style={{ textAlign: 'center', marginTop: 4, fontSize: 11, color: M.t3 }}>
-                  {t('form.typeHoursHint')}
-                </div>
-                {logPrObj && parseFloat(logPrObj.hour_price) > 0 && (
-                  <div style={{ textAlign: 'center', marginTop: 4, fontSize: 11, color: M.t3, fontFamily: 'monospace' }}>
-                    {(fH * parseFloat(logPrObj.hour_price)).toFixed(0)} kr total · {parseFloat(logPrObj.hour_price)}kr/h
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
-                  {t('form.description')} *
-                </div>
-                <textarea
-                  value={fD}
-                  onChange={(e) => setFD(e.target.value)}
-                  placeholder={t('form.descPlaceholder')}
-                  rows={2}
-                  style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none', resize: 'none' }}
-                />
-              </div>
-
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
-                  {lang === 'sv' ? 'Interna anteckningar' : 'Internal notes'} <span style={{ color: M.tf, fontWeight: 400, letterSpacing: 0, textTransform: 'none', fontSize: 10 }}>{t('form.internalOptional')}</span>
-                </div>
-                <textarea
-                  value={fNote}
-                  onChange={(e) => setFNote(e.target.value)}
-                  placeholder={t('form.internalPlaceholder')}
-                  rows={2}
-                  style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none', resize: 'none' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10 }}>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={fInv}
-                  aria-label={t('timer.invoiceable')}
-                  onClick={() => setFInv((v) => !v)}
-                  style={{ width: 40, height: 22, borderRadius: 11, background: fInv ? M.ac : M.b1, display: 'flex', alignItems: 'center', padding: 2, cursor: 'pointer', transition: 'background .2s', border: 'none' }}
-                >
-                  <div style={{ width: 18, height: 18, borderRadius: 9, background: '#fff', transform: `translateX(${fInv ? 18 : 0}px)`, transition: 'transform .2s', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }} />
-                </button>
-                <span style={{ fontSize: 13, color: M.t1 }}>{t('timer.invoiceable')}</span>
-              </div>
-
-              <button
-                onClick={saveLog}
-                disabled={!canSave}
-                style={{ width: '100%', height: 46, background: canSave ? M.btn : M.s3, border: 'none', borderRadius: 12, color: canSave ? '#fff' : M.t3, fontSize: 14, fontWeight: 700, cursor: canSave ? 'pointer' : 'default', boxShadow: canSave ? M.bsh : 'none' }}
-              >{editingId ? t('form.saveChanges') : t('form.saveEntry')}</button>
+              ))}
             </div>
-          )
-        })()}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1, height: 1, background: M.b1 }} />
+          <span style={{ fontSize: 10, color: M.t3, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: 1 }}>{t('today.orLogManually')}</span>
+          <div style={{ flex: 1, height: 1, background: M.b1 }} />
+        </div>
+
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('form.client')}</div>
+          <Combobox
+            value={fCo}
+            items={companies}
+            placeholder={`${t('form.searchClient')} (${companies.length})`}
+            theme={M}
+            onChange={async (id) => { setFCo(id); setFPr(''); if (id) await ensureProjects(id) }}
+          />
+        </div>
+
+        {fCo && (
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('form.project')}</div>
+            <Combobox
+              value={fPr}
+              items={prList}
+              placeholder={prList.length ? `${t('form.searchProject')} (${prList.length})` : t('form.loadingProjects')}
+              theme={M}
+              onChange={setFPr}
+            />
+          </div>
+        )}
+
+        <div data-tour="log-hours">
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>{t('form.hours')}</div>
+          <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+            <button onClick={() => setFH((h) => Math.max(0.25, +(h - 0.25).toFixed(2)))} style={{ width: 46, height: 46, background: 'transparent', border: 'none', borderRight: `1px solid ${M.b1}`, color: M.t3, fontSize: 20, fontWeight: 200, cursor: 'pointer' }}>−</button>
+            <input
+              value={fHInput}
+              onChange={(e) => setFHInput(e.target.value)}
+              onBlur={() => {
+                const parsed = parseHoursInput(fHInput)
+                if (parsed == null) { setFHInput(fmtHours(fH)); return }
+                const clamped = Math.max(0, Math.min(24, parsed))
+                setFH(clamped)
+                setFHInput(fmtHours(clamped))
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur() }}
+              onFocus={(e) => e.currentTarget.select()}
+              style={{ flex: 1, textAlign: 'center', fontFamily: 'monospace', fontSize: 22, fontWeight: 700, color: M.t1, letterSpacing: -1, background: 'transparent', border: 'none', outline: 'none', width: '100%', padding: 0 }}
+            />
+            <button onClick={() => setFH((h) => Math.min(24, +(h + 0.25).toFixed(2)))} style={{ width: 46, height: 46, background: 'transparent', border: 'none', borderLeft: `1px solid ${M.b1}`, color: M.t3, fontSize: 20, fontWeight: 200, cursor: 'pointer' }}>+</button>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 4, fontSize: 11, color: M.t3 }}>
+            {t('form.typeHoursHint')}
+          </div>
+          {prObj && parseFloat(prObj.hour_price) > 0 && (
+            <div style={{ textAlign: 'center', marginTop: 4, fontSize: 11, color: M.t3, fontFamily: 'monospace' }}>
+              {(fH * parseFloat(prObj.hour_price)).toFixed(0)} kr total · {parseFloat(prObj.hour_price)}kr/h
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
+            {t('form.description')} *
+          </div>
+          <textarea
+            value={fD}
+            onChange={(e) => setFD(e.target.value)}
+            placeholder={t('form.descPlaceholder')}
+            rows={2}
+            style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none', resize: 'none' }}
+          />
+        </div>
+
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
+            {lang === 'sv' ? 'Interna anteckningar' : 'Internal notes'} <span style={{ color: M.tf, fontWeight: 400, letterSpacing: 0, textTransform: 'none', fontSize: 10 }}>{t('form.internalOptional')}</span>
+          </div>
+          <textarea
+            value={fNote}
+            onChange={(e) => setFNote(e.target.value)}
+            placeholder={t('form.internalPlaceholder')}
+            rows={2}
+            style={{ width: '100%', padding: '11px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, color: M.t1, fontSize: 13, outline: 'none', resize: 'none' }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10 }}>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={fInv}
+            aria-label={t('timer.invoiceable')}
+            onClick={() => setFInv((v) => !v)}
+            style={{ width: 40, height: 22, borderRadius: 11, background: fInv ? M.ac : M.b1, display: 'flex', alignItems: 'center', padding: 2, cursor: 'pointer', transition: 'background .2s', border: 'none' }}
+          >
+            <div style={{ width: 18, height: 18, borderRadius: 9, background: '#fff', transform: `translateX(${fInv ? 18 : 0}px)`, transition: 'transform .2s', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }} />
+          </button>
+          <span style={{ fontSize: 13, color: M.t1 }}>{t('timer.invoiceable')}</span>
+        </div>
+
+        <button
+          onClick={save}
+          disabled={!canSave}
+          style={{ width: '100%', height: 46, background: canSave ? M.btn : M.s3, border: 'none', borderRadius: 12, color: canSave ? '#fff' : M.t3, fontSize: 14, fontWeight: 700, cursor: canSave ? 'pointer' : 'default', boxShadow: canSave ? M.bsh : 'none' }}
+        >{editingId ? t('form.saveChanges') : t('form.saveEntry')}</button>
       </div>
     )
   })()
@@ -1828,9 +1793,8 @@ export default function App() {
   })()
 
   const pickDayForView = (d: Date) => {
-    const isToday = fmtDateISO(d) === fmtDateISO(new Date())
-    setViewDate(isToday ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate()))
-    setTab('today')
+    setSelectedDate(new Date(d.getFullYear(), d.getMonth(), d.getDate()))
+    setHistoryScale('day')
   }
   const monthView = (
     <MonthView
@@ -1863,19 +1827,129 @@ export default function App() {
     />
   )
 
+  const dayView = (() => {
+    const dayGroups: Record<string, { cid: string; h: number; entries: TimeEntry[] }> = {}
+    dayEntries.forEach((e) => {
+      const key = e.company
+      if (!dayGroups[key]) dayGroups[key] = { cid: e._company_id, h: 0, entries: [] }
+      dayGroups[key].h = +(dayGroups[key].h + parseFloat(e.hour || '0')).toFixed(2)
+      dayGroups[key].entries.push(e)
+    })
+    const dayH = dayEntries.reduce((s, e) => s + parseFloat(e.hour || '0'), 0)
+    const dateLabel = selectedDate.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: M.t1, letterSpacing: -0.2 }}>{dateLabel}</div>
+
+        {dayEntries.length === 0 && dayEntriesLoading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0' }}>
+            <div className="skeleton" style={{ height: 18, width: '40%', borderRadius: 6 }} />
+            <div className="skeleton" style={{ height: 52, borderRadius: 11 }} />
+            <div className="skeleton" style={{ height: 52, borderRadius: 11 }} />
+          </div>
+        )}
+        {dayEntries.length === 0 && !dayEntriesLoading && (
+          <div style={{ textAlign: 'center', padding: '28px 12px', fontSize: 13, lineHeight: 1.5 }}>
+            <div style={{ color: M.t2, fontWeight: 600, marginBottom: 4 }}>{t('history.noEntriesForDay')}</div>
+            <div style={{ color: M.tf, fontSize: 11 }}>{t('history.emptyHint')}</div>
+          </div>
+        )}
+
+        {(Object.entries(dayGroups) as [string, { cid: string; h: number; entries: TimeEntry[] }][]).map(([co, g], gi) => (
+          <div key={co} style={{ paddingLeft: 11, borderLeft: `3px solid ${M.co[gi % M.co.length]}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: M.co[gi % M.co.length] }}>{co}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: M.t3, fontFamily: 'monospace' }}>{fmtHours(g.h)}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {g.entries.map((e) => {
+                const isPending = pendingDeleteId === e.id
+                return (
+                  <div key={e.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div
+                      onDoubleClick={() => editEntry(e)}
+                      title={t('entry.doubleClickEdit')}
+                      style={{ background: M.s1, border: `1px solid ${isPending ? '#ef4444' : M.b1}`, borderRadius: 11, padding: '9px 11px', borderBottomLeftRadius: isPending ? 0 : 11, borderBottomRightRadius: isPending ? 0 : 11, borderBottom: isPending ? 'none' : `1px solid ${M.b1}`, transition: 'border-color .15s', cursor: 'pointer' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: M.t3, marginBottom: 2 }}>{e.project}</div>
+                          <div style={{ fontSize: 12, color: M.t1, lineHeight: 1.4, wordBreak: 'break-word' }}>{e.description}</div>
+                          {e.internal_description && (
+                            <div style={{ fontSize: 11, color: M.t3, marginTop: 4, fontStyle: 'italic' }}>{e.internal_description}</div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 1 }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: M.ac }}>
+                            {fmtHours(parseFloat(e.hour))}
+                          </span>
+                          <button
+                            onClick={() => editEntry(e)}
+                            title={t('entry.doubleClickEdit')}
+                            style={{ width: 22, height: 22, borderRadius: '50%', background: M.s2, border: `1px solid ${M.b1}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, color: M.t2, fontSize: 11 }}
+                          >✎</button>
+                          <button
+                            onClick={() => setPendingDeleteId(isPending ? null : e.id)}
+                            style={{ background: 'none', border: 'none', color: isPending ? '#ef4444' : M.t3, fontSize: 12, cursor: 'pointer', padding: '2px 4px', fontWeight: isPending ? 700 : 400 }}
+                          >✕</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ maxHeight: isPending ? 44 : 0, overflow: 'hidden', transition: 'max-height .22s ease' }}>
+                      <div style={{ display: 'flex', borderRadius: '0 0 11px 11px', overflow: 'hidden', border: `1px solid #ef4444`, borderTop: 'none' }}>
+                        <button
+                          onClick={() => setPendingDeleteId(null)}
+                          style={{ flex: 1, padding: '10px 0', background: M.s2, border: 'none', color: M.t2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                        >{t('entry.cancel')}</button>
+                        <button
+                          onClick={async () => { setPendingDeleteId(null); await delEntry(e.id) }}
+                          style={{ flex: 1, padding: '10px 0', background: '#ef4444', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                        >{t('entry.delete')}</button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+
+        {dayEntries.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, paddingTop: 8, borderTop: `1px solid ${M.s2}` }}>
+            <span style={{ fontSize: 12, color: M.t3 }}>{t('today.totalLabel')}</span>
+            <span style={{ fontSize: 17, fontWeight: 700, color: dayH >= GOAL ? M.gn : M.ac, fontFamily: 'monospace' }}>{fmtHours(dayH)}</span>
+          </div>
+        )}
+
+        <button
+          onClick={() => {
+            const [y, mo, da] = [selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()]
+            setEditingDate(new Date(y, mo, da))
+            setLogOpen(true)
+          }}
+          style={{ alignSelf: 'center', marginTop: 4, padding: '8px 18px', borderRadius: 999, background: 'transparent', border: `1px solid ${M.b1}`, color: M.t2, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+        >{t('timer.logPastTime')}</button>
+      </div>
+    )
+  })()
+
   const historyView = (
     <div style={{ padding: '16px 14px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div role="tablist" style={{ display: 'flex', gap: 2, background: M.s2, border: `1px solid ${M.b1}`, borderRadius: 8, padding: 2 }}>
-          {(['week', 'month'] as const).map((v) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={historyScale === v}
-              onClick={() => setHistoryScale(v)}
-              style={{ padding: '5px 12px', border: 'none', borderRadius: 6, background: historyScale === v ? M.s1 : 'transparent', color: historyScale === v ? M.t1 : M.t3, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-            >{historyScale === v ? t(`history.${v === 'week' ? 'weekly' : 'monthly'}`) : t(`history.${v === 'week' ? 'weekly' : 'monthly'}`)}</button>
-          ))}
+          {(['day', 'week', 'month'] as const).map((v) => {
+            const labelKey = v === 'day' ? 'daily' : v === 'week' ? 'weekly' : 'monthly'
+            return (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={historyScale === v}
+                onClick={() => setHistoryScale(v)}
+                style={{ padding: '5px 10px', border: 'none', borderRadius: 6, background: historyScale === v ? M.s1 : 'transparent', color: historyScale === v ? M.t1 : M.t3, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+              >{t(`history.${labelKey}`)}</button>
+            )
+          })}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button
@@ -1896,7 +1970,7 @@ export default function App() {
           )}
         </div>
       </div>
-      {historyScale === 'week' ? weekView : monthView}
+      {historyScale === 'day' ? dayView : historyScale === 'week' ? weekView : monthView}
     </div>
   )
 
@@ -2126,7 +2200,7 @@ export default function App() {
     <div key="mode-full" className={`mode-root ${themeClass} ${M.id === 'dark' ? 'app-dark-glow' : ''}`} style={{ height: '100vh', background: M.id === 'dark' ? undefined : M.bg, fontFamily: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif", color: M.t1, position: 'relative', overflow: 'hidden', boxShadow: warnColor ? `inset 0 0 0 2px ${warnColor}` : undefined, transition: 'box-shadow 200ms ease-out', display: 'flex', flexDirection: 'column' }}>
       {hdr}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-        {views[tab]}
+        {logOpen ? logView : views[tab]}
       </div>
       <div style={{ height: 40, flexShrink: 0, borderTop: `1px solid ${M.b1}`, background: M.bg, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px', gap: 10 }}>
         <div style={{ display: 'flex', gap: 2, background: M.s2, border: `1px solid ${M.b1}`, borderRadius: 7, padding: 2 }}>

@@ -102,6 +102,6 @@ describe('getTimerInsight — goal progress', () => {
   it('reports near-goal when 75-99% done', () => {
     vi.setSystemTime(new Date(2026, 3, 15, 14))
     const msg = getTimerInsight(baseCtx({ todayH: 7, entriesToday: 3 }))
-    expect(msg).toMatch(/from goal|nearly|push|fart|pressa|nästan/i)
+    expect(msg).toMatch(/from goal|nearly|push|stretch|fart|pressa|nästan|slutspurt/i)
   })
 })

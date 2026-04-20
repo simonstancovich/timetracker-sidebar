@@ -39,10 +39,7 @@
     },
     "opensTimer": "▶ öppnar timer med uppgiften förvald",
     "recent": "Senaste",
-    "orLogManually": "eller logga manuellt",
-    "viewing": "Visar",
-    "backToToday": "Tillbaka till idag",
-    "noEntriesForDay": "Inga poster loggade för den här dagen."
+    "orLogManually": "eller logga manuellt"
   },
   "timer": {
     "noTaskSelected": "Ingen uppgift vald",
@@ -89,7 +86,8 @@
     "typeHoursHint": "Skriv 1:30 eller 1.5",
     "fillFirst": "Fyll i kund, projekt & uppgift först",
     "saveFailed": "Sparning misslyckades: {{err}}",
-    "deleteFailed": "Borttagning misslyckades: {{err}}"
+    "deleteFailed": "Borttagning misslyckades: {{err}}",
+    "back": "Tillbaka"
   },
   "entry": {
     "cancel": "Avbryt",
@@ -188,8 +186,11 @@
     "pausedTask": "PAUSAD UPPGIFT"
   },
   "history": {
+    "daily": "Dag",
     "weekly": "Vecka",
-    "monthly": "Månad"
+    "monthly": "Månad",
+    "noEntriesForDay": "Inga poster loggade för den här dagen.",
+    "emptyHint": "Klicka på en dag i Vecka eller Månad, eller logga tidigare tid från Timer-fliken."
   },
   "scale": {
     "day": "dag",

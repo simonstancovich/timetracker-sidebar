@@ -39,10 +39,7 @@
     },
     "opensTimer": "▶ opens timer with task pre-selected",
     "recent": "Recent",
-    "orLogManually": "or log manually",
-    "viewing": "Viewing",
-    "backToToday": "Back to today",
-    "noEntriesForDay": "No entries logged for this day."
+    "orLogManually": "or log manually"
   },
   "timer": {
     "noTaskSelected": "No task selected",
@@ -89,7 +86,8 @@
     "typeHoursHint": "Type 1:30 or 1.5",
     "fillFirst": "Fill client, project & task first",
     "saveFailed": "Save failed: {{err}}",
-    "deleteFailed": "Delete failed: {{err}}"
+    "deleteFailed": "Delete failed: {{err}}",
+    "back": "Back"
   },
   "entry": {
     "cancel": "Cancel",
@@ -188,8 +186,11 @@
     "pausedTask": "PAUSED TASK"
   },
   "history": {
+    "daily": "Daily",
     "weekly": "Weekly",
-    "monthly": "Monthly"
+    "monthly": "Monthly",
+    "noEntriesForDay": "No entries logged for this day.",
+    "emptyHint": "Click a day in Week or Month, or log past time from the Timer tab."
   },
   "scale": {
     "day": "day",
