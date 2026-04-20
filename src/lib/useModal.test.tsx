@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { useEffect, useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useModal } from './useModal'
 
@@ -79,5 +79,31 @@ describe('useModal', () => {
     render(<Modal enabled={false} onClose={onClose} />)
     await userEvent.keyboard('{Escape}')
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('parent re-renders with a fresh onClose closure do not yank focus out of the modal', async () => {
+    let bump: () => void = () => {}
+    function Stateful() {
+      const [tick, setTick] = useState(0)
+      bump = () => setTick((n) => n + 1)
+      // Fresh `() => …` closure on every render — the kind of thing parents
+      // commonly pass. The modal must NOT tear down + re-focus on each render.
+      return <Modal enabled={true} onClose={() => { void tick }} />
+    }
+    render(<Stateful />)
+    await flushRaf()
+    expect(screen.getByTestId('first')).toHaveFocus()
+
+    // Move focus to the middle button, then force the parent to re-render.
+    screen.getByTestId('middle').focus()
+    expect(screen.getByTestId('middle')).toHaveFocus()
+    act(() => bump())
+    act(() => bump())
+    act(() => bump())
+    await flushRaf()
+
+    // Focus must not have been snapped back to `first` by a spurious
+    // effect re-run. Before the onClose-in-ref fix this assertion failed.
+    expect(screen.getByTestId('middle')).toHaveFocus()
   })
 })
