@@ -19,6 +19,7 @@ export { sizes } from './sizes'
 export { radii } from './radii'
 export { shadows } from './shadows'
 export { zIndex } from './zIndex'
+export { opacity } from './opacity'
 export { duration, easing, transitions } from './transitions'
 
 // Vanilla-extract theme contract + concrete theme class names. Components

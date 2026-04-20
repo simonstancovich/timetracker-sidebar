@@ -1,28 +1,35 @@
-import { style, styleVariants } from '@vanilla-extract/css'
-import { vars, fontSize, fontWeight, radii, spacing } from '../../theme'
+import { style, styleVariants } from "@vanilla-extract/css";
+import {
+  vars,
+  fontSize,
+  fontWeight,
+  radii,
+  spacing,
+  transitions,
+  opacity,
+} from "../../theme";
 
 export const root = style({
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   fontFamily: vars.font.body,
   fontWeight: fontWeight.bold,
-  border: 'none',
-  cursor: 'pointer',
-  transition: 'background 150ms ease, box-shadow 150ms ease',
+  border: "none",
+  cursor: "pointer",
+  transition: transitions.interactive,
   selectors: {
-    '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
+    "&:disabled": { cursor: "not-allowed", opacity: opacity.disabled },
   },
-})
+});
 
-// Only one variant for now — more land as we migrate components that need them.
 export const variant = styleVariants({
   primary: {
     background: vars.typography.accent,
     color: vars.typography.onAccent,
     boxShadow: vars.shadow.brand,
   },
-})
+});
 
 export const size = styleVariants({
   md: {
@@ -30,4 +37,4 @@ export const size = styleVariants({
     fontSize: fontSize.lg,
     borderRadius: radii.lg,
   },
-})
+});

@@ -3,7 +3,7 @@ import {
   colors, pickColor, chartColors, alpha,
   light, dark, themes,
   fontFamily, fontSize, fontWeight, lineHeight, letterSpacing,
-  spacing, widths, sizes, radii, shadows, zIndex, duration, easing, transitions,
+  spacing, widths, sizes, radii, shadows, zIndex, opacity, duration, easing, transitions,
 } from './index'
 
 describe('colors — catalog shape', () => {
@@ -225,12 +225,28 @@ describe('zIndex', () => {
   })
 })
 
+describe('opacity', () => {
+  it('full < disabled-less-than-1, hidden is 0', () => {
+    expect(opacity.full).toBe(1)
+    expect(opacity.disabled).toBeGreaterThan(0)
+    expect(opacity.disabled).toBeLessThan(1)
+    expect(opacity.hidden).toBe(0)
+  })
+})
+
 describe('transitions', () => {
   it('duration scale is monotonic', () => {
-    expect(duration.instant).toBeLessThan(duration.fast)
+    expect(duration.instant).toBeLessThan(duration.quick)
+    expect(duration.quick).toBeLessThan(duration.fast)
     expect(duration.fast).toBeLessThan(duration.base)
     expect(duration.base).toBeLessThan(duration.medium)
     expect(duration.medium).toBeLessThan(duration.slow)
+  })
+
+  it('interactive transition references the quick duration', () => {
+    expect(transitions.interactive).toContain(`${duration.quick}ms`)
+    expect(transitions.interactive).toContain('background')
+    expect(transitions.interactive).toContain('box-shadow')
   })
 
   it('exposes named easings', () => {
