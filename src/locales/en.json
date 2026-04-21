@@ -61,6 +61,18 @@
     "confirmSwitchBody": "The current timer is still running. It will be saved to timetracker first, then we switch to the new one.",
     "confirmSwitchOk": "Save & switch"
   },
+  "vibe": {
+    "onBreak": "On a break — press ▶ to resume",
+    "ready": "Ready when you are",
+    "warmingUp": "Warming up",
+    "findingFlow": "Finding flow",
+    "inTheZone": "In the zone",
+    "deepFocus": "Deep focus",
+    "crushingIt": "Crushing it",
+    "unstoppable": "Unstoppable",
+    "legendary": "Legendary",
+    "stretch": "Maybe stretch a little?"
+  },
   "form": {
     "client": "Client *",
     "project": "Project *",

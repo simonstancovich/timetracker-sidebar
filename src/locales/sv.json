@@ -61,6 +61,18 @@
     "confirmSwitchBody": "Den nuvarande timern är fortfarande igång. Den sparas först, sedan byter vi till den nya.",
     "confirmSwitchOk": "Spara och byt"
   },
+  "vibe": {
+    "onBreak": "På paus — tryck ▶ för att återuppta",
+    "ready": "Redo när du är",
+    "warmingUp": "Värmer upp",
+    "findingFlow": "Hittar flow",
+    "inTheZone": "I zonen",
+    "deepFocus": "Djupt fokus",
+    "crushingIt": "Krossar det",
+    "unstoppable": "Ostoppbar",
+    "legendary": "Legendarisk",
+    "stretch": "Stretcha kanske lite?"
+  },
   "form": {
     "client": "Kund *",
     "project": "Projekt *",
