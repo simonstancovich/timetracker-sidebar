@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { cx } from "../../lib/cx";
 import * as s from "./IconButton.css";
 
 export type IconButtonVariant = keyof typeof s.variant;
@@ -23,9 +24,7 @@ export function IconButton({
   children,
   ...rest
 }: Props) {
-  const classes = [s.root, s.variant[variant], s.size[size], className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx(s.root, s.variant[variant], s.size[size], className);
   return (
     <button type={type} className={classes} {...rest}>
       {children}

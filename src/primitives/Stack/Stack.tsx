@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { cx } from '../../lib/cx'
 import * as s from './Stack.css'
 
 export type StackGap = keyof typeof s.gap
@@ -25,7 +26,7 @@ export function Stack({
   className,
   children,
 }: Props) {
-  const classes = [
+  const classes = cx(
     s.root,
     s.direction[direction],
     s.align[align],
@@ -34,6 +35,6 @@ export function Stack({
     s.padding[padding],
     fullHeight && s.fullHeight,
     className,
-  ].filter(Boolean).join(' ')
+  )
   return <div className={classes}>{children}</div>
 }

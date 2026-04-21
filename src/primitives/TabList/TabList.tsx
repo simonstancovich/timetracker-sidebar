@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from 'react'
+import { cx } from '../../lib/cx'
 import * as s from './TabList.css'
 
 // `role` and `style` are owned by the primitive. aria-label and other HTML
@@ -8,7 +9,7 @@ interface Props extends Omit<HTMLAttributes<HTMLDivElement>, 'role' | 'style'> {
 }
 
 export function TabList({ className, children, ...rest }: Props) {
-  const classes = [s.root, className].filter(Boolean).join(' ')
+  const classes = cx(s.root, className)
   return (
     <div role="tablist" className={classes} {...rest}>
       {children}

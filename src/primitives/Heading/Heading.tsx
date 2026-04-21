@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { cx } from '../../lib/cx'
 import * as s from './Heading.css'
 
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6
@@ -13,6 +14,6 @@ interface Props {
 
 export function Heading({ level = 1, color = 'primary', className, children }: Props) {
   const Tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
-  const classes = [s.root, s.level[level], s.color[color], className].filter(Boolean).join(' ')
+  const classes = cx(s.root, s.level[level], s.color[color], className)
   return <Tag className={classes}>{children}</Tag>
 }

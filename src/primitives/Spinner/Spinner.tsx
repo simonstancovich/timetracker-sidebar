@@ -1,3 +1,4 @@
+import { cx } from "../../lib/cx";
 import * as s from "./Spinner.css";
 
 export type SpinnerSize = keyof typeof s.size;
@@ -16,8 +17,8 @@ export function Spinner({
   layout = "inline",
   className,
 }: Props) {
-  const wrapperClass = [s.wrapper[layout], className].filter(Boolean).join(" ");
-  const discClass = [s.disc, s.size[size]].join(" ");
+  const wrapperClass = cx(s.wrapper[layout], className);
+  const discClass = cx(s.disc, s.size[size]);
   return (
     <div className={wrapperClass} role="status" aria-live="polite">
       <div className={discClass} aria-hidden />
