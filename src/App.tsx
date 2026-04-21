@@ -14,7 +14,12 @@ import {
   saveTimeEntry,
 } from "./api";
 import { formatLocalDate, mondayOf } from "./lib/date";
-import { fmtClock, fmtHours, parseHoursInput, roundUpToQuarter } from "./lib/hours";
+import {
+  fmtClock,
+  fmtHours,
+  parseHoursInput,
+  roundUpToQuarter,
+} from "./lib/hours";
 import {
   ACHS,
   CHECKS,
@@ -40,6 +45,7 @@ import {
 } from "./lib/i18n";
 import { useModal } from "./lib/useModal";
 import { buildIntroSteps } from "./lib/introSteps";
+import { Spinner } from "./primitives";
 import { IntroOverlay } from "./components/IntroOverlay";
 import { MeetingsWidget } from "./components/MeetingsWidget";
 import { MonthView } from "./components/MonthView";
@@ -56,26 +62,17 @@ const DAYS = ["Mo", "Tu", "We", "Th", "Fr"];
 const GOAL = 8;
 
 export default function App() {
+  const { t } = useTranslation();
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [mode, setMode] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
-  const { t } = useTranslation();
   const M: Theme = mode === "light" ? L : D;
-
   const [tab, setTab] = useState<"today" | "timer" | "history" | "xp">("today");
-  // History tab navigates independently; selectedDate drives week/month anchors.
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [historyScale, setHistoryScale] = useState<"day" | "week" | "month">(
     "week",
   );
-
-  // Full-screen "+ Log past time" / edit form, shown in place of the active
-  // tab when true (no tab button — entered from the Timer pill or by double-
-  // clicking an entry). Behaves like the removed +Log tab used to.
   const [logOpen, setLogOpen] = useState(false);
-
-  // History tab's selectedDate also drives a Daily drill-down when the user
-  // clicks a day inside Week or Month. Daily-view entries are loaded on demand.
   const [dayEntries, setDayEntries] = useState<TimeEntry[]>([]);
   const [dayEntriesLoading, setDayEntriesLoading] = useState(false);
 
@@ -961,7 +958,10 @@ export default function App() {
     const co = companies.find((c) => c.id === cid);
     const pr = (projectCache[cid] || []).find((p) => p.id === prid);
     if (!co || !pr) {
-      addFloat(t("form.saveFailed", { err: "missing client/project" }), "#ef4444");
+      addFloat(
+        t("form.saveFailed", { err: "missing client/project" }),
+        "#ef4444",
+      );
       return;
     }
 
@@ -1004,7 +1004,10 @@ export default function App() {
     }
     // If History's Daily drill-down is showing this date, reload it too so
     // the user sees their just-saved past-day entry immediately.
-    if (savedDateISO === formatLocalDate(selectedDate) && historyScale === "day") {
+    if (
+      savedDateISO === formatLocalDate(selectedDate) &&
+      historyScale === "day"
+    ) {
       loadTimeEntries(selectedDate)
         .then(setDayEntries)
         .catch(() => {});
@@ -1191,34 +1194,7 @@ export default function App() {
   const themeClass = mode === "dark" ? darkTheme : lightTheme;
 
   const spinner = (
-    <div
-      className={themeClass}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 14,
-        padding: 24,
-        background: M.bg,
-        minHeight: "100vh",
-      }}
-    >
-      <div
-        className="spinner"
-        style={{
-          width: 28,
-          height: 28,
-          border: `3px solid ${M.b1}`,
-          borderTopColor: M.ac,
-          borderRadius: "50%",
-          animation: "spin 0.9s linear infinite",
-        }}
-      />
-      <div style={{ color: M.tf, fontSize: 12, letterSpacing: 0.3 }}>
-        {t("form.loadingProjects")}
-      </div>
-    </div>
+    <Spinner layout="fill" label={t("form.loadingProjects")} className={themeClass} />
   );
   if (authed === null) return spinner;
   if (!authed)
@@ -2838,7 +2814,10 @@ export default function App() {
         return;
       }
       if (!co || !prObj) {
-        addFloat(t("form.saveFailed", { err: "missing client/project" }), "#ef4444");
+        addFloat(
+          t("form.saveFailed", { err: "missing client/project" }),
+          "#ef4444",
+        );
         return;
       }
       // Commit any pending input by parsing fHInput so a user who clicks Save

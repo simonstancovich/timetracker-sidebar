@@ -36,9 +36,6 @@ input::placeholder, textarea::placeholder {
   0%, 100% { opacity: 1; }
   50% { opacity: .3; }
 }
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 @keyframes skeletonShimmer {
   0% { background-position: -150% 0; }
   100% { background-position: 250% 0; }
