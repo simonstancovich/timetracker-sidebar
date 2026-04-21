@@ -1,11 +1,10 @@
 import { useTranslation } from '../lib/i18n'
 import { fmtClock, fmtHours } from '../lib/hours'
-import { TabButton, TabList } from '../primitives'
+import { IconButton, TabButton, TabList } from '../primitives'
 
 type Theme = {
   bg: string
   b1: string
-  s2: string
   t1: string
   t3: string
   tf: string
@@ -172,27 +171,13 @@ export function AppHeader({
               {statusLabel}
             </span>
           </button>
-          <button
+          <IconButton
             onClick={onMinimize}
             title={t('header.minimizeTopBar')}
             aria-label={t('header.minimizeTopBar')}
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 7,
-              background: M.s2,
-              border: `1px solid ${M.b1}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: 9,
-              color: M.t3,
-              fontWeight: 700,
-            }}
           >
             ▼
-          </button>
+          </IconButton>
         </div>
       </div>
 
