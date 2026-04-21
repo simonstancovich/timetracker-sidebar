@@ -4,6 +4,13 @@ export { Heading, type HeadingLevel, type HeadingColor } from './Heading/Heading
 export { Button, type ButtonVariant, type ButtonSize } from './Button/Button'
 export { IconTile, type IconTileSize } from './IconTile/IconTile'
 export { IconButton, type IconButtonVariant, type IconButtonSize } from './IconButton/IconButton'
+export {
+  MonoText,
+  type MonoTextSize,
+  type MonoTextWeight,
+  type MonoTextColor,
+  type MonoTextTracking,
+} from './MonoText/MonoText'
 export { Spinner, type SpinnerSize, type SpinnerLayout } from './Spinner/Spinner'
 export { TabButton } from './TabButton/TabButton'
 export { TabList } from './TabList/TabList'

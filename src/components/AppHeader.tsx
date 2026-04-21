@@ -1,6 +1,6 @@
 import { useTranslation } from '../lib/i18n'
 import { fmtClock, fmtHours } from '../lib/hours'
-import { IconButton, TabButton, TabList } from '../primitives'
+import { IconButton, MonoText, TabButton, TabList } from '../primitives'
 
 type Theme = {
   bg: string
@@ -159,17 +159,13 @@ export function AppHeader({
                 animation: tRun ? 'pulse 1.2s ease-in-out infinite' : 'none',
               }}
             />
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: tRun ? M.pk : M.t3,
-                fontFamily: 'monospace',
-                letterSpacing: 0.3,
-              }}
+            <MonoText
+              size="xs"
+              color={tRun ? 'pink' : 'tertiary'}
+              tracking="wide"
             >
               {statusLabel}
-            </span>
+            </MonoText>
           </button>
           <IconButton
             onClick={onMinimize}
