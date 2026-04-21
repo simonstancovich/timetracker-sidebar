@@ -4,3 +4,4 @@ export { Heading, type HeadingLevel, type HeadingColor } from './Heading/Heading
 export { Button, type ButtonVariant, type ButtonSize } from './Button/Button'
 export { IconTile, type IconTileSize } from './IconTile/IconTile'
 export { Spinner, type SpinnerSize, type SpinnerLayout } from './Spinner/Spinner'
+export { TabButton } from './TabButton/TabButton'

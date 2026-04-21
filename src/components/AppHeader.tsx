@@ -1,5 +1,6 @@
 import { useTranslation } from '../lib/i18n'
 import { fmtClock, fmtHours } from '../lib/hours'
+import { TabButton } from '../primitives'
 
 type Theme = {
   bg: string
@@ -8,7 +9,6 @@ type Theme = {
   t1: string
   t3: string
   tf: string
-  ac: string
   gn: string
   pk: string
 }
@@ -198,27 +198,14 @@ export function AppHeader({
 
       <div role="tablist" style={{ display: 'flex' }}>
         {TABS.map(([v, labelKey]) => (
-          <button
+          <TabButton
             key={v}
             data-tour={`tab-${v}`}
-            role="tab"
-            aria-selected={tab === v}
+            selected={tab === v}
             onClick={() => onTabChange(v)}
-            style={{
-              flex: 1,
-              padding: '9px 0',
-              border: 'none',
-              borderBottom: `2px solid ${tab === v ? M.ac : 'transparent'}`,
-              background: 'transparent',
-              color: tab === v ? M.t1 : M.t3,
-              fontSize: 12,
-              fontWeight: tab === v ? 700 : 500,
-              cursor: 'pointer',
-              marginBottom: -1,
-            }}
           >
             {t(labelKey)}
-          </button>
+          </TabButton>
         ))}
       </div>
     </div>
