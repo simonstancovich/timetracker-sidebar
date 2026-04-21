@@ -13,8 +13,8 @@ import {
   loadUsers,
   saveTimeEntry,
 } from "./api";
-import { formatLocalDate } from "./lib/date";
-import { fmtHours, parseHoursInput, roundUpToQuarter } from "./lib/hours";
+import { formatLocalDate, mondayOf } from "./lib/date";
+import { fmtClock, fmtHours, parseHoursInput, roundUpToQuarter } from "./lib/hours";
 import {
   ACHS,
   CHECKS,
@@ -54,19 +54,6 @@ import {
 
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr"];
 const GOAL = 8;
-
-const pad = (n: number) => String(n).padStart(2, "0");
-
-const fmtClock = (s: number) =>
-  `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
-const fmtDateISO = formatLocalDate;
-const mondayOf = (d: Date) => {
-  const r = new Date(d);
-  const day = (r.getDay() + 6) % 7; // Mon=0
-  r.setDate(r.getDate() - day);
-  r.setHours(0, 0, 0, 0);
-  return r;
-};
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -112,7 +99,7 @@ export default function App() {
   const historyIsOnCurrent = (() => {
     const now = new Date();
     if (historyScale === "day") {
-      return fmtDateISO(selectedDate) === fmtDateISO(now);
+      return formatLocalDate(selectedDate) === formatLocalDate(now);
     }
     if (historyScale === "week") {
       const monA = new Date(selectedDate);
@@ -540,13 +527,13 @@ export default function App() {
       // Streak valid if we've logged today or on the most recent
       // previous working day (skipping weekends + Swedish holidays).
       const now = new Date();
-      const today = fmtDateISO(now);
+      const today = formatLocalDate(now);
       const hols = getHolidays(now.getFullYear());
       const prev = new Date(now);
       do {
         prev.setDate(prev.getDate() - 1);
       } while (!isWorkingDay(prev, hols));
-      const prevWD = fmtDateISO(prev);
+      const prevWD = formatLocalDate(prev);
       if (typeof s === "number" && (last === today || last === prevWD))
         setStreak(s);
       else setStreak(0);
@@ -1009,15 +996,15 @@ export default function App() {
 
     // Refresh today's entries if the save landed on today.
     // History view refetches its own weeks/months on navigation.
-    const savedDateISO = fmtDateISO(entryDate);
-    const todayISOStr = fmtDateISO(new Date());
+    const savedDateISO = formatLocalDate(entryDate);
+    const todayISOStr = formatLocalDate(new Date());
     if (savedDateISO === todayISOStr) {
       const fresh = await loadTimeEntries(new Date());
       setEntries(fresh);
     }
     // If History's Daily drill-down is showing this date, reload it too so
     // the user sees their just-saved past-day entry immediately.
-    if (savedDateISO === fmtDateISO(selectedDate) && historyScale === "day") {
+    if (savedDateISO === formatLocalDate(selectedDate) && historyScale === "day") {
       loadTimeEntries(selectedDate)
         .then(setDayEntries)
         .catch(() => {});
@@ -1034,7 +1021,7 @@ export default function App() {
     // "Previous" means the most recent working day before today
     // (so weekends and Swedish holidays don't break the streak).
     const nowDate = new Date();
-    const todayISO = fmtDateISO(nowDate);
+    const todayISO = formatLocalDate(nowDate);
     const lastLogged = await window.electronAPI.storeGet("lastLoggedDate");
     let effectiveStreak = streak;
     if (lastLogged !== todayISO) {
@@ -1043,7 +1030,7 @@ export default function App() {
       do {
         prev.setDate(prev.getDate() - 1);
       } while (!isWorkingDay(prev, hols));
-      const prevWDISO = fmtDateISO(prev);
+      const prevWDISO = formatLocalDate(prev);
       effectiveStreak = lastLogged === prevWDISO ? streak + 1 : 1;
       setStreak(effectiveStreak);
       await window.electronAPI.storeSet("lastLoggedDate", todayISO);
@@ -1081,7 +1068,7 @@ export default function App() {
     setAchStats(nextStats);
 
     const todaysEntries = entries.filter(
-      (e) => fmtDateISO(new Date(e.task_date)) === todayISOStr,
+      (e) => formatLocalDate(new Date(e.task_date)) === todayISOStr,
     );
     const clientsToday = new Set([
       ...todaysEntries.map((e) => e._company_id),

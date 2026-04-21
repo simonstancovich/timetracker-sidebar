@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadTimeEntries, TimeEntry } from '../api'
+import { mondayOf } from '../lib/date'
 import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { weekInsight } from '../lib/personality'
 import { useTranslation, type Lang } from '../lib/i18n'
@@ -34,14 +35,6 @@ const fmtHours = (h: number) => {
   const hh = Math.floor(h)
   const mm = Math.round((h - hh) * 60)
   return `${hh}:${String(mm).padStart(2, '0')}`
-}
-
-function mondayOf(d: Date): Date {
-  const out = new Date(d)
-  const day = (out.getDay() + 6) % 7
-  out.setDate(out.getDate() - day)
-  out.setHours(0, 0, 0, 0)
-  return out
 }
 
 export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName }: Props) {

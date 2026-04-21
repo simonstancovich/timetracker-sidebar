@@ -1,6 +1,13 @@
 // Hour formatting + parsing helpers. Pure functions; no React, no IPC.
 // Extracted from App.tsx so they're trivially unit-testable.
 
+// Format elapsed seconds as "HH:MM:SS" (used by the running timer clock).
+export function fmtClock(s: number): string {
+  const safe = Number.isFinite(s) && s >= 0 ? Math.floor(s) : 0
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(Math.floor(safe / 3600))}:${pad(Math.floor((safe % 3600) / 60))}:${pad(safe % 60)}`
+}
+
 // Format decimal hours as "H:MM" (e.g. 1.5 → "1:30", 0.033 → "0:02").
 export function fmtHours(h: number): string {
   if (!Number.isFinite(h) || h < 0) return '0:00'

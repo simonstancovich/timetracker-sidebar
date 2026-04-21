@@ -1,5 +1,23 @@
 import { describe, it, expect } from 'vitest'
-import { fmtHours, parseHoursInput, roundUpToQuarter } from './hours'
+import { fmtClock, fmtHours, parseHoursInput, roundUpToQuarter } from './hours'
+
+describe('fmtClock', () => {
+  it('pads to HH:MM:SS', () => {
+    expect(fmtClock(0)).toBe('00:00:00')
+    expect(fmtClock(5)).toBe('00:00:05')
+    expect(fmtClock(65)).toBe('00:01:05')
+    expect(fmtClock(3725)).toBe('01:02:05')
+  })
+
+  it('floors sub-second fractions', () => {
+    expect(fmtClock(59.9)).toBe('00:00:59')
+  })
+
+  it('clamps negatives and NaN to zero', () => {
+    expect(fmtClock(-5)).toBe('00:00:00')
+    expect(fmtClock(NaN)).toBe('00:00:00')
+  })
+})
 
 describe('fmtHours', () => {
   it('formats whole hours', () => {
