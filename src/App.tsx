@@ -46,6 +46,7 @@ import {
 import { useModal } from "./lib/useModal";
 import { buildIntroSteps } from "./lib/introSteps";
 import { Spinner } from "./primitives";
+import { AppHeader } from "./components/AppHeader";
 import { IntroOverlay } from "./components/IntroOverlay";
 import { MeetingsWidget } from "./components/MeetingsWidget";
 import { MonthView } from "./components/MonthView";
@@ -1223,188 +1224,18 @@ export default function App() {
 
   // ─── Header ────────────────────────────────────────────────────────────
   const hdr = (
-    <div
-      style={{
-        padding: "12px 14px 0",
-        background: M.bg,
-        borderBottom: `1px solid ${M.b1}`,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 12,
-          gap: 8,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 6,
-            fontSize: 11,
-            color: M.t3,
-            minWidth: 0,
-          }}
-        >
-          <span
-            style={{
-              whiteSpace: "nowrap",
-              color: M.t3,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {clockDate}
-          </span>
-          <span
-            style={{
-              fontFamily: "monospace",
-              fontWeight: 700,
-              color: M.t1,
-              fontSize: 13,
-            }}
-          >
-            {clockTime}
-          </span>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            flexShrink: 0,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: done ? M.gn : todayH > 0 ? M.t1 : M.tf,
-              fontFamily: "monospace",
-              display: "inline-flex",
-              alignItems: "center",
-              height: 22,
-              lineHeight: 1,
-            }}
-          >
-            {fmtHours(todayH)}
-          </span>
-          <button
-            type="button"
-            onClick={() => setTab("timer")}
-            title={
-              tRun
-                ? t("status.timerRunning")
-                : tSec > 0
-                  ? t("status.timerPaused")
-                  : t("status.noTimer")
-            }
-            aria-label={
-              tRun
-                ? t("status.timerRunning")
-                : tSec > 0
-                  ? t("status.timerPaused")
-                  : t("status.noTimer")
-            }
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              cursor: "pointer",
-              background: tRun ? `${M.pk}1f` : "transparent",
-              border: `1px solid ${tRun ? `${M.pk}55` : M.b1}`,
-              borderRadius: 100,
-              padding: "0 7px",
-              height: 22,
-              font: "inherit",
-              color: "inherit",
-            }}
-          >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: tRun ? M.pk : tSec > 0 ? "#f59e0b" : "#ef4444",
-                boxShadow: tRun ? `0 0 6px ${M.pk}` : "none",
-                animation: tRun ? "pulse 1.2s ease-in-out infinite" : "none",
-              }}
-            />
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: tRun ? M.pk : M.t3,
-                fontFamily: "monospace",
-                letterSpacing: 0.3,
-              }}
-            >
-              {tRun
-                ? fmtClock(tSec)
-                : tSec > 0
-                  ? t("status.paused")
-                  : t("status.idle")}
-            </span>
-          </button>
-          <button
-            onClick={() => goSize("top")}
-            title={t("header.minimizeTopBar")}
-            aria-label={t("header.minimizeTopBar")}
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 7,
-              background: M.s2,
-              border: `1px solid ${M.b1}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              fontSize: 9,
-              color: M.t3,
-              fontWeight: 700,
-            }}
-          >
-            ▼
-          </button>
-        </div>
-      </div>
-      <div role="tablist" style={{ display: "flex" }}>
-        {(
-          [
-            ["today", t("tab.today")],
-            ["timer", t("tab.timer")],
-            ["history", t("tab.history")],
-            ["xp", t("tab.xp")],
-          ] as const
-        ).map(([v, l]) => (
-          <button
-            key={v}
-            data-tour={`tab-${v}`}
-            role="tab"
-            aria-selected={tab === v}
-            onClick={() => setTab(v)}
-            style={{
-              flex: 1,
-              padding: "9px 0",
-              border: "none",
-              borderBottom: `2px solid ${tab === v ? M.ac : "transparent"}`,
-              background: "transparent",
-              color: tab === v ? M.t1 : M.t3,
-              fontSize: 12,
-              fontWeight: tab === v ? 700 : 500,
-              cursor: "pointer",
-              marginBottom: -1,
-            }}
-          >
-            {l}
-          </button>
-        ))}
-      </div>
-    </div>
+    <AppHeader
+      M={M}
+      tab={tab}
+      onTabChange={setTab}
+      tRun={tRun}
+      tSec={tSec}
+      todayH={todayH}
+      done={done}
+      clockDate={clockDate}
+      clockTime={clockTime}
+      onMinimize={() => goSize("top")}
+    />
   );
 
   // Progress bar is about today — nothing in the header navigates anymore.
