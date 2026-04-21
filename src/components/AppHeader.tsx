@@ -1,6 +1,6 @@
 import { useTranslation } from '../lib/i18n'
 import { fmtClock, fmtHours } from '../lib/hours'
-import { TabButton } from '../primitives'
+import { TabButton, TabList } from '../primitives'
 
 type Theme = {
   bg: string
@@ -196,7 +196,7 @@ export function AppHeader({
         </div>
       </div>
 
-      <div role="tablist" style={{ display: 'flex' }}>
+      <TabList>
         {TABS.map(([v, labelKey]) => (
           <TabButton
             key={v}
@@ -207,7 +207,7 @@ export function AppHeader({
             {t(labelKey)}
           </TabButton>
         ))}
-      </div>
+      </TabList>
     </div>
   )
 }
