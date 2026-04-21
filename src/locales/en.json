@@ -63,7 +63,19 @@
     "logFormDate": "Date",
     "confirmSwitchTitle": "Change project?",
     "confirmSwitchBody": "The current timer is still running. It will be saved to timetracker first, then we switch to the new one.",
-    "confirmSwitchOk": "Save & switch"
+    "confirmSwitchOk": "Save & switch",
+    "vibe": {
+      "paused": "On a break — press ▶ to resume",
+      "idle": "Ready when you are",
+      "warmup": "Warming up",
+      "flow": "Finding flow",
+      "zone": "In the zone",
+      "deepFocus": "Deep focus",
+      "crushing": "Crushing it",
+      "unstoppable": "Unstoppable",
+      "legendary": "Legendary",
+      "stretch": "Maybe stretch a little?"
+    }
   },
   "form": {
     "client": "Client *",

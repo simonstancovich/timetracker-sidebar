@@ -63,7 +63,19 @@
     "logFormDate": "Datum",
     "confirmSwitchTitle": "Byta projekt?",
     "confirmSwitchBody": "Den nuvarande timern är fortfarande igång. Den sparas först, sedan byter vi till den nya.",
-    "confirmSwitchOk": "Spara och byt"
+    "confirmSwitchOk": "Spara och byt",
+    "vibe": {
+      "paused": "På paus — tryck ▶ för att återuppta",
+      "idle": "Redo när du är",
+      "warmup": "Värmer upp",
+      "flow": "Hittar flow",
+      "zone": "I zonen",
+      "deepFocus": "Djupt fokus",
+      "crushing": "Krossar det",
+      "unstoppable": "Ostoppbar",
+      "legendary": "Legendarisk",
+      "stretch": "Stretcha kanske lite?"
+    }
   },
   "form": {
     "client": "Kund *",
