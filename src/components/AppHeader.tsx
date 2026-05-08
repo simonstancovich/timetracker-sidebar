@@ -1,15 +1,13 @@
 import { useTranslation } from '../lib/i18n'
 import { fmtClock, fmtHours } from '../lib/hours'
-import { IconButton, MonoText, TabButton, TabList } from '../primitives'
+import { IconButton, MonoText, Pill, Stack, StatusDot, TabButton, TabList, Text } from '../primitives'
+import type { StatusDotColor } from '../primitives'
 
 type Theme = {
   bg: string
   b1: string
   t1: string
   t3: string
-  tf: string
-  gn: string
-  pk: string
 }
 
 export type HeaderTab = 'today' | 'timer' | 'history' | 'xp'
@@ -63,8 +61,8 @@ export function AppHeader({
     : tSec > 0
       ? t('status.paused')
       : t('status.idle')
-  const statusDotColor = tRun ? M.pk : tSec > 0 ? '#f59e0b' : '#ef4444'
-  const hoursColor = done ? M.gn : todayH > 0 ? M.t1 : M.tf
+  const statusDotColor: StatusDotColor = tRun ? 'pink' : tSec > 0 ? 'amber' : 'red'
+  const hoursColor = done ? 'green' : todayH > 0 ? 'primary' : 'faint'
 
   return (
     <div
@@ -93,72 +91,19 @@ export function AppHeader({
             minWidth: 0,
           }}
         >
-          <span
-            style={{
-              whiteSpace: 'nowrap',
-              color: M.t3,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {clockDate}
-          </span>
-          <span
-            style={{
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              color: M.t1,
-              fontSize: 13,
-            }}
-          >
-            {clockTime}
-          </span>
+          <Text inline size="sm" color="tertiary" truncate>{clockDate}</Text>
+          <MonoText size="md">{clockTime}</MonoText>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: hoursColor,
-              fontFamily: 'monospace',
-              display: 'inline-flex',
-              alignItems: 'center',
-              height: 22,
-              lineHeight: 1,
-            }}
-          >
-            {fmtHours(todayH)}
-          </span>
-          <button
-            type="button"
+        <Stack direction="row" align="center" gap="sm" shrink={false}>
+          <MonoText size="md" color={hoursColor}>{fmtHours(todayH)}</MonoText>
+          <Pill
+            highlight={tRun ? 'pink' : undefined}
             onClick={() => onTabChange('timer')}
             title={statusTitle}
             aria-label={statusTitle}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              cursor: 'pointer',
-              background: tRun ? `${M.pk}1f` : 'transparent',
-              border: `1px solid ${tRun ? `${M.pk}55` : M.b1}`,
-              borderRadius: 100,
-              padding: '0 7px',
-              height: 22,
-              font: 'inherit',
-              color: 'inherit',
-            }}
           >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: statusDotColor,
-                boxShadow: tRun ? `0 0 6px ${M.pk}` : 'none',
-                animation: tRun ? 'pulse 1.2s ease-in-out infinite' : 'none',
-              }}
-            />
+            <StatusDot color={statusDotColor} glow={tRun} pulse={tRun} />
             <MonoText
               size="xs"
               color={tRun ? 'pink' : 'tertiary'}
@@ -166,7 +111,7 @@ export function AppHeader({
             >
               {statusLabel}
             </MonoText>
-          </button>
+          </Pill>
           <IconButton
             onClick={onMinimize}
             title={t('header.minimizeTopBar')}
@@ -174,7 +119,7 @@ export function AppHeader({
           >
             ▼
           </IconButton>
-        </div>
+        </Stack>
       </div>
 
       <TabList>

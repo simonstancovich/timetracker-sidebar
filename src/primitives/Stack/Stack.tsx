@@ -12,6 +12,9 @@ interface Props {
   gap?: StackGap
   padding?: StackPadding
   fullHeight?: boolean
+  // When the Stack is itself a child of a flex row, `shrink={false}` holds its
+  // intrinsic width against siblings that want to grow.
+  shrink?: boolean
   className?: string
   children: ReactNode
 }
@@ -23,6 +26,7 @@ export function Stack({
   gap = 'none',
   padding = 'none',
   fullHeight = false,
+  shrink = true,
   className,
   children,
 }: Props) {
@@ -34,6 +38,7 @@ export function Stack({
     s.gap[gap],
     s.padding[padding],
     fullHeight && s.fullHeight,
+    !shrink && s.noShrink,
     className,
   )
   return <div className={classes}>{children}</div>

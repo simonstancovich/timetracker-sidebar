@@ -4,17 +4,42 @@ import { Text } from './Text'
 import * as s from './Text.css'
 
 describe('<Text />', () => {
-  it('renders children in a <p>', () => {
+  it('renders children in a <p> by default', () => {
     const { container } = render(<Text>hello</Text>)
     expect(container.querySelector('p')).toBeInTheDocument()
     expect(screen.getByText('hello')).toBeInTheDocument()
   })
 
-  it('defaults to primary color + left align', () => {
+  it('renders a <span> when inline is set', () => {
+    const { container } = render(<Text inline>hello</Text>)
+    expect(container.querySelector('span')).toBeInTheDocument()
+    expect(container.querySelector('p')).toBeNull()
+  })
+
+  it('defaults to size=base, weight=normal, color=primary, align=left', () => {
     const { container } = render(<Text>x</Text>)
     const el = container.firstChild as HTMLElement
+    expect(el.className).toContain(s.size.base)
+    expect(el.className).toContain(s.weight.normal)
     expect(el.className).toContain(s.color.primary)
     expect(el.className).toContain(s.align.left)
+  })
+
+  it('respects size and weight props', () => {
+    const { container } = render(<Text size="sm" weight="bold">x</Text>)
+    const el = container.firstChild as HTMLElement
+    expect(el.className).toContain(s.size.sm)
+    expect(el.className).toContain(s.weight.bold)
+  })
+
+  it('applies truncate when enabled', () => {
+    const { container } = render(<Text truncate>x</Text>)
+    expect((container.firstChild as HTMLElement).className).toContain(s.truncate)
+  })
+
+  it('omits truncate by default', () => {
+    const { container } = render(<Text>x</Text>)
+    expect((container.firstChild as HTMLElement).className).not.toContain(s.truncate)
   })
 
   it('applies the color variant class', () => {

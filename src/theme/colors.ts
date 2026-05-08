@@ -3,14 +3,16 @@ import { shadows } from "./shadows";
 export type Mode = "light" | "dark";
 
 export const colors = {
+  // Brand slot now carries terracotta. Names kept as "violet*" so the theme
+  // mapping layer doesn't need to change while we're trying palettes.
   brand: {
-    violet50: "#ede9fe",
-    violet100: "#c4b5fd",
-    violet200: "#9b8cff", // dark-mode accent
-    violet300: "#7e6bff", // dark-mode button
-    violet400: "#7c3aed", // light-mode accent / brand
-    violet500: "#4c1d95", // light-mode accent text
-    violet600: "#1e1b4b", // brand "ink"
+    violet50: "#f9ece5",
+    violet100: "#e5b098",
+    violet200: "#e89472", // dark-mode accent
+    violet300: "#d47f5a", // dark-mode button
+    violet400: "#c96442", // light-mode accent / brand
+    violet500: "#7c3817", // light-mode accent text
+    violet600: "#3c1f12", // brand "ink"
   },
 
   typography: {
@@ -19,45 +21,56 @@ export const colors = {
     gray300: "#c4bedb", // dark secondary
     gray500: "#8b85a3", // dark tertiary
     gray700: "#5a5470", // dark faint
-    inkFaint: "#9d98c8", // light faint
-    inkMuted: "#544e8a", // light tertiary
-    inkSoft: "#3e3878", // light secondary
-    ink: "#1e1b4b", // light primary
-    violet200: "#9b8cff", // dark accent text
-    violet400: "#7c3aed", // light accent text
-    violet500: "#d5cdff", // dark accent-on-accent-bg text
-    pink400: "#e89aae", // dark pink
-    pink500: "#be185d", // light pink
-    pinkVivid: "#f472b6",
+    // Light stack: near-neutral with a barely-warm undertone. Stops the
+    // "sandy" effect (warm chrome + warm accent = dune wash) by pulling
+    // chrome off the warm axis while the accent stays warm.
+    inkFaint: "#a8a5a0", // light faint
+    inkMuted: "#73706c", // light tertiary
+    inkSoft: "#484340", // light secondary
+    ink: "#1e1a17", // light primary
+    violet200: "#e89472", // dark accent text (terracotta)
+    violet400: "#c96442", // light accent text (terracotta)
+    violet500: "#f4d4c3", // dark accent-on-accent-bg text
+    // "pink" slot is now dusty rose — warm but different hue than terracotta,
+    // so the two don't melt into each other.
+    pink400: "#e88fa1", // dark rose
+    pink500: "#a33553", // light rose
+    pinkVivid: "#c94369",
     green400: "#6fd4a0", // dark green
     green500: "#16a34a", // light green
   },
 
   background: {
     white: "#ffffff",
-    pageLight: "#f8f7ff",
+    // Crisp near-white canvas with only a whisper of warm. Value-based
+    // elevation, not saturation — avoids the dune/sand wash of the earlier
+    // warm-paper attempt.
+    pageLight: "#fdfcfb",
     pageDark: "#0b0910",
-    surfaceLight: "#f1effc",
+    surfaceLight: "#f6f4f1",
     surfaceDark: "rgba(255,255,255,0.04)",
-    raisedLight: "#e8e4fa",
+    raisedLight: "#ebe8e3",
     raisedDark: "rgba(255,255,255,0.10)",
     glassDark: "rgba(255,255,255,0.065)",
-    accentLight: "#ede9fe",
-    accentDark: "rgba(155,140,255,0.12)",
-    accentMutedLight: "#c4b5fd",
-    accentMutedDark: "rgba(255,255,255,0.12)",
-    pinkLight: "#fdf2f8",
-    pinkDark: "rgba(232,154,174,0.07)",
-    pinkPaperLight: "#fce7f3",
-    pinkPaperDark: "rgba(232,154,174,0.18)",
+    // Accent tinted bgs stay terracotta.
+    accentLight: "#f9ece5",
+    accentDark: "rgba(232,148,114,0.12)",
+    accentMutedLight: "#e5b098",
+    accentMutedDark: "rgba(232,148,114,0.24)",
+    // "pink" bgs now dusty rose.
+    pinkLight: "#fbe9ee",
+    pinkDark: "rgba(232,143,161,0.10)",
+    pinkPaperLight: "#f6d0da",
+    pinkPaperDark: "rgba(232,143,161,0.22)",
     greenLight: "#f0fdf4",
     greenDark: "rgba(111,212,160,0.07)",
   },
 
   border: {
-    softLight: "#e2dff5",
+    // Near-neutral dividers, barely-warm.
+    softLight: "#e5e1db",
     softDark: "rgba(255,255,255,0.10)",
-    strongLight: "#c4bfec",
+    strongLight: "#d0ccc4",
     strongDark: "rgba(255,255,255,0.18)",
     greenLight: "#bbf7d0",
     greenDark: "rgba(111,212,160,0.25)",

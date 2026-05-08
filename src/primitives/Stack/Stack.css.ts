@@ -26,3 +26,7 @@ export const gap = styleVariants(spacing, (v) => ({ gap: v }));
 export const padding = styleVariants(spacing, (v) => ({ padding: v }));
 
 export const fullHeight = style({ minHeight: "100vh" });
+
+// For a Stack that lives inside another flex row and shouldn't collapse when
+// its siblings grow.
+export const noShrink = style({ flexShrink: 0 });
