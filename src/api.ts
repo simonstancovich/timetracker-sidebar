@@ -177,3 +177,25 @@ export async function loadProjects(companyId: string): Promise<Project[]> {
   )
   return res.rows
 }
+
+function lastDayIso(monthAnchor: Date): string {
+  const last = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 0)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}T00:00:00`
+}
+
+export async function monthEnded(monthAnchor: Date): Promise<boolean> {
+  const res = await call<{ ended?: boolean; success?: boolean }>(
+    { c: 'time', m: 'month_ended' },
+    { month: lastDayIso(monthAnchor) },
+  )
+  return !!res.ended
+}
+
+export async function endMonth(monthAnchor: Date): Promise<boolean> {
+  const res = await call<{ success?: boolean }>(
+    { c: 'time', m: 'end_month' },
+    { month: lastDayIso(monthAnchor) },
+  )
+  return !!res.success
+}

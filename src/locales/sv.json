@@ -115,7 +115,9 @@
   "footer": {
     "signOut": "Logga ut",
     "confirmSignOut": "Är du säker på att du vill logga ut?",
-    "showIntro": "Visa introduktionen"
+    "showIntro": "Visa introduktionen",
+    "pinSidebar": "Fäst sidofältet (inaktivera auto-minimering)",
+    "unpinSidebar": "Sidofältet är fäst — klicka för att tillåta auto-minimering"
   },
   "login": {
     "pitch": "Logga in med ditt DevCore-konto för att börja spåra tid.",
@@ -158,7 +160,15 @@
     "missed": "Missat",
     "workdaysWithoutEntries": "{{n}} arbetsdag utan poster",
     "workdaysWithoutEntriesPlural": "{{n}} arbetsdagar utan poster",
-    "moreDays": "+ {{n}} till"
+    "moreDays": "+ {{n}} till",
+    "closed": "Stängd",
+    "closeMonth": "Stäng månad",
+    "closing": "Stänger…",
+    "closeConfirmTitle": "Stänga {{month}}?",
+    "closeConfirmBody": "Skickar månaden för godkännande. Efter detta är posterna i {{month}} låsta på servern.",
+    "closeConfirm": "Stäng månad",
+    "closeSuccess": "Månaden stängd",
+    "closeError": "Kunde inte stänga månaden"
   },
   "xp": {
     "level": "Nivå {{n}}",

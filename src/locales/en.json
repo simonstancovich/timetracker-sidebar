@@ -115,7 +115,9 @@
   "footer": {
     "signOut": "Sign out",
     "confirmSignOut": "Are you sure you want to sign out?",
-    "showIntro": "Show intro"
+    "showIntro": "Show intro",
+    "pinSidebar": "Pin sidebar open (disable auto-collapse)",
+    "unpinSidebar": "Sidebar pinned — click to allow auto-collapse"
   },
   "login": {
     "pitch": "Sign in with your DevCore account to start tracking time.",
@@ -158,7 +160,15 @@
     "missed": "Missed",
     "workdaysWithoutEntries": "{{n}} workday without entries",
     "workdaysWithoutEntriesPlural": "{{n}} workdays without entries",
-    "moreDays": "+ {{n}} more"
+    "moreDays": "+ {{n}} more",
+    "closed": "Closed",
+    "closeMonth": "Close month",
+    "closing": "Closing…",
+    "closeConfirmTitle": "Close {{month}}?",
+    "closeConfirmBody": "Submits the month for approval. After this, entries in {{month}} are locked server-side.",
+    "closeConfirm": "Close month",
+    "closeSuccess": "Month closed",
+    "closeError": "Couldn't close the month"
   },
   "xp": {
     "level": "Level {{n}}",

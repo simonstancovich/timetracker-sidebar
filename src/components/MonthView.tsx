@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { loadTimeEntries, TimeEntry } from '../api'
+import { loadTimeEntries, TimeEntry, endMonth } from '../api'
 import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { monthInsight } from '../lib/personality'
 import { useTranslation, type Lang } from '../lib/i18n'
+import type { MonthClosureCache } from '../lib/useMonthClosure'
+
+interface ConfirmOptions {
+  title: string
+  body: string
+  confirmLabel: string
+  onConfirm: () => void | Promise<void>
+}
 
 type Theme = {
   bg: string
@@ -32,6 +40,9 @@ interface Props {
   onPickDay: (date: Date) => void
   onBackfillDay?: (date: Date) => void
   firstName?: string
+  confirm?: (opts: ConfirmOptions) => void
+  notify?: (message: string, color: string) => void
+  monthClosure?: MonthClosureCache
 }
 
 function isoWeekOf(d: Date): number {
@@ -50,7 +61,7 @@ const fmtHours = (h: number) => {
   return `${hh}:${String(mm).padStart(2, '0')}`
 }
 
-export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName }: Props) {
+export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName, confirm, notify, monthClosure }: Props) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language as Lang
   const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
@@ -63,6 +74,7 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
   const [loading, setLoading] = useState(false)
   const [prevMonthTotal, setPrevMonthTotal] = useState<number | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [closing, setClosing] = useState(false)
 
   const year = anchor.getFullYear()
   const month = anchor.getMonth()
@@ -127,6 +139,39 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
       })
     return () => { cancelled = true }
   }, [year, month])
+
+  useEffect(() => {
+    monthClosure?.ensure(year, month)
+  }, [year, month, monthClosure])
+
+  const isClosed = monthClosure?.isClosed(year, month) ?? null
+  const isFutureMonth = firstOfMonth > new Date()
+  const monthLabel = anchor.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+
+  const handleCloseMonth = () => {
+    if (!confirm) return
+    confirm({
+      title: t('month.closeConfirmTitle', { month: monthLabel }),
+      body: t('month.closeConfirmBody', { month: monthLabel }),
+      confirmLabel: t('month.closeConfirm'),
+      onConfirm: async () => {
+        setClosing(true)
+        try {
+          const ok = await endMonth(anchor)
+          if (ok) {
+            monthClosure?.setClosed(year, month, true)
+            notify?.(t('month.closeSuccess'), M.gn)
+          } else {
+            notify?.(t('month.closeError'), '#ef4444')
+          }
+        } catch {
+          notify?.(t('month.closeError'), '#ef4444')
+        } finally {
+          setClosing(false)
+        }
+      },
+    })
+  }
 
   const monthTotal = useMemo<number>(
     () => (Object.values(hoursByDate) as number[]).reduce((s, h) => s + h, 0),
@@ -273,6 +318,25 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
 
   return (
     <div style={{ padding: '14px 14px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+      {!isFutureMonth && isClosed !== null && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          {isClosed ? (
+            <span style={{ background: `${M.gn}20`, border: `1px solid ${M.gn}55`, color: M.gn, borderRadius: 7, padding: '4px 9px', fontSize: 10, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+              ✓ {t('month.closed')}
+            </span>
+          ) : confirm ? (
+            <button
+              type="button"
+              onClick={handleCloseMonth}
+              disabled={closing}
+              style={{ background: M.s1, border: `1px solid ${M.b1}`, color: M.t2, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: closing ? 'progress' : 'pointer', opacity: closing ? 0.7 : 1 }}
+            >
+              {closing ? t('month.closing') : t('month.closeMonth')}
+            </button>
+          ) : null}
+        </div>
+      )}
 
       {loaded ? (insight && (
         <div style={{ background: `${M.ac}12`, border: `1px solid ${M.ac}33`, borderRadius: 10, padding: '9px 11px', fontSize: 12, color: M.t1, lineHeight: 1.4, display: 'flex', gap: 8, alignItems: 'flex-start' }}>

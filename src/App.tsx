@@ -51,6 +51,7 @@ import { IntroOverlay } from "./components/IntroOverlay";
 import { MeetingsWidget } from "./components/MeetingsWidget";
 import { MonthView } from "./components/MonthView";
 import { WeekView } from "./components/WeekView";
+import { useMonthClosure } from "./lib/useMonthClosure";
 import {
   light as L,
   dark as D,
@@ -67,6 +68,7 @@ export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [mode, setMode] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
+  const [pinned, setPinned] = useState(false);
   const M: Theme = mode === "light" ? L : D;
   const [tab, setTab] = useState<"today" | "timer" | "history" | "xp">("today");
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -76,6 +78,7 @@ export default function App() {
   const [logOpen, setLogOpen] = useState(false);
   const [dayEntries, setDayEntries] = useState<TimeEntry[]>([]);
   const [dayEntriesLoading, setDayEntriesLoading] = useState(false);
+  const monthClosure = useMonthClosure();
 
   const stepHistoryDate = (dir: 1 | -1) => {
     if (historyScale === "day") {
@@ -151,6 +154,7 @@ export default function App() {
   const [introStep, setIntroStep] = useState(0);
   const [greetingMsg, setGreetingMsg] = useState<string>("");
   const [timerInsight, setTimerInsight] = useState<string>("");
+  const [xpCoach, setXpCoach] = useState<string>("");
   const [modeTransition, setModeTransition] = useState<"idle" | "out" | "in">(
     "idle",
   );
@@ -447,13 +451,15 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [m, l] = await Promise.all([
+      const [m, l, p] = await Promise.all([
         window.electronAPI.storeGet("mode"),
         window.electronAPI.storeGet("lang"),
+        window.electronAPI.storeGet("pinned"),
       ]);
       if (cancelled) return;
       if (m === "dark" || m === "light") setMode(m);
       if (l === "en" || l === "sv") setLang(l);
+      if (typeof p === "boolean") setPinned(p);
     })();
     return () => {
       cancelled = true;
@@ -649,8 +655,12 @@ export default function App() {
   const introCanAdvance = introStep === 5 ? tD.trim().length > 0 : true;
 
   useEffect(() => {
-    window.electronAPI.setBlurCollapseDisabled(showIntro || !authed);
-  }, [showIntro, authed]);
+    window.electronAPI.setBlurCollapseDisabled(showIntro || !authed || pinned);
+  }, [showIntro, authed, pinned]);
+
+  useEffect(() => {
+    window.electronAPI.storeSet("pinned", pinned);
+  }, [pinned]);
 
   useEffect(() => {
     if (authed === false && size !== "full") {
@@ -670,8 +680,12 @@ export default function App() {
     return () => clearInterval(id);
   }, [currentUser, lang]);
 
+
   const emptyMsg = useMemo(() => emptyTodayMessage(lang), [nowTick, lang]);
 
+  const tCoEmpty = !tCo;
+  const tPrEmpty = !tPr;
+  const tDEmpty = !tD.trim();
   useEffect(() => {
     if (!currentUser) return;
     const first = currentUser.username.trim().split(/\s+/)[0] || "";
@@ -695,7 +709,7 @@ export default function App() {
     const id = window.setInterval(compute, 2 * 60 * 1000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tRun, tCo, tPr, tD, entries.length, currentUser, lang]);
+  }, [tRun, tCoEmpty, tPrEmpty, tDEmpty, entries.length, currentUser, lang]);
 
   useEffect(() => {
     if (authed) window.electronAPI.storeSet("xp", xp);
@@ -848,6 +862,11 @@ export default function App() {
     };
   }, [authed, nowTick]);
 
+  useEffect(() => {
+    if (!authed) return;
+    monthClosure.ensure(selectedDate.getFullYear(), selectedDate.getMonth());
+  }, [authed, selectedDate, monthClosure]);
+
   // ─── Load entries for History → Daily drill-down ──────────────────────
   useEffect(() => {
     if (!authed || historyScale !== "day" || tab !== "history") return;
@@ -928,6 +947,32 @@ export default function App() {
     [entries],
   );
   const weekTotal = useMemo(() => weekH.reduce((s, h) => s + h, 0), [weekH]);
+
+  const xpIntoLevel = xp % 1000;
+  const xpRemainingBucket = xpIntoLevel >= 950 ? 'near' : xpIntoLevel >= 750 ? 'late' : xpIntoLevel >= 400 ? 'mid' : xpIntoLevel > 0 ? 'fresh' : 'idle';
+  const streakHigh = streak >= 7;
+  const weekStrong = weekTotal >= 30;
+  useEffect(() => {
+    if (!currentUser) return;
+    const first = currentUser.username.trim().split(/\s+/)[0] || "";
+    const compute = () =>
+      setXpCoach(
+        xpCoachNote({
+          xp,
+          xpIntoLevel,
+          xpPerLevel: 1000,
+          streak,
+          weekTotal,
+          firstName: first,
+          lang,
+        }),
+      );
+    compute();
+    const id = window.setInterval(compute, 60 * 60 * 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, lang, xpRemainingBucket, streakHigh, weekStrong]);
+
   const done = todayH >= GOAL;
   const gpct = Math.min((todayH / GOAL) * 100, 100);
 
@@ -3320,15 +3365,7 @@ export default function App() {
               lineHeight: 1.4,
             }}
           >
-            {xpCoachNote({
-              xp,
-              xpIntoLevel: xp - xpBase,
-              xpPerLevel: xpNext - xpBase,
-              streak,
-              weekTotal,
-              firstName: currentUser.username.trim().split(/\s+/)[0],
-              lang,
-            })}
+            {xpCoach}
           </div>
         </div>
 
@@ -3562,6 +3599,9 @@ export default function App() {
         setLogOpen(true);
       }}
       firstName={currentUser.username.trim().split(/\s+/)[0]}
+      confirm={(opts) => setConfirmation(opts)}
+      notify={(msg, col) => addFloat(msg, col)}
+      monthClosure={monthClosure}
     />
   );
   const weekView = (
@@ -3577,6 +3617,7 @@ export default function App() {
         setLogOpen(true);
       }}
       firstName={currentUser.username.trim().split(/\s+/)[0]}
+      monthClosure={monthClosure}
     />
   );
 
@@ -3600,18 +3641,33 @@ export default function App() {
       day: "numeric",
       month: "long",
     });
+    const dayClosed = monthClosure.isClosed(selectedDate.getFullYear(), selectedDate.getMonth()) === true;
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
         <div
           style={{
-            fontSize: 14,
-            fontWeight: 700,
-            color: M.t1,
-            letterSpacing: -0.2,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
           }}
         >
-          {dateLabel}
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: M.t1,
+              letterSpacing: -0.2,
+            }}
+          >
+            {dateLabel}
+          </div>
+          {dayClosed && (
+            <span style={{ background: `${M.gn}20`, border: `1px solid ${M.gn}55`, color: M.gn, borderRadius: 6, padding: "2px 7px", fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>
+              ✓ {t("month.closed")}
+            </span>
+          )}
         </div>
 
         {dayEntries.length === 0 && dayEntriesLoading && (
@@ -4631,6 +4687,28 @@ export default function App() {
             }}
           >
             {lang === "en" ? "🇸🇪" : "🇬🇧"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPinned((v) => !v)}
+            aria-pressed={pinned}
+            title={pinned ? t("footer.unpinSidebar") : t("footer.pinSidebar")}
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 5,
+              background: pinned ? `${M.ac}26` : M.s2,
+              border: `1px solid ${pinned ? M.ac : M.b1}`,
+              color: pinned ? M.ac : M.t3,
+              fontSize: 11,
+              cursor: "pointer",
+              padding: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            📌
           </button>
           <button
             onClick={startIntroFresh}

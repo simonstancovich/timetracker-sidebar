@@ -4,6 +4,7 @@ import { mondayOf } from '../lib/date'
 import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { weekInsight } from '../lib/personality'
 import { useTranslation, type Lang } from '../lib/i18n'
+import type { MonthClosureCache } from '../lib/useMonthClosure'
 
 type Theme = {
   bg: string
@@ -27,6 +28,7 @@ interface Props {
   onPickDay: (d: Date) => void
   onBackfillDay?: (d: Date) => void
   firstName?: string
+  monthClosure?: MonthClosureCache
 }
 
 const DAYS = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']
@@ -37,7 +39,7 @@ const fmtHours = (h: number) => {
   return `${hh}:${String(mm).padStart(2, '0')}`
 }
 
-export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName }: Props) {
+export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName, monthClosure }: Props) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language as Lang
   const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
@@ -184,6 +186,22 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
     })
   }, [weekDates, holidays, hoursByDate])
 
+  useEffect(() => {
+    if (!monthClosure) return
+    const seen = new Set<string>()
+    for (const d of weekDates) {
+      const k = `${d.getFullYear()}-${d.getMonth()}`
+      if (seen.has(k)) continue
+      seen.add(k)
+      monthClosure.ensure(d.getFullYear(), d.getMonth())
+    }
+  }, [weekDates, monthClosure])
+
+  const weekClosed = useMemo(() => {
+    if (!monthClosure) return false
+    return weekDates.some((d) => monthClosure.isClosed(d.getFullYear(), d.getMonth()) === true)
+  }, [weekDates, monthClosure])
+
   const isFinished = weekDates[6] < new Date()
   const topClient = clientTotals[0]
   const insight = useMemo(() => weekInsight({
@@ -205,6 +223,13 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
 
   return (
     <div style={{ padding: '14px 14px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {weekClosed && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <span style={{ background: `${M.gn}20`, border: `1px solid ${M.gn}55`, color: M.gn, borderRadius: 7, padding: '4px 9px', fontSize: 10, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+            ✓ {t('month.closed')}
+          </span>
+        </div>
+      )}
       {loaded ? (insight && (
         <div style={{ background: `${M.ac}12`, border: `1px solid ${M.ac}33`, borderRadius: 10, padding: '9px 11px', fontSize: 12, color: M.t1, lineHeight: 1.4, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
           <span style={{ fontSize: 14, lineHeight: 1 }}>💭</span>
