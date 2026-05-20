@@ -1,6 +1,7 @@
 export const fontFamily = {
   body: "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
-  mono: "'SF Mono','Cascadia Code',monospace",
+  display: "'Instrument Serif','Georgia',serif",
+  mono: "'JetBrains Mono','SF Mono','Cascadia Code',ui-monospace,monospace",
 } as const;
 
 export const fontSize = {

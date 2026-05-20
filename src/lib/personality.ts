@@ -163,6 +163,51 @@ export function xpCoachNote(ctx: {
       ])
 }
 
+// ─── 8h goal hit — daily celebration ─────────────────────────────────
+const GOAL_DONE_EN = [
+  'Day done.',
+  '8 hours. Locked.',
+  'Goal cleared.',
+  'That\'s a day.',
+  'Eight hours in the books.',
+  'Today, earned.',
+  'Goal: hit.',
+  'Full shift logged.',
+]
+const GOAL_DONE_SV = [
+  'Dagen klar.',
+  '8 timmar. Inlåst.',
+  'Mål nått.',
+  'Det var en dag.',
+  'Åtta timmar bokförda.',
+  'Idag, intjänat.',
+  'Mål: träffat.',
+  'Hel arbetsdag loggad.',
+]
+export function goalDoneCheer(lang: Lang = 'en'): string {
+  return pick(lang === 'sv' ? GOAL_DONE_SV : GOAL_DONE_EN)
+}
+
+const GOAL_DONE_SUB_EN = [
+  'Anything past this is a bonus.',
+  'Rest is gravy.',
+  'Coast from here.',
+  'The clock can take a break.',
+  'Extra hours = extra XP.',
+  'You\'ve earned the rest of the day.',
+]
+const GOAL_DONE_SUB_SV = [
+  'Allt efter det här är bonus.',
+  'Resten är extra.',
+  'Segla från här.',
+  'Klockan kan ta paus.',
+  'Extra timmar = extra XP.',
+  'Du har förtjänat resten av dagen.',
+]
+export function goalDoneSub(lang: Lang = 'en'): string {
+  return pick(lang === 'sv' ? GOAL_DONE_SUB_SV : GOAL_DONE_SUB_EN)
+}
+
 // ─── Timer start / stop flavor ───────────────────────────────────────
 const START_EN = [ 'Focus time.', 'Game on.', 'Here we go.', 'Clock rolling.', 'Eyes on the task.', 'Tracker\'s ticking.' ]
 const START_SV = [ 'Fokusdags.', 'Kör igång.', 'Nu kör vi.', 'Klockan rullar.', 'Ögonen på uppgiften.', 'Timern tickar.' ]

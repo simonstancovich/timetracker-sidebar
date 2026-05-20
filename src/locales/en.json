@@ -13,6 +13,28 @@
     "jumpCurrentTitle": "Jump to current {{scale}}",
     "minimizeTopBar": "Dock as top bar"
   },
+  "goal": {
+    "eyebrow": "Day complete"
+  },
+  "date": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "tomorrow": "Tomorrow"
+  },
+  "recent": {
+    "label": "Quick start",
+    "useDescription": "Recent task"
+  },
+  "page": {
+    "today": "Today",
+    "timer": "Timer",
+    "history": "History",
+    "progress": "Progress",
+    "level": "Level",
+    "timerRunning": "Active session",
+    "timerPaused": "On a break",
+    "timerIdle": "Not tracking"
+  },
   "top": {
     "dblClickToOpen": "Double-click to open full sidebar"
   },
@@ -23,6 +45,9 @@
     "latenight": "Still up"
   },
   "today": {
+    "dayDoneSubtitle": "Day complete · +{{extra}} bonus",
+    "toGoSubtitle": "of an 8-hour day · {{remaining}} to go",
+    "logTime": "Log time",
     "hoursLogged": "{{hours}} logged",
     "toGo": "{{hours}} to go",
     "goalReached": "✓ Goal reached",
@@ -35,16 +60,19 @@
     "stat": {
       "today": "Today",
       "streak": "Streak",
-      "week": "Week"
+      "week": "Week",
+      "billable": "Billable",
+      "xpToday": "XP Today"
     },
+    "eyebrowHint": "Week {{week}} · Day {{day}}",
     "opensTimer": "▶ opens timer with task pre-selected",
     "recent": "Recent",
     "orLogManually": "or log manually"
   },
   "timer": {
     "noTaskSelected": "No task selected",
-    "start": "▶  Start timer",
-    "resume": "▶  Resume",
+    "start": "Start timer",
+    "resume": "Resume",
     "stopLog": "Stop & Log",
     "pause": "Pause",
     "whatWorking": "What are you working on?",
@@ -58,14 +86,24 @@
     "change": "change",
     "cancel": "Cancel timer",
     "cancelDiscard": "Discard",
-    "logPastTime": "+ Log past time",
+    "logPastTime": "Log past time",
+    "statSessionXp": "Session XP",
+    "statToday": "Today",
+    "statStreak": "Streak",
+    "formDone": "Done",
+    "switchTask": "Switch task",
+    "sideQuest": "Side quest",
+    "sideQuestHint": "Pause this and start a fresh timer for an interruption — fill in details later",
+    "mainPaused": "Paused",
+    "returnToMain": "Return to your main task",
+    "returnShort": "Return",
     "hideLogForm": "Hide log form",
     "logFormDate": "Date",
     "confirmSwitchTitle": "Change project?",
     "confirmSwitchBody": "The current timer is still running. It will be saved to timetracker first, then we switch to the new one.",
     "confirmSwitchOk": "Save & switch",
     "vibe": {
-      "paused": "On a break — press ▶ to resume",
+      "paused": "On a break — hit resume when you're back.",
       "idle": "Ready when you are",
       "warmup": "Warming up",
       "flow": "Finding flow",
@@ -94,7 +132,10 @@
     "searchProject": "Search project…",
     "selectProject": "Select project…",
     "noMatches": "No matches",
+    "loading": "Loading…",
     "loadingProjects": "Loading…",
+    "searchDefault": "Search…",
+    "showingResults": "Showing {{n}} of {{total}} — type to filter",
     "typeHoursHint": "Type 1:30 or 1.5",
     "fillFirst": "Fill client, project & task first",
     "saveFailed": "Save failed: {{err}}",
@@ -124,7 +165,12 @@
     "signIn": "Sign in"
   },
   "week": {
-    "total": "Total",
+    "total": "Week total",
+    "avgDay": "Avg / day",
+    "billable": "Billable",
+    "perClient": "Per client",
+    "coachNote": "Coach note",
+    "weeklyInsight": "Weekly insight",
     "hitGoal": "Hit goal",
     "utilization": "Utilization",
     "weeklyGoal": "Weekly goal",
@@ -168,7 +214,8 @@
     "closeConfirmBody": "Submits the month for approval. After this, entries in {{month}} are locked server-side.",
     "closeConfirm": "Close month",
     "closeSuccess": "Month closed",
-    "closeError": "Couldn't close the month"
+    "closeError": "Couldn't close the month",
+    "monthlyInsight": "Monthly insight"
   },
   "xp": {
     "level": "Level {{n}}",
@@ -177,7 +224,11 @@
     "xpSuffix": "XP",
     "achievements": "Achievements",
     "locked": "Locked",
-    "achievementUnlocked": "Achievement unlocked"
+    "achievementUnlocked": "Achievement unlocked",
+    "titleDev": "Developer",
+    "titleSenior": "Senior Developer",
+    "titlePrincipal": "Principal Developer",
+    "toNext": "to next"
   },
   "cal": {
     "notConfigured": "Calendar integration not yet configured. Add AZURE_CLIENT_ID to enable.",

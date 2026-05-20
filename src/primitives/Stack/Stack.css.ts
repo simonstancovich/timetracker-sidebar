@@ -1,5 +1,5 @@
 import { style, styleVariants } from "@vanilla-extract/css";
-import { spacing } from "../../theme";
+import { spacing, radii, vars } from "../../theme";
 
 export const root = style({ display: "flex" });
 
@@ -13,6 +13,7 @@ export const align = styleVariants({
   center: { alignItems: "center" },
   end: { alignItems: "flex-end" },
   stretch: { alignItems: "stretch" },
+  baseline: { alignItems: "baseline" },
 });
 
 export const justify = styleVariants({
@@ -23,10 +24,84 @@ export const justify = styleVariants({
 });
 
 export const gap = styleVariants(spacing, (v) => ({ gap: v }));
-export const padding = styleVariants(spacing, (v) => ({ padding: v }));
 
+// Order matters for the cascade: `padding` (all sides) is declared first, then
+// axis (`paddingX`/`paddingY`), then per-side. A more specific prop overrides
+// a less specific one when both are passed.
+export const padding = styleVariants(spacing, (v) => ({ padding: v }));
+export const paddingX = styleVariants(spacing, (v) => ({
+  paddingLeft: v,
+  paddingRight: v,
+}));
+export const paddingY = styleVariants(spacing, (v) => ({
+  paddingTop: v,
+  paddingBottom: v,
+}));
+export const paddingTop = styleVariants(spacing, (v) => ({ paddingTop: v }));
+export const paddingRight = styleVariants(spacing, (v) => ({
+  paddingRight: v,
+}));
+export const paddingBottom = styleVariants(spacing, (v) => ({
+  paddingBottom: v,
+}));
+export const paddingLeft = styleVariants(spacing, (v) => ({ paddingLeft: v }));
+
+export const background = styleVariants({
+  page: { background: vars.background.page },
+  surface: { background: vars.background.surface },
+  raised: { background: vars.background.raised },
+  green: { background: vars.background.green },
+  pink: { background: vars.background.pink },
+  accent: { background: vars.background.accent },
+  warning: { background: vars.background.warning },
+});
+
+export const border = styleVariants({
+  top: { borderTop: `1px solid ${vars.border.soft}` },
+  right: { borderRight: `1px solid ${vars.border.soft}` },
+  bottom: { borderBottom: `1px solid ${vars.border.soft}` },
+  left: { borderLeft: `1px solid ${vars.border.soft}` },
+  all: { border: `1px solid ${vars.border.soft}` },
+});
+
+// Override the border color set by the `border` variant.
+export const borderColor = styleVariants({
+  soft: { borderColor: vars.border.soft },
+  strong: { borderColor: vars.border.strong },
+  accent: { borderColor: vars.border.accent },
+  green: { borderColor: vars.border.green },
+  pink: { borderColor: vars.border.pink },
+  warning: { borderColor: vars.border.warning },
+});
+
+// Override the border style set by the `border` variant.
+export const borderStyle = styleVariants({
+  solid: { borderStyle: "solid" },
+  dashed: { borderStyle: "dashed" },
+});
+
+export const borderRadius = styleVariants(radii, (v) => ({ borderRadius: v }));
+
+export const position = styleVariants({
+  relative: { position: "relative" },
+  absolute: { position: "absolute" },
+  fixed: { position: "fixed" },
+});
+
+export const top = styleVariants(spacing, (v) => ({ top: v }));
+export const right = styleVariants(spacing, (v) => ({ right: v }));
+export const bottom = styleVariants(spacing, (v) => ({ bottom: v }));
+export const left = styleVariants(spacing, (v) => ({ left: v }));
+
+export const fullWidth = style({ width: "100%" });
 export const fullHeight = style({ minHeight: "100vh" });
 
 // For a Stack that lives inside another flex row and shouldn't collapse when
 // its siblings grow.
 export const noShrink = style({ flexShrink: 0 });
+
+export const wrap = style({ flexWrap: "wrap" });
+
+// Lets a flex-item Stack shrink below its content width — required for
+// `<Text truncate>` (or any overflow ellipsis) to work inside a flex row.
+export const minWidth0 = style({ minWidth: 0 });

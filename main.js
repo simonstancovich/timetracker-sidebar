@@ -57,6 +57,8 @@ function formatLocalDate(date) {
 
 function createMainWindow() {
   const { height, width } = screen.getPrimaryDisplay().workAreaSize;
+  const storedMode = store.get("mode");
+  const backgroundColor = storedMode === "light" ? "#fdfcfb" : "#0b0910";
 
   mainWindow = new BrowserWindow({
     width: SIDEBAR_WIDTH,
@@ -67,6 +69,7 @@ function createMainWindow() {
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
+    backgroundColor,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

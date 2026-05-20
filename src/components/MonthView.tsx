@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { loadTimeEntries, TimeEntry, endMonth } from '../api'
 import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { monthInsight } from '../lib/personality'
 import { useTranslation, type Lang } from '../lib/i18n'
 import type { MonthClosureCache } from '../lib/useMonthClosure'
+import { Button, MonoText, Skeleton, Stack, Text } from '../primitives'
 
 interface ConfirmOptions {
   title: string
@@ -31,6 +32,7 @@ type Theme = {
   btn: string
   bsh: string
   id: string
+  co: readonly string[]
 }
 
 interface Props {
@@ -316,165 +318,56 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
 
   const monthDelta = prevMonthTotal != null ? monthTotal - prevMonthTotal : null
 
+  let deltaContent: ReactNode = null
+  if (monthDelta != null) {
+    if (monthDelta === 0) {
+      deltaContent = t('month.sameAsLast')
+    } else {
+      const prefix = monthDelta > 0 ? '+' : ''
+      const deltaColor = monthDelta > 0 ? 'green' : 'warning'
+      deltaContent = (
+        <>
+          <Text inline weight="bold" color={deltaColor}>{prefix}{fmtHours(monthDelta)}</Text>
+          {' '}{t('month.vsLast')}
+        </>
+      )
+    }
+  }
+
+  void deltaContent;
+
+  const monthLabelEditorial = anchor.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+  const dayHeader = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const
+
   return (
-    <div style={{ padding: '14px 14px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ padding: '14px 14px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* Editorial month label */}
+      <div style={{
+        fontFamily: '"Instrument Serif","Georgia",serif',
+        fontStyle: 'italic',
+        fontSize: 22,
+        color: M.t1,
+        letterSpacing: -0.3,
+        lineHeight: 1.15,
+        textAlign: 'center',
+        paddingTop: 2,
+      }}>{monthLabelEditorial}</div>
 
-      {!isFutureMonth && isClosed !== null && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          {isClosed ? (
-            <span style={{ background: `${M.gn}20`, border: `1px solid ${M.gn}55`, color: M.gn, borderRadius: 7, padding: '4px 9px', fontSize: 10, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-              ✓ {t('month.closed')}
-            </span>
-          ) : confirm ? (
-            <button
-              type="button"
-              onClick={handleCloseMonth}
-              disabled={closing}
-              style={{ background: M.s1, border: `1px solid ${M.b1}`, color: M.t2, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: closing ? 'progress' : 'pointer', opacity: closing ? 0.7 : 1 }}
-            >
-              {closing ? t('month.closing') : t('month.closeMonth')}
-            </button>
-          ) : null}
-        </div>
-      )}
-
-      {loaded ? (insight && (
-        <div style={{ background: `${M.ac}12`, border: `1px solid ${M.ac}33`, borderRadius: 10, padding: '9px 11px', fontSize: 12, color: M.t1, lineHeight: 1.4, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <span style={{ fontSize: 14, lineHeight: 1 }}>💭</span>
-          <span>{insight}</span>
-        </div>
-      )) : (
-        <div className="skeleton" style={{ height: 38, borderRadius: 10 }} />
-      )}
-
-      {/* Totals + delta + avg + utilization */}
-      <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('month.thisMonth')}</span>
-          <span style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-            {monthTotal > 0 && (
-              <span style={{ fontSize: 11, color: M.t3 }}>
-                <strong style={{ color: M.pk, fontFamily: 'monospace' }}>{Math.round((billable / monthTotal) * 100)}%</strong> {t('month.utilization')}
-              </span>
-            )}
-            <span style={{ fontSize: 11, color: M.t3, fontFamily: 'monospace' }}>
-              <strong style={{ color: M.t1 }}>{fmtHours(monthTotal)}</strong>
-              <span style={{ color: M.t3 }}> / {fmtHours(expectedMonthHours)}</span>
-            </span>
-          </span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: M.t3, gap: 8, flexWrap: 'wrap' }}>
-          <span>
-            {monthDelta == null ? '' :
-              monthDelta === 0 ? t('month.sameAsLast') :
-                monthDelta > 0 ? <><strong style={{ color: M.gn }}>+{fmtHours(monthDelta)}</strong> {t('month.vsLast')}</> :
-                  <><strong style={{ color: '#f59e0b' }}>{fmtHours(monthDelta)}</strong> {t('month.vsLast')}</>}
-          </span>
-          <span style={{ display: 'flex', gap: 10 }}>
-            {avgPerWorkday > 0 && (
-              <span>Ø <strong style={{ color: M.t2, fontFamily: 'monospace' }}>{fmtHours(avgPerWorkday)}</strong>/{t('week.day')}</span>
-            )}
-            {workingDays.count > 0 && (
-              <span>
-                {t('week.flex')}{' '}
-                <strong style={{ color: flexBalance >= 0 ? M.gn : '#f59e0b', fontFamily: 'monospace' }}>
-                  {flexBalance >= 0 ? '+' : ''}{fmtHours(flexBalance)}
-                </strong>
-              </span>
-            )}
-          </span>
-        </div>
-      </div>
-
-      {/* Overtime / weekend warnings */}
-      {loaded && (overtimeHours > 0 || weekendHours > 0 || longDayCount > 0) && (
-        <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 9, padding: '9px 11px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-            {t('week.headsUp')}
-          </div>
-          <div style={{ fontSize: 11, color: M.t2, lineHeight: 1.5 }}>
-            {overtimeHours > 0 && <div>· <strong>{fmtHours(overtimeHours)}</strong> over expected ({workingDays.count} workdays × 8h)</div>}
-            {longDayCount > 0 && <div>· {longDayCount} day{longDayCount > 1 ? 's' : ''} over 10h</div>}
-            {weekendHours > 0 && <div>· <strong>{fmtHours(weekendHours)}</strong> logged on weekends</div>}
-          </div>
-        </div>
-      )}
-
-      {/* Billable split + earnings */}
-      {monthTotal > 0 && (
-        <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: M.t3, letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('month.billableSplit')}</span>
-            {earnings > 0 && (
-              <span style={{ fontSize: 14, fontWeight: 800, color: M.pk, fontFamily: 'monospace' }}>
-                {Math.round(earnings).toLocaleString('sv-SE')} kr
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: M.s2 }}>
-            <div style={{ width: `${billablePct}%`, background: M.pk }} />
-            <div style={{ width: `${100 - billablePct}%`, background: M.t3, opacity: 0.4 }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: M.t3 }}>
-            <span>{t('week.billableLine', { hours: fmtHours(billable) })} · {Math.round(billablePct)}%</span>
-            <span>{t('week.internalLine', { hours: fmtHours(nonBillable) })}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Weekly strip */}
-      {weeklyRollup.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('month.weeks')}</div>
-          <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 70 }}>
-            {weeklyRollup.map((w) => {
-              const max = Math.max(...weeklyRollup.map((x) => x.hours), 1)
-              const pct = (w.hours / max) * 100
-              const isBest = bestWeek && w.week === bestWeek.week && w.hours > 0
-              return (
-                <div key={w.week} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, height: '100%' }}>
-                  <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end' }}>
-                    <div style={{ width: '100%', height: `${Math.max(pct, w.hours > 0 ? 6 : 0)}%`, minHeight: w.hours > 0 ? 4 : 0, background: isBest ? M.gn : M.ac, borderRadius: 4, opacity: w.hours > 0 ? 1 : 0 }} />
-                  </div>
-                  <span style={{ fontSize: 9, color: isBest ? M.gn : M.t3, fontWeight: 700, fontFamily: 'monospace' }}>{w.hours > 0 ? fmtHours(w.hours) : '—'}</span>
-                  <span style={{ fontSize: 9, color: M.t3 }}>v.{w.week}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Missing days */}
-      {missingDays.length > 0 && (
-        <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.35)', borderRadius: 9, padding: '8px 11px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-            {missingDays.length === 1 ? t('month.workdaysWithoutEntries', { n: 1 }) : t('month.workdaysWithoutEntriesPlural', { n: missingDays.length })}
-          </div>
-          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-            {missingDays.slice(0, 5).map((d) => (
-              <button
-                key={dateKey(d)}
-                onClick={() => (onBackfillDay || onPickDay)(d)}
-                title={d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}
-                style={{ background: M.s1, border: `1px solid ${M.b1}`, color: M.t2, borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
-              >
-                {d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' })}
-              </button>
-            ))}
-            {missingDays.length > 5 && (
-              <span style={{ fontSize: 11, color: M.t3, padding: '3px 4px' }}>{t('month.moreDays', { n: missingDays.length - 5 })}</span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Day header */}
+      {/* Day-of-week header */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-        {DAYS_SHORT.map((d, i) => (
-          <div key={d} style={{ fontSize: 9, fontWeight: 700, color: i >= 5 ? M.tf : M.t3, textTransform: 'uppercase', letterSpacing: 0.8, textAlign: 'center', paddingBottom: 4 }}>
-            {d}
-          </div>
+        {dayHeader.map((d, i) => (
+          <span
+            key={d}
+            style={{
+              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+              fontSize: 8,
+              fontWeight: 700,
+              letterSpacing: 1.4,
+              color: i >= 5 ? M.tf : M.t3,
+              textAlign: 'center',
+              lineHeight: 1,
+            }}
+          >{d}</span>
         ))}
       </div>
 
@@ -491,156 +384,392 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
           const isWeekend = d.getDay() === 0 || d.getDay() === 6
           const isWorkday = !isWeekend && !holiday
 
-          let bg: string, border: string
-          const heatPct = Math.min(1, hours / goal)
-          const OFF_BG = M.id === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'
-          const OFF_BORDER = M.id === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.13)'
-          if (hours > 0) {
-            // Logged hours — always heatmap green, even on weekends / holidays
-            const alphaHex = Math.round(90 + heatPct * 165).toString(16).padStart(2, '0')
-            bg = `${M.gn}${alphaHex}`
-            border = `${M.gn}`
-          } else if (!isWorkday) {
-            // Off day (past or future), no hours — distinctly greyed out
-            bg = OFF_BG; border = OFF_BORDER
-          } else if (isFuture) {
-            // Future workday — transparent, awaiting
-            bg = 'transparent'; border = M.b1
-          } else {
-            // Past workday with 0 hours — red tint to flag it
-            bg = '#ef444420'; border = '#ef444466'
-          }
-          const hasHours = !isFuture && hours > 0
-          const textColor = hasHours ? '#ffffff' : isWorkday ? M.t1 : M.t3
-          const hoursColor = hasHours ? '#ffffff'
-            : !isWorkday ? M.tf
-              : hours === 0 ? '#ef4444'
-                : M.t2
-          const hoursWeight = hours >= goal ? 800 : 700
-
           if (!loaded) {
-            return (
-              <div
-                key={k}
-                className="skeleton"
-                style={{ aspectRatio: '1 / 1', borderRadius: 7 }}
-              />
-            )
+            return <div key={k} className="skeleton" style={{ aspectRatio: '1 / 1', borderRadius: 8 }} />
           }
+
+          let bg = M.s1
+          let border = `1px solid ${M.b1}`
+          let numColor = M.t1
+          let hoursColor = M.t2
+          if (isToday) {
+            bg = `${M.ac}1a`
+            border = `1.5px solid ${M.ac}`
+            numColor = M.ac
+            hoursColor = M.ac
+          } else if (hours >= goal) {
+            const heatPct = Math.min(1, hours / (goal * 1.5))
+            const alphaHex = Math.round(50 + heatPct * 110).toString(16).padStart(2, '0')
+            bg = `${M.gn}${alphaHex}`
+            border = `1px solid ${M.gn}66`
+            numColor = M.id === 'dark' ? M.t1 : '#0f4d2a'
+            hoursColor = M.id === 'dark' ? M.t1 : '#0f4d2a'
+          } else if (!isFuture && hours > 0) {
+            bg = 'rgba(217, 119, 6, 0.12)'
+            border = '1px solid rgba(217, 119, 6, 0.45)'
+            numColor = M.t1
+            hoursColor = '#925706'
+          } else if (!isFuture && isWorkday) {
+            bg = 'rgba(239, 68, 68, 0.08)'
+            border = '1px solid rgba(239, 68, 68, 0.35)'
+            numColor = M.t1
+            hoursColor = '#b1170a'
+          } else if (!isWorkday) {
+            bg = 'transparent'
+            border = `1px dashed ${M.b1}`
+            numColor = M.tf
+          } else {
+            bg = 'transparent'
+            border = `1px solid ${M.b1}`
+            numColor = M.tf
+          }
+
           return (
             <button
               key={k}
               onClick={() => onPickDay(d)}
-              title={
-                holiday
-                  ? `${d.getDate()} · ${holiday}${hours > 0 ? ` · ${fmtHours(hours)}h` : ''}`
-                  : isWorkday
-                    ? `${d.getDate()} · ${fmtHours(hours)}h logged`
-                    : `${d.getDate()}`
-              }
+              title={holiday ? `${d.getDate()} · ${holiday}${hours > 0 ? ` · ${fmtHours(hours)}` : ''}` : isWorkday ? `${d.getDate()} · ${fmtHours(hours)}` : `${d.getDate()}`}
               style={{
                 aspectRatio: '1 / 1',
                 background: bg,
-                border: `1px solid ${border}`,
-                borderRadius: 7,
-                padding: 3,
+                border,
+                borderRadius: 8,
+                padding: 2,
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'stretch',
-                justifyContent: 'space-between',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
                 cursor: 'pointer',
                 position: 'relative',
-                outline: isToday ? `2px solid ${M.ac}` : 'none',
-                outlineOffset: -1,
-                minWidth: 0,
+                transition: 'all 140ms ease',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: textColor, lineHeight: 1 }}>{d.getDate()}</span>
-                {holiday && (
-                  <span title={holiday} style={{ fontSize: 8, color: M.t3, flexShrink: 0 }}>✦</span>
-                )}
-              </div>
-              {!isFuture && (isWorkday || hours > 0) && (
-                <span style={{ fontSize: 9, fontWeight: hoursWeight, color: hoursColor, fontFamily: 'monospace', textAlign: 'right', lineHeight: 1 }}>
-                  {hours > 0 ? fmtHours(hours) : '—'}
-                </span>
+              <span style={{
+                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontSize: 18,
+                color: numColor,
+                lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: -0.4,
+              }}>{d.getDate()}</span>
+              {!isFuture && (hours > 0 || isWorkday) && (
+                <span style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 9,
+                  color: hoursColor,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  fontVariantNumeric: 'tabular-nums',
+                  letterSpacing: 0.3,
+                }}>{hours > 0 ? fmtHours(hours) : '0:00'}</span>
               )}
             </button>
           )
         })}
       </div>
 
-      {/* Legend — heatmap scale */}
-      <div style={{ display: 'flex', gap: 10, fontSize: 10, color: M.t3, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span>{t('month.less')}</span>
-        <div style={{ display: 'flex', gap: 2 }}>
-          {[0.15, 0.35, 0.55, 0.8, 1].map((a, i) => {
-            const alphaHex = Math.round(90 + a * 165).toString(16).padStart(2, '0')
-            return <span key={i} style={{ width: 11, height: 11, borderRadius: 3, background: `${M.gn}${alphaHex}`, border: `1px solid ${M.gn}aa` }} />
-          })}
+      {/* 3-stat row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr',
+        gap: 8,
+        paddingTop: 14,
+        paddingBottom: 12,
+        borderTop: `1px solid ${M.b1}`,
+        borderBottom: `1px solid ${M.b1}`,
+        textAlign: 'center',
+      }}>
+        <div>
+          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontSize: 24, color: M.t1, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>{loaded ? fmtHours(monthTotal) : '—'}</div>
+          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 8, color: M.tf, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('month.thisMonth')}</div>
         </div>
-        <span>{t('month.more')}</span>
-        <span style={{ marginLeft: 'auto' }}>
-          <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#ef444420', border: '1px solid #ef444466', verticalAlign: 'middle', marginRight: 4 }} />
-          {t('month.missed')}
-        </span>
+        <div>
+          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontSize: 24, color: M.t1, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>
+            {loaded && avgPerWorkday > 0 ? avgPerWorkday.toFixed(1) : '—'}
+            {loaded && avgPerWorkday > 0 && <span style={{ fontStyle: 'italic', fontSize: 15, color: M.ac, marginLeft: 1 }}>h</span>}
+          </div>
+          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 8, color: M.tf, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.avgDay')}</div>
+        </div>
+        <div>
+          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontSize: 24, color: M.t1, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>
+            {loaded && monthTotal > 0 ? Math.round(billablePct) : '—'}
+            {loaded && monthTotal > 0 && <span style={{ fontStyle: 'italic', fontSize: 15, color: M.gn, marginLeft: 1 }}>%</span>}
+          </div>
+          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 8, color: M.tf, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.billable')}</div>
+        </div>
       </div>
 
+      {/* Earnings + goal-hit ratio subtitle */}
+      {loaded && monthTotal > 0 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 18,
+          flexWrap: 'wrap',
+          fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+          fontSize: 10,
+          color: M.t3,
+          fontVariantNumeric: 'tabular-nums',
+          marginTop: -6,
+        }}>
+          {workingDays.count > 0 && (
+            <span>
+              <span style={{ fontWeight: 700, color: workingDays.hit === workingDays.count ? M.gn : M.t1 }}>{workingDays.hit}/{workingDays.count}</span>
+              <span style={{ marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1.4, fontSize: 9, color: M.tf }}>at goal</span>
+            </span>
+          )}
+          {earnings > 0 && (
+            <span>
+              <span style={{ fontWeight: 700, color: M.pk }}>{Math.round(earnings).toLocaleString('sv-SE')}</span>
+              <span style={{ marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1.4, fontSize: 9, color: M.tf }}>kr earned</span>
+            </span>
+          )}
+          {billable > 0 && (
+            <span>
+              <span style={{ fontWeight: 700, color: M.gn }}>{fmtHours(billable)}</span>
+              <span style={{ marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1.4, fontSize: 9, color: M.tf }}>billable</span>
+            </span>
+          )}
+          {nonBillable > 0 && (
+            <span>
+              <span style={{ fontWeight: 700, color: M.t2 }}>{fmtHours(nonBillable)}</span>
+              <span style={{ marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1.4, fontSize: 9, color: M.tf }}>internal</span>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Monthly goal progress + delta + flex */}
+      {loaded && expectedMonthHours > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 9, fontWeight: 600, color: M.t3, letterSpacing: 2.2, textTransform: 'uppercase' }}>{t('month.thisMonth')}</span>
+            <span style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 11, color: M.t2, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ color: monthTotal >= expectedMonthHours ? M.gn : M.t1 }}>{fmtHours(monthTotal)}</span>
+              <span style={{ color: M.tf }}> / {fmtHours(expectedMonthHours)}</span>
+            </span>
+          </div>
+          <div style={{ height: 2, background: M.b1, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${Math.min(100, (monthTotal / expectedMonthHours) * 100)}%`,
+              background: monthTotal >= expectedMonthHours ? M.gn : M.ac,
+              transition: 'width 500ms cubic-bezier(.22,1,.36,1)',
+            }} />
+          </div>
+          {(monthDelta != null || workingDays.count > 0) && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+              <span style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontStyle: 'italic', fontSize: 13, color: M.t3, lineHeight: 1.3 }}>
+                {monthDelta == null ? '' :
+                  monthDelta === 0 ? t('month.sameAsLast') :
+                    monthDelta > 0 ? <>+{fmtHours(monthDelta)} {t('month.vsLast')}</> :
+                      <>{fmtHours(monthDelta)} {t('month.vsLast')}</>}
+              </span>
+              {workingDays.count > 0 && (
+                <span style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 10, color: M.tf, fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: 600 }}>{t('week.flex')} </span>
+                  <span style={{ color: flexBalance >= 0 ? M.gn : '#d97706', fontWeight: 700 }}>
+                    {flexBalance >= 0 ? '+' : ''}{fmtHours(flexBalance)}
+                  </span>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Heads up */}
+      {loaded && (overtimeHours > 0 || weekendHours > 0 || longDayCount > 0) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 9, fontWeight: 600, color: '#d97706', letterSpacing: 2.2, textTransform: 'uppercase' }}>
+            {t('week.headsUp')}
+          </div>
+          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontStyle: 'italic', fontSize: 13, color: M.t2, lineHeight: 1.5 }}>
+            {overtimeHours > 0 && <div>· {fmtHours(overtimeHours)} {t('week.overtime', { goal: fmtHours(workingDays.count * goal) })}</div>}
+            {longDayCount > 0 && <div>· {t(longDayCount === 1 ? 'week.overTenDays' : 'week.overTenDaysPlural', { n: longDayCount })}</div>}
+            {weekendHours > 0 && <div>· {fmtHours(weekendHours)} {t('week.weekendHours')}</div>}
+          </div>
+        </div>
+      )}
+
+      {/* Per client */}
       {!loaded ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div className="skeleton" style={{ height: 42, borderRadius: 9 }} />
-          <div className="skeleton" style={{ height: 42, borderRadius: 9 }} />
-          <div className="skeleton" style={{ height: 42, borderRadius: 9 }} />
+          <div className="skeleton" style={{ height: 12, width: 80, borderRadius: 4 }} />
+          <div className="skeleton" style={{ height: 28, borderRadius: 6 }} />
+          <div className="skeleton" style={{ height: 28, borderRadius: 6 }} />
         </div>
       ) : clientTotals.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('week.byClient')}</div>
-          {clientTotals.map((c) => {
-            const pct = monthTotal > 0 ? (c.hours / monthTotal) * 100 : 0
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div style={{
+            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontSize: 9,
+            fontWeight: 600,
+            color: M.t3,
+            letterSpacing: 2.2,
+            textTransform: 'uppercase',
+            marginBottom: 10,
+          }}>{t('week.perClient')}</div>
+          {clientTotals.map((c, gi) => {
+            const stripe = M.co[gi % M.co.length]
             return (
-              <div key={c.name} style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 9, padding: '8px 11px', fontSize: 12, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: M.t1, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
-                  <span style={{ color: M.ac, fontFamily: 'monospace', fontWeight: 700, flexShrink: 0 }}>{fmtHours(c.hours)}</span>
-                </div>
-                <div style={{ height: 3, background: M.s2, borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: M.ac }} />
-                </div>
+              <div key={c.name} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                gap: 12,
+                padding: '8px 0 8px 12px',
+                position: 'relative',
+              }}>
+                <span style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 8,
+                  bottom: 8,
+                  width: 3,
+                  borderRadius: 2,
+                  background: stripe,
+                }} />
+                <span style={{
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontSize: 17,
+                  color: stripe,
+                  letterSpacing: -0.1,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  minWidth: 0,
+                  flex: 1,
+                }}>{c.name}</span>
+                <span style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 12,
+                  color: M.t2,
+                  fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>{fmtHours(c.hours)}</span>
               </div>
             )
           })}
         </div>
       )}
 
-      {projectTotals.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('week.topProjects')}</div>
-          {projectTotals.map((p) => {
-            const pct = monthTotal > 0 ? (p.hours / monthTotal) * 100 : 0
-            return (
-              <div key={`${p.company}::${p.name}`} style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 8, padding: '7px 10px', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ color: M.t2, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                    <div style={{ color: M.tf, fontSize: 9 }}>{p.company}</div>
-                  </div>
-                  <span style={{ color: M.t2, fontFamily: 'monospace', fontWeight: 700, flexShrink: 0 }}>{fmtHours(p.hours)}</span>
-                </div>
-                <div style={{ height: 3, background: M.s2, borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: M.pk, opacity: 0.7 }} />
-                </div>
-              </div>
-            )
-          })}
+      {/* Missing days */}
+      {loaded && missingDays.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{
+            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontSize: 9,
+            fontWeight: 600,
+            color: '#d97706',
+            letterSpacing: 2.2,
+            textTransform: 'uppercase',
+          }}>
+            {missingDays.length === 1 ? t('month.workdaysWithoutEntries', { n: 1 }) : t('month.workdaysWithoutEntriesPlural', { n: missingDays.length })}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {missingDays.slice(0, 8).map((d) => (
+              <button
+                key={dateKey(d)}
+                onClick={() => (onBackfillDay || onPickDay)(d)}
+                title={d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${M.b1}`,
+                  color: M.t2,
+                  borderRadius: 999,
+                  padding: '5px 12px',
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 10,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' })}
+              </button>
+            ))}
+            {missingDays.length > 8 && (
+              <span style={{
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontSize: 10,
+                color: M.tf,
+                alignSelf: 'center',
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+                fontWeight: 600,
+              }}>{t('month.moreDays', { n: missingDays.length - 8 })}</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Insight card */}
+      {loaded && insight && (
+        <div style={{
+          background: M.ad,
+          border: `1px solid ${M.b1}`,
+          borderRadius: 12,
+          padding: '14px 16px',
+        }}>
+          <div style={{
+            fontFamily: '"Instrument Serif","Georgia",serif',
+            fontStyle: 'italic',
+            fontSize: 15,
+            color: M.at,
+            lineHeight: 1.4,
+            letterSpacing: -0.1,
+          }}>&ldquo;{insight}&rdquo;</div>
+          <div style={{
+            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontSize: 8,
+            color: M.t3,
+            textTransform: 'uppercase',
+            letterSpacing: 1.8,
+            marginTop: 10,
+            fontWeight: 600,
+          }}>— {t('week.coachNote')} · {t('month.monthlyInsight')}</div>
+        </div>
+      )}
+
+      {/* Close-month action (subtle, only when closable) */}
+      {!isFutureMonth && isClosed === false && confirm && (
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 4 }}>
+          <button
+            onClick={handleCloseMonth}
+            disabled={closing}
+            style={{
+              padding: '8px 18px',
+              borderRadius: 999,
+              background: 'transparent',
+              border: `1px solid ${M.b1}`,
+              color: M.t2,
+              cursor: closing ? 'default' : 'pointer',
+              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: 1.4,
+              textTransform: 'uppercase',
+              opacity: closing ? 0.6 : 1,
+            }}
+          >
+            {closing ? t('month.closing') : t('month.closeMonth')}
+          </button>
         </div>
       )}
 
       {loading && loaded && (
-        <div style={{ fontSize: 10, color: M.tf, textAlign: 'center' }}>{t('week.refreshing')}</div>
+        <div style={{
+          fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+          fontSize: 9,
+          color: M.tf,
+          textAlign: 'center',
+          letterSpacing: 1.4,
+          textTransform: 'uppercase',
+        }}>{t('week.refreshing')}</div>
       )}
     </div>
   )
 }
-
-

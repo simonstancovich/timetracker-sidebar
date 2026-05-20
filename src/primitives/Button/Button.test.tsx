@@ -36,4 +36,21 @@ describe('<Button />', () => {
     render(<Button type="submit">Submit</Button>)
     expect(screen.getByRole('button', { name: 'Submit' })).toHaveAttribute('type', 'submit')
   })
+
+  it('applies secondary variant and xs size', () => {
+    render(<Button variant="secondary" size="xs">Go</Button>)
+    const el = screen.getByRole('button', { name: 'Go' })
+    expect(el.className).toContain(s.variant.secondary)
+    expect(el.className).toContain(s.size.xs)
+  })
+
+  it('applies link variant', () => {
+    render(<Button variant="link" size="xs">disconnect</Button>)
+    expect(screen.getByRole('button', { name: 'disconnect' }).className).toContain(s.variant.link)
+  })
+
+  it('applies grow class when prop is true', () => {
+    render(<Button grow>Go</Button>)
+    expect(screen.getByRole('button', { name: 'Go' }).className).toContain(s.grow)
+  })
 })

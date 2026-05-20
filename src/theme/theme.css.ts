@@ -1,4 +1,4 @@
-import { createThemeContract, createTheme } from "@vanilla-extract/css";
+import { createThemeContract, createTheme, globalStyle } from "@vanilla-extract/css";
 import { pickColor, chartColors } from "./colors";
 import { fontFamily, fontSize, fontWeight, lineHeight } from "./typography";
 import { spacing } from "./spacing";
@@ -15,10 +15,13 @@ export const vars = createThemeContract({
     faint: null,
     accent: null,
     accentStrong: null,
+    accentInk: null,
     pink: null,
     pinkVivid: null,
     green: null,
     onAccent: null,
+    error: null,
+    warning: null,
   },
   background: {
     page: null,
@@ -30,11 +33,15 @@ export const vars = createThemeContract({
     pink: null,
     pinkPaper: null,
     green: null,
+    warning: null,
   },
   border: {
     soft: null,
     strong: null,
     green: null,
+    pink: null,
+    accent: null,
+    warning: null,
   },
   chart: {
     "0": null,
@@ -48,6 +55,7 @@ export const vars = createThemeContract({
   },
   font: {
     body: null,
+    display: null,
     mono: null,
   },
 });
@@ -65,10 +73,13 @@ export const lightTheme = createTheme(vars, {
     faint: pickColor("typography", "faint", "light"),
     accent: pickColor("typography", "accent", "light"),
     accentStrong: pickColor("typography", "accentStrong", "light"),
+    accentInk: pickColor("typography", "accentInk", "light"),
     pink: pickColor("typography", "pink", "light"),
     pinkVivid: pickColor("typography", "pinkVivid", "light"),
     green: pickColor("typography", "green", "light"),
     onAccent: pickColor("typography", "onAccent", "light"),
+    error: pickColor("typography", "error", "light"),
+    warning: pickColor("typography", "warning", "light"),
   },
   background: {
     page: pickColor("background", "page", "light"),
@@ -80,15 +91,23 @@ export const lightTheme = createTheme(vars, {
     pink: pickColor("background", "pink", "light"),
     pinkPaper: pickColor("background", "pinkPaper", "light"),
     green: pickColor("background", "green", "light"),
+    warning: pickColor("background", "warning", "light"),
   },
   border: {
     soft: pickColor("border", "soft", "light"),
     strong: pickColor("border", "strong", "light"),
     green: pickColor("border", "green", "light"),
+    pink: pickColor("border", "pink", "light"),
+    accent: pickColor("border", "accent", "light"),
+    warning: pickColor("border", "warning", "light"),
   },
   chart: { "0": chartL[0], "1": chartL[1], "2": chartL[2], "3": chartL[3] },
   shadow: { brand: shadows.brand, heavy: shadows.heavy },
-  font: { body: fontFamily.body, mono: fontFamily.mono },
+  font: {
+    body: fontFamily.body,
+    display: fontFamily.display,
+    mono: fontFamily.mono,
+  },
 });
 
 export const darkTheme = createTheme(vars, {
@@ -99,10 +118,13 @@ export const darkTheme = createTheme(vars, {
     faint: pickColor("typography", "faint", "dark"),
     accent: pickColor("typography", "accent", "dark"),
     accentStrong: pickColor("typography", "accentStrong", "dark"),
+    accentInk: pickColor("typography", "accentInk", "dark"),
     pink: pickColor("typography", "pink", "dark"),
     pinkVivid: pickColor("typography", "pinkVivid", "dark"),
     green: pickColor("typography", "green", "dark"),
     onAccent: pickColor("typography", "onAccent", "dark"),
+    error: pickColor("typography", "error", "dark"),
+    warning: pickColor("typography", "warning", "dark"),
   },
   background: {
     page: pickColor("background", "page", "dark"),
@@ -114,15 +136,58 @@ export const darkTheme = createTheme(vars, {
     pink: pickColor("background", "pink", "dark"),
     pinkPaper: pickColor("background", "pinkPaper", "dark"),
     green: pickColor("background", "green", "dark"),
+    warning: pickColor("background", "warning", "dark"),
   },
   border: {
     soft: pickColor("border", "soft", "dark"),
     strong: pickColor("border", "strong", "dark"),
     green: pickColor("border", "green", "dark"),
+    pink: pickColor("border", "pink", "dark"),
+    accent: pickColor("border", "accent", "dark"),
+    warning: pickColor("border", "warning", "dark"),
   },
   chart: { "0": chartD[0], "1": chartD[1], "2": chartD[2], "3": chartD[3] },
   shadow: { brand: shadows.brand, heavy: shadows.heavy },
-  font: { body: fontFamily.body, mono: fontFamily.mono },
+  font: {
+    body: fontFamily.body,
+    display: fontFamily.display,
+    mono: fontFamily.mono,
+  },
 });
 
 export { fontSize, fontWeight, lineHeight, spacing, radii, shadows };
+
+globalStyle(`.${lightTheme}`, {
+  vars: {
+    "--shadow-engrave":
+      "inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 0 rgba(0,0,0,0.025)",
+    "--grain-opacity": "0.05",
+  },
+});
+
+globalStyle(`.${darkTheme}`, {
+  vars: {
+    "--shadow-engrave":
+      "inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 0 rgba(0,0,0,0.42)",
+    "--grain-opacity": "0.08",
+  },
+});
+
+globalStyle(
+  "button:focus-visible, [role='switch']:focus-visible, [role='tab']:focus-visible",
+  {
+    outline: `2px solid ${vars.border.accent}`,
+    outlineOffset: 2,
+    borderRadius: "inherit",
+  },
+);
+
+globalStyle("input:focus, textarea:focus, select:focus", {
+  borderColor: `${vars.border.accent} !important`,
+  boxShadow: `0 0 0 3px ${vars.background.accent} !important`,
+});
+
+globalStyle("input::placeholder, textarea::placeholder", {
+  color: vars.typography.faint,
+  opacity: 1,
+});

@@ -64,6 +64,21 @@ describe('<Text />', () => {
     expect(el.className).not.toContain(s.maxWidth.narrow)
   })
 
+  it('applies transform, tracking and italic classes', () => {
+    const { container } = render(
+      <Text transform="uppercase" tracking="looser" italic>x</Text>,
+    )
+    const cls = (container.firstChild as HTMLElement).className
+    expect(cls).toContain(s.transform.uppercase)
+    expect(cls).toContain(s.tracking.looser)
+    expect(cls).toContain(s.italic)
+  })
+
+  it('exposes the 2xs size variant', () => {
+    const { container } = render(<Text size="2xs">x</Text>)
+    expect((container.firstChild as HTMLElement).className).toContain(s.size['2xs'])
+  })
+
   it('never emits an inline style attribute (primitives stay class-based)', () => {
     const { container } = render(<Text maxWidth="md" color="pink" align="center">x</Text>)
     const el = container.firstChild as HTMLElement

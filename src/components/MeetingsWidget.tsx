@@ -1,42 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from '../lib/i18n'
-
-type Theme = {
-  bg: string
-  s1: string
-  s2: string
-  b1: string
-  b2: string
-  t1: string
-  t2: string
-  t3: string
-  tf: string
-  ac: string
-  ad: string
-  at: string
-  btn: string
-  pk: string
-  gn: string
-  bsh: string
-}
+import { Button, MonoText, Stack, Text } from '../primitives'
+import type {
+  StackBackground,
+  StackBorderColor,
+  TextColor,
+} from '../primitives'
 
 interface Props {
-  M: Theme
   onStartForMeeting?: (title: string) => void
 }
+
+type Translate = (key: string, vars?: Record<string, string | number>) => string
 
 const fmtTime = (iso: string, locale: string) => {
   const d = new Date(iso)
   return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 }
 
-const minutesUntil = (iso: string) => {
-  return Math.round((new Date(iso).getTime() - Date.now()) / 60000)
-}
-
-export function MeetingsWidget({ M, onStartForMeeting }: Props) {
+export function MeetingsWidget({ onStartForMeeting }: Props) {
   const { t, i18n } = useTranslation()
   const locale = i18n.language === 'sv' ? 'sv-SE' : 'en-GB'
+
   const [status, setStatus] = useState<GraphStatus | null>(null)
   const [meetings, setMeetings] = useState<GraphMeeting[]>([])
   const [loading, setLoading] = useState(false)
@@ -66,44 +51,65 @@ export function MeetingsWidget({ M, onStartForMeeting }: Props) {
     return () => { cancelled = true; clearInterval(id) }
   }, [status?.signedIn])
 
+  const onSignIn = async () => {
+    setSigningIn(true)
+    setError(null)
+    const res = await window.electronAPI.graphSignIn()
+    setSigningIn(false)
+    if (res.error) setError(res.error)
+    else {
+      const s = await window.electronAPI.graphStatus()
+      setStatus(s)
+    }
+  }
+
+  const onSignOut = async () => {
+    await window.electronAPI.graphSignOut()
+    setStatus(status ? { ...status, signedIn: false } : null)
+    setMeetings([])
+  }
+
   if (!status) return null
+
   if (!status.configured) {
     return (
-      <div style={{ background: M.s1, border: `1px dashed ${M.b1}`, borderRadius: 11, padding: '10px 12px', fontSize: 11, color: M.t3 }}>
-        {t('cal.notConfigured')}
-      </div>
+      <Stack
+        background="surface"
+        border="all"
+        borderStyle="dashed"
+        borderRadius="lg"
+        paddingX="md"
+        paddingY="sm"
+      >
+        <Text size="sm" color="tertiary">{t('cal.notConfigured')}</Text>
+      </Stack>
     )
   }
 
   if (!status.signedIn) {
     return (
-      <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 11, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: M.t1 }}>{t('cal.connectYourCalendar')}</div>
-        <div style={{ fontSize: 11, color: M.t3, lineHeight: 1.4 }}>
-          {t('cal.connectPitch')}
-        </div>
-        <button
+      <Stack
+        background="surface"
+        border="all"
+        borderRadius="lg"
+        padding="md"
+        gap="sm"
+      >
+        <Text size="base" weight="bold" color="primary">
+          {t('cal.connectYourCalendar')}
+        </Text>
+        <Text size="sm" color="tertiary">{t('cal.connectPitch')}</Text>
+        <Button
+          variant="primary"
+          size="sm"
           disabled={signingIn}
-          onClick={async () => {
-            setSigningIn(true)
-            setError(null)
-            const res = await window.electronAPI.graphSignIn()
-            setSigningIn(false)
-            if (res.error) setError(res.error)
-            else {
-              const s = await window.electronAPI.graphStatus()
-              setStatus(s)
-            }
-          }}
-          style={{ alignSelf: 'flex-start', padding: '7px 14px', borderRadius: 8, background: signingIn ? M.s2 : M.btn, color: signingIn ? M.t3 : '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: signingIn ? 'default' : 'pointer', boxShadow: signingIn ? 'none' : M.bsh }}
+          onClick={onSignIn}
         >
           {signingIn ? t('cal.waitingSignIn') : t('cal.signInMs')}
-        </button>
-        {signingIn && (
-          <div style={{ fontSize: 10, color: M.t3 }}>{t('cal.browserOpens')}</div>
-        )}
-        {error && <div style={{ fontSize: 10, color: '#ef4444' }}>{error}</div>}
-      </div>
+        </Button>
+        {signingIn && <Text size="xs" color="tertiary">{t('cal.browserOpens')}</Text>}
+        {error && <Text size="xs" color="error">{error}</Text>}
+      </Stack>
     )
   }
 
@@ -111,85 +117,150 @@ export function MeetingsWidget({ M, onStartForMeeting }: Props) {
   const next = upcoming[0]
   const rest = upcoming.slice(1, 4)
 
+  const showLoading = loading && upcoming.length === 0
+  const showEmpty = !loading && upcoming.length === 0
+
+  const renderRestRow = (m: GraphMeeting) => (
+    <Stack
+      key={m.id}
+      direction="row"
+      justify="spaceBetween"
+      align="center"
+      gap="sm"
+      paddingY="xs"
+    >
+      <Text inline size="sm" color="secondary" truncate>
+        {m.subject || t('cal.noSubject')}
+      </Text>
+      <MonoText size="sm" color="tertiary" weight="normal">
+        {fmtTime(m.start.dateTime, locale)}
+      </MonoText>
+    </Stack>
+  )
+
   return (
-    <div style={{ background: M.s1, border: `1px solid ${M.b1}`, borderRadius: 11, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 9, fontWeight: 700, color: M.t3, letterSpacing: 1.2, textTransform: 'uppercase' }}>
+    <Stack
+      background="surface"
+      border="all"
+      borderRadius="lg"
+      padding="md"
+      gap="sm"
+    >
+      <Stack direction="row" justify="spaceBetween" align="center">
+        <Text
+          inline
+          size="2xs"
+          weight="bold"
+          color="tertiary"
+          tracking="looser"
+          transform="uppercase"
+        >
           {t('cal.label')}
-        </span>
-        <button
-          onClick={async () => { await window.electronAPI.graphSignOut(); setStatus({ ...status, signedIn: false }); setMeetings([]) }}
+        </Text>
+        <Button
+          variant="link"
+          size="xs"
+          onClick={onSignOut}
           title={t('cal.disconnect')}
-          style={{ background: 'none', border: 'none', color: M.tf, fontSize: 10, cursor: 'pointer', padding: 0 }}
         >
           {t('cal.disconnect')}
-        </button>
-      </div>
+        </Button>
+      </Stack>
 
-      {loading && upcoming.length === 0 && <div style={{ fontSize: 11, color: M.t3 }}>{t('cal.loading')}</div>}
+      {error && <Text size="xs" color="error">{error}</Text>}
+      {showLoading && <Text size="sm" color="tertiary">{t('cal.loading')}</Text>}
+      {showEmpty && <Text size="sm" color="tertiary" italic>{t('cal.noMeetings')}</Text>}
 
-      {!loading && upcoming.length === 0 && (
-        <div style={{ fontSize: 11, color: M.t3, fontStyle: 'italic' }}>{t('cal.noMeetings')}</div>
+      {next && (
+        <NextMeetingCard
+          meeting={next}
+          locale={locale}
+          t={t}
+          onStartForMeeting={onStartForMeeting}
+        />
       )}
 
-      {next && (() => {
-        const mins = minutesUntil(next.start.dateTime)
-        const inProgress = mins <= 0 && new Date(next.end.dateTime).getTime() > Date.now()
-        const soon = mins > 0 && mins <= 5
-        return (
-          <div style={{ background: inProgress ? `${M.gn}15` : soon ? `${M.pk}15` : M.bg, border: `1px solid ${inProgress ? `${M.gn}55` : soon ? `${M.pk}55` : M.b1}`, borderRadius: 9, padding: '10px 11px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase', color: inProgress ? M.gn : soon ? M.pk : M.ac }}>
-                {inProgress ? t('cal.now') : mins < 60 ? t('cal.inMin', { n: mins }) : t('cal.atTime', { time: fmtTime(next.start.dateTime, locale) })}
-              </div>
-              <div style={{ fontSize: 10, color: M.t3, fontFamily: 'monospace' }}>
-                {fmtTime(next.start.dateTime, locale)}–{fmtTime(next.end.dateTime, locale)}
-              </div>
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: M.t1, lineHeight: 1.3 }}>
-              {next.subject || t('cal.noSubject')}
-            </div>
-            {next.organizer?.emailAddress?.name && (
-              <div style={{ fontSize: 10, color: M.t3 }}>
-                {t('cal.withOrganizer', { name: next.organizer.emailAddress.name })}
-              </div>
-            )}
-            {onStartForMeeting && (
-              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                <button
-                  onClick={() => onStartForMeeting(next.subject || 'Meeting')}
-                  style={{ flex: 1, padding: '6px 10px', borderRadius: 6, background: M.btn, color: '#fff', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                >
-                  {t('cal.startForThis')}
-                </button>
-                {next.onlineMeeting?.joinUrl && (
-                  <button
-                    onClick={() => window.open(next.onlineMeeting!.joinUrl, '_blank')}
-                    style={{ padding: '6px 10px', borderRadius: 6, background: M.s2, color: M.t2, border: `1px solid ${M.b1}`, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    {t('cal.join')}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })()}
+      {rest.length > 0 && <Stack gap="xs">{rest.map(renderRestRow)}</Stack>}
+    </Stack>
+  )
+}
 
-      {rest.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {rest.map((m) => (
-            <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 2px', fontSize: 11 }}>
-              <span style={{ color: M.t2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                {m.subject || t('cal.noSubject')}
-              </span>
-              <span style={{ color: M.t3, fontFamily: 'monospace', flexShrink: 0 }}>
-                {fmtTime(m.start.dateTime, locale)}
-              </span>
-            </div>
-          ))}
-        </div>
+interface NextMeetingCardProps {
+  meeting: GraphMeeting
+  locale: string
+  t: Translate
+  onStartForMeeting?: (title: string) => void
+}
+
+function NextMeetingCard({ meeting, locale, t, onStartForMeeting }: NextMeetingCardProps) {
+  const startMs = Date.parse(meeting.start.dateTime)
+  const endMs = Date.parse(meeting.end.dateTime)
+  const now = Date.now()
+  const mins = Math.round((startMs - now) / 60000)
+  const inProgress = mins <= 0 && endMs > now
+  const soon = mins > 0 && mins <= 5
+
+  const cardBackground: StackBackground = inProgress ? 'green' : soon ? 'pink' : 'page'
+  const cardBorderColor: StackBorderColor = inProgress ? 'green' : soon ? 'pink' : 'soft'
+  const labelColor: TextColor = inProgress ? 'green' : soon ? 'pink' : 'accent'
+
+  const labelText = inProgress
+    ? t('cal.now')
+    : mins < 60
+      ? t('cal.inMin', { n: mins })
+      : t('cal.atTime', { time: fmtTime(meeting.start.dateTime, locale) })
+
+  const timeRange = `${fmtTime(meeting.start.dateTime, locale)}–${fmtTime(meeting.end.dateTime, locale)}`
+  const subject = meeting.subject || t('cal.noSubject')
+  const organizerName = meeting.organizer?.emailAddress?.name
+  const joinUrl = meeting.onlineMeeting?.joinUrl
+
+  const onStart = () => onStartForMeeting?.(meeting.subject || t('cal.noSubject'))
+  const onJoin = () => { if (joinUrl) window.open(joinUrl, '_blank', 'noopener,noreferrer') }
+
+  return (
+    <Stack
+      background={cardBackground}
+      border="all"
+      borderColor={cardBorderColor}
+      borderRadius="md"
+      paddingX="md"
+      paddingY="sm"
+      gap="xs"
+    >
+      <Stack direction="row" justify="spaceBetween" align="center" gap="sm">
+        <Text
+          inline
+          size="2xs"
+          weight="black"
+          color={labelColor}
+          tracking="widest"
+          transform="uppercase"
+        >
+          {labelText}
+        </Text>
+        <MonoText size="xs" color="tertiary" weight="normal">
+          {timeRange}
+        </MonoText>
+      </Stack>
+      <Text size="md" weight="bold" color="primary">{subject}</Text>
+      {organizerName && (
+        <Text size="xs" color="tertiary">
+          {t('cal.withOrganizer', { name: organizerName })}
+        </Text>
       )}
-    </div>
+      {onStartForMeeting && (
+        <Stack direction="row" gap="xs">
+          <Button variant="primary" size="xs" grow onClick={onStart}>
+            {t('cal.startForThis')}
+          </Button>
+          {joinUrl && (
+            <Button variant="secondary" size="xs" onClick={onJoin}>
+              {t('cal.join')}
+            </Button>
+          )}
+        </Stack>
+      )}
+    </Stack>
   )
 }

@@ -7,6 +7,8 @@ export type TextWeight = keyof typeof s.weight
 export type TextColor = keyof typeof s.color
 export type TextAlign = keyof typeof s.align
 export type TextMaxWidth = keyof typeof s.maxWidth
+export type TextTransform = keyof typeof s.transform
+export type TextTracking = keyof typeof s.tracking
 
 interface Props {
   size?: TextSize
@@ -14,6 +16,9 @@ interface Props {
   color?: TextColor
   align?: TextAlign
   maxWidth?: TextMaxWidth
+  transform?: TextTransform
+  tracking?: TextTracking
+  italic?: boolean
   // Single-line ellipsis when overflowing.
   truncate?: boolean
   // `true` renders as an inline <span> (e.g. for inline labels inside a flex
@@ -29,6 +34,9 @@ export function Text({
   color = 'primary',
   align = 'left',
   maxWidth,
+  transform,
+  tracking,
+  italic = false,
   truncate = false,
   inline = false,
   className,
@@ -41,6 +49,9 @@ export function Text({
     s.color[color],
     s.align[align],
     maxWidth && s.maxWidth[maxWidth],
+    transform && s.transform[transform],
+    tracking && s.tracking[tracking],
+    italic && s.italic,
     truncate && s.truncate,
     className,
   )

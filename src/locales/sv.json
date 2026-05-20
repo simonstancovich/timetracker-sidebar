@@ -13,6 +13,28 @@
     "jumpCurrentTitle": "Gå till aktuell {{scale}}",
     "minimizeTopBar": "Docka som topplist"
   },
+  "goal": {
+    "eyebrow": "Dagen klar"
+  },
+  "date": {
+    "today": "Idag",
+    "yesterday": "Igår",
+    "tomorrow": "Imorgon"
+  },
+  "recent": {
+    "label": "Snabbstart",
+    "useDescription": "Senaste uppgift"
+  },
+  "page": {
+    "today": "Idag",
+    "timer": "Timer",
+    "history": "Historik",
+    "progress": "Progress",
+    "level": "Nivå",
+    "timerRunning": "Aktivt pass",
+    "timerPaused": "På paus",
+    "timerIdle": "Spårar inget"
+  },
   "top": {
     "dblClickToOpen": "Dubbelklicka för att öppna hela sidopanelen"
   },
@@ -23,6 +45,9 @@
     "latenight": "Fortfarande vaken"
   },
   "today": {
+    "dayDoneSubtitle": "Dagen klar · +{{extra}} bonus",
+    "toGoSubtitle": "av en 8-timmars dag · {{remaining}} kvar",
+    "logTime": "Logga tid",
     "hoursLogged": "Loggat {{hours}}",
     "toGo": "{{hours}} kvar",
     "goalReached": "✓ Mål uppnått",
@@ -35,16 +60,19 @@
     "stat": {
       "today": "Idag",
       "streak": "Streak",
-      "week": "Vecka"
+      "week": "Vecka",
+      "billable": "Fakturerbart",
+      "xpToday": "XP Idag"
     },
+    "eyebrowHint": "Vecka {{week}} · Dag {{day}}",
     "opensTimer": "▶ öppnar timer med uppgiften förvald",
     "recent": "Senaste",
     "orLogManually": "eller logga manuellt"
   },
   "timer": {
     "noTaskSelected": "Ingen uppgift vald",
-    "start": "▶  Starta timern",
-    "resume": "▶  Fortsätt",
+    "start": "Starta timern",
+    "resume": "Fortsätt",
     "stopLog": "Stoppa & logga",
     "pause": "Pausa",
     "whatWorking": "Vad jobbar du med?",
@@ -58,14 +86,24 @@
     "change": "ändra",
     "cancel": "Avbryt timer",
     "cancelDiscard": "Släng",
-    "logPastTime": "+ Logga tid i efterhand",
+    "logPastTime": "Logga tid i efterhand",
+    "statSessionXp": "Session XP",
+    "statToday": "Idag",
+    "statStreak": "Streak",
+    "formDone": "Klar",
+    "switchTask": "Byt uppgift",
+    "sideQuest": "Sidouppdrag",
+    "sideQuestHint": "Pausa detta och starta en ny timer för ett avbrott — fyll i detaljer senare",
+    "mainPaused": "Pausad",
+    "returnToMain": "Tillbaka till din huvuduppgift",
+    "returnShort": "Tillbaka",
     "hideLogForm": "Dölj loggformulär",
     "logFormDate": "Datum",
     "confirmSwitchTitle": "Byta projekt?",
     "confirmSwitchBody": "Den nuvarande timern är fortfarande igång. Den sparas först, sedan byter vi till den nya.",
     "confirmSwitchOk": "Spara och byt",
     "vibe": {
-      "paused": "På paus — tryck ▶ för att återuppta",
+      "paused": "På paus — tryck resume när du är tillbaka.",
       "idle": "Redo när du är",
       "warmup": "Värmer upp",
       "flow": "Hittar flow",
@@ -94,7 +132,10 @@
     "searchProject": "Sök projekt…",
     "selectProject": "Välj projekt…",
     "noMatches": "Inga träffar",
+    "loading": "Laddar…",
     "loadingProjects": "Laddar…",
+    "searchDefault": "Sök…",
+    "showingResults": "Visar {{n}} av {{total}} — börja skriva för att filtrera",
     "typeHoursHint": "Skriv 1:30 eller 1.5",
     "fillFirst": "Fyll i kund, projekt & uppgift först",
     "saveFailed": "Sparning misslyckades: {{err}}",
@@ -124,7 +165,12 @@
     "signIn": "Logga in"
   },
   "week": {
-    "total": "Totalt",
+    "total": "Veckototal",
+    "avgDay": "Snitt / dag",
+    "billable": "Fakturerbart",
+    "perClient": "Per kund",
+    "coachNote": "Coach-notering",
+    "weeklyInsight": "Veckans insikt",
     "hitGoal": "Nått mål",
     "utilization": "Beläggning",
     "weeklyGoal": "Veckomål",
@@ -168,7 +214,8 @@
     "closeConfirmBody": "Skickar månaden för godkännande. Efter detta är posterna i {{month}} låsta på servern.",
     "closeConfirm": "Stäng månad",
     "closeSuccess": "Månaden stängd",
-    "closeError": "Kunde inte stänga månaden"
+    "closeError": "Kunde inte stänga månaden",
+    "monthlyInsight": "Månadens insikt"
   },
   "xp": {
     "level": "Nivå {{n}}",
@@ -177,7 +224,11 @@
     "xpSuffix": "XP",
     "achievements": "Prestationer",
     "locked": "Låst",
-    "achievementUnlocked": "Prestation upplåst"
+    "achievementUnlocked": "Prestation upplåst",
+    "titleDev": "Utvecklare",
+    "titleSenior": "Senior utvecklare",
+    "titlePrincipal": "Lead utvecklare",
+    "toNext": "till nästa"
   },
   "cal": {
     "notConfigured": "Kalenderintegrationen är inte konfigurerad än. Lägg till AZURE_CLIENT_ID för att aktivera.",

@@ -4,7 +4,7 @@ html, body, #root { height: 100%; background: transparent; }
 
 body {
   font-family: -apple-system, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   overflow: hidden;
   user-select: none;
 }
@@ -12,29 +12,14 @@ body {
 button, input, select, textarea { font-family: inherit; }
 
 button:focus { outline: none; }
-button:focus-visible,
-[role="switch"]:focus-visible,
-[role="tab"]:focus-visible {
-  outline: 2px solid #7c3aed;
-  outline-offset: 2px;
-  border-radius: inherit;
-}
 
 input, textarea, select {
   transition: border-color .15s, box-shadow .15s;
 }
-input:focus, textarea:focus, select:focus {
-  border-color: #7c3aed !important;
-  box-shadow: 0 0 0 3px rgba(124,58,237,0.15) !important;
-}
-input::placeholder, textarea::placeholder {
-  color: #9d98c8;
-  opacity: 1;
-}
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: .3; }
+  50% { opacity: .55; }
 }
 @keyframes skeletonShimmer {
   0% { background-position: -150% 0; }
@@ -82,6 +67,65 @@ span.skeleton { display: inline-block; vertical-align: middle; }
   animation: marqueeX 80s linear infinite;
   padding-right: 0;
 }
+.status-marquee-track.paused,
+.top-fill.paused {
+  animation-play-state: paused;
+}
+
+.top-play-btn {
+  transition: transform 140ms cubic-bezier(.22,1,.36,1), box-shadow 160ms ease;
+}
+.top-play-btn:hover {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.18);
+}
+.top-play-btn:active {
+  transform: scale(0.94);
+  transition-duration: 80ms;
+}
+
+/* Hover-over-dial controls (running-timer mode) */
+.timer-dial-zone {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+.timer-dial-content {
+  transition: opacity 220ms cubic-bezier(.22,1,.36,1);
+}
+.timer-dial-controls {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms cubic-bezier(.22,1,.36,1);
+}
+.timer-dial-zone:hover .timer-dial-content,
+.timer-dial-zone:focus-within .timer-dial-content {
+  opacity: 0.18;
+}
+.timer-dial-zone:hover .timer-dial-controls,
+.timer-dial-zone:focus-within .timer-dial-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+.timer-dial-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(.22,1,.36,1), background 160ms ease;
+}
+.timer-dial-btn:hover { transform: scale(1.06); }
+.timer-dial-btn:active { transform: scale(0.94); transition-duration: 80ms; }
 .app-dark-glow {
   background:
     radial-gradient(ellipse 700px 500px at 100% 0%, rgba(126, 95, 255, 0.22) 0%, transparent 55%),
@@ -133,14 +177,26 @@ span.skeleton { display: inline-block; vertical-align: middle; }
 .intro-emoji { animation: introWiggle 1.6s ease-in-out infinite; display: inline-block; }
 .intro-in { animation: introFadeUp 600ms ease-out both; }
 @keyframes introPulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(107,124,219,0.2), 0 0 22px rgba(107,124,219,0.4); }
-  50% { box-shadow: 0 0 0 7px rgba(107,124,219,0.1), 0 0 32px rgba(107,124,219,0.6); }
+  0%, 100% { box-shadow: 0 0 0 4px rgba(232,148,114,0.22), 0 0 22px rgba(232,148,114,0.42); }
+  50% { box-shadow: 0 0 0 7px rgba(232,148,114,0.12), 0 0 32px rgba(232,148,114,0.62); }
 }
 @keyframes modeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 .mode-root { animation: modeIn 200ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.mode-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>");
+  background-size: 220px 220px;
+  opacity: var(--grain-opacity);
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 0;
+}
+.mode-root > * { position: relative; z-index: 1; }
 @keyframes floatUp {
   0% { opacity: 1; transform: translateY(0) scale(1); }
   70% { opacity: 1; transform: translateY(-52px) scale(1.06); }
@@ -149,6 +205,124 @@ span.skeleton { display: inline-block; vertical-align: middle; }
 @keyframes achIn {
   0% { opacity: 0; transform: translateY(18px) scale(.95); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes goalBloom {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  35% { transform: scale(1.28); filter: drop-shadow(0 0 14px rgba(111,212,160,0.65)); }
+  70% { transform: scale(1.06); filter: drop-shadow(0 0 6px rgba(111,212,160,0.35)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+}
+.goal-bloom { display: inline-block; animation: goalBloom 1.6s cubic-bezier(.34,1.56,.64,1); transform-origin: center; }
+
+@keyframes confettiBurst {
+  0% { transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translate(var(--cx,0), var(--cy,0)) rotate(var(--cr,180deg)) scale(0.6); opacity: 0; }
+}
+.confetti-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  pointer-events: none;
+  z-index: 102;
+  width: 0;
+  height: 0;
+}
+.confetti-piece {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 9px;
+  border-radius: 1px;
+  animation: confettiBurst 1.8s cubic-bezier(.22,1,.36,1) forwards;
+  transform-origin: center;
+}
+@keyframes goalToastIn {
+  0% { opacity: 0; transform: translateY(24px) scale(.94); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes streakPop {
+  0%   { transform: rotate(-10deg) scale(1); }
+  22%  { transform: rotate(8deg) scale(1.18); }
+  44%  { transform: rotate(-4deg) scale(0.96); }
+  68%  { transform: rotate(2deg) scale(1.04); }
+  100% { transform: rotate(0) scale(1); }
+}
+.streak-pop { display: inline-flex; animation: streakPop 1.3s cubic-bezier(.34,1.4,.64,1); transform-origin: center; }
+
+@keyframes saveFlashBackdrop {
+  0%   { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+  14%  { opacity: 1; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  86%  { opacity: 1; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  100% { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+}
+@keyframes saveFlashCard {
+  0%   { opacity: 0; transform: scale(.88) rotate(-1.6deg); }
+  18%  { opacity: 1; transform: scale(1.02) rotate(0.4deg); }
+  30%  { transform: scale(1) rotate(0); }
+  86%  { opacity: 1; transform: scale(1) rotate(0); }
+  100% { opacity: 0; transform: scale(.985) rotate(0); }
+}
+@keyframes saveRingDraw {
+  0%   { stroke-dashoffset: 195; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes saveCheckDraw {
+  0%   { stroke-dashoffset: 40; }
+  100% { stroke-dashoffset: 0; }
+}
+.save-flash-ring { animation: saveRingDraw 720ms 220ms cubic-bezier(.22,1,.36,1) both; }
+.save-flash-check { animation: saveCheckDraw 620ms 820ms cubic-bezier(.22,1,.36,1) both; }
+
+.ring-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform 150ms ease;
+}
+.ring-button:hover { transform: scale(1.04); }
+.ring-button:active { transform: scale(0.97); }
+.ring-status-dot {
+  position: absolute;
+  top: -2px;
+  right: 2px;
+  pointer-events: none;
+}
+
+.entry-card {
+  box-shadow: var(--shadow-engrave);
+  transition:
+    transform 160ms cubic-bezier(.22,1,.36,1),
+    border-color 150ms ease,
+    box-shadow 180ms ease;
+}
+.entry-card:hover {
+  transform: translateY(-1px);
+}
+.entry-card:active {
+  transform: scale(0.985);
+  transition-duration: 90ms;
+}
+
+.engrave-card {
+  box-shadow: var(--shadow-engrave);
+}
+
+.hand-underline {
+  background-image: linear-gradient(to right, var(--underline-color, currentColor) 0%, var(--underline-color, currentColor) 100%);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 2px;
+  padding-bottom: 1px;
 }
 
 ::-webkit-scrollbar { width: 6px; }

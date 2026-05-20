@@ -4,12 +4,6 @@ import userEvent from '@testing-library/user-event'
 import i18n from 'i18next'
 import { Combobox } from '../Combobox'
 
-const theme = {
-  bg: '#fff', s1: '#fff', s2: '#eee', ac: '#7c3aed',
-  ad: '#eee', at: '#000', b1: '#ccc', b2: '#aaa',
-  t1: '#000', t2: '#333', t3: '#666', tf: '#999',
-}
-
 const items = [
   { id: '1', name: 'DevCore' },
   { id: '2', name: 'Acme Corp' },
@@ -21,25 +15,25 @@ describe('<Combobox />', () => {
   afterEach(async () => { await i18n.changeLanguage('en') })
 
   it('renders the placeholder when nothing is selected', () => {
-    render(<Combobox value="" items={items} onChange={() => {}} placeholder="Search client…" theme={theme} />)
+    render(<Combobox value="" items={items} onChange={() => {}} placeholder="Search client…" />)
     expect(screen.getByPlaceholderText('Search client…')).toBeInTheDocument()
   })
 
   it('shows the selected item name in the input', () => {
-    render(<Combobox value="2" items={items} onChange={() => {}} theme={theme} />)
+    render(<Combobox value="2" items={items} onChange={() => {}} />)
     expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument()
   })
 
   it('opens the dropdown on focus and lists the items', async () => {
-    render(<Combobox value="" items={items} onChange={() => {}} theme={theme} />)
-    await userEvent.click(screen.getByRole('textbox'))
+    render(<Combobox value="" items={items} onChange={() => {}} />)
+    await userEvent.click(screen.getByRole('combobox'))
     expect(screen.getByText('DevCore')).toBeInTheDocument()
     expect(screen.getByText('Acme Corp')).toBeInTheDocument()
   })
 
   it('filters items as the user types', async () => {
-    render(<Combobox value="" items={items} onChange={() => {}} theme={theme} />)
-    const input = screen.getByRole('textbox')
+    render(<Combobox value="" items={items} onChange={() => {}} />)
+    const input = screen.getByRole('combobox')
     await userEvent.click(input)
     await userEvent.type(input, 'dev')
     expect(screen.getByText('DevCore')).toBeInTheDocument()
@@ -48,15 +42,15 @@ describe('<Combobox />', () => {
 
   it('calls onChange with the picked item id', async () => {
     const onChange = vi.fn()
-    render(<Combobox value="" items={items} onChange={onChange} theme={theme} />)
-    await userEvent.click(screen.getByRole('textbox'))
+    render(<Combobox value="" items={items} onChange={onChange} />)
+    await userEvent.click(screen.getByRole('combobox'))
     await userEvent.click(screen.getByText('Globex'))
     expect(onChange).toHaveBeenCalledWith('3')
   })
 
   it('shows "No matches" (EN) when nothing matches', async () => {
-    render(<Combobox value="" items={items} onChange={() => {}} theme={theme} />)
-    const input = screen.getByRole('textbox')
+    render(<Combobox value="" items={items} onChange={() => {}} />)
+    const input = screen.getByRole('combobox')
     await userEvent.click(input)
     await userEvent.type(input, 'zzzz')
     expect(screen.getByText('No matches')).toBeInTheDocument()
@@ -64,8 +58,8 @@ describe('<Combobox />', () => {
 
   it('shows "Inga träffar" (SV) when i18n is in Swedish mode and nothing matches', async () => {
     await i18n.changeLanguage('sv')
-    render(<Combobox value="" items={items} onChange={() => {}} theme={theme} />)
-    const input = screen.getByRole('textbox')
+    render(<Combobox value="" items={items} onChange={() => {}} />)
+    const input = screen.getByRole('combobox')
     await userEvent.click(input)
     await userEvent.type(input, 'zzzz')
     expect(screen.getByText('Inga träffar')).toBeInTheDocument()
@@ -73,7 +67,7 @@ describe('<Combobox />', () => {
 
   it('clears the selection via the ✕ button', async () => {
     const onChange = vi.fn()
-    render(<Combobox value="2" items={items} onChange={onChange} theme={theme} />)
+    render(<Combobox value="2" items={items} onChange={onChange} />)
     await userEvent.click(screen.getByTitle('Clear'))
     expect(onChange).toHaveBeenCalledWith('')
   })

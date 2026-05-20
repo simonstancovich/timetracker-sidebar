@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LoginScreen } from "./components/LoginScreen";
+import { FlameIcon } from "./icons/FlameIcon";
 import { Combobox } from "./components/Combobox";
 import {
   Company,
@@ -34,7 +35,13 @@ import { pickTip } from "./lib/productivityTips";
 import { pickGreeting } from "./lib/greetingMessages";
 import { getTimerInsight } from "./lib/timerInsights";
 import { getTimerVibe } from "./lib/timerVibe";
-import { emptyTodayMessage, saveCheer, xpCoachNote } from "./lib/personality";
+import {
+  emptyTodayMessage,
+  goalDoneCheer,
+  goalDoneSub,
+  saveCheer,
+  xpCoachNote,
+} from "./lib/personality";
 import { getHolidays, isWorkingDay } from "./lib/swedishHolidays";
 import {
   Lang,
@@ -45,8 +52,19 @@ import {
 } from "./lib/i18n";
 import { useModal } from "./lib/useModal";
 import { buildIntroSteps } from "./lib/introSteps";
-import { Spinner } from "./primitives";
+import { smartDate } from "./lib/smartDate";
+import { ActivityRing, Spinner } from "./primitives";
+import { SunIcon } from "./icons/SunIcon";
+import { MoonIcon } from "./icons/MoonIcon";
+import { PauseIcon } from "./icons/PauseIcon";
+import { PlayIcon } from "./icons/PlayIcon";
+import { StopIcon } from "./icons/StopIcon";
+import { XIcon } from "./icons/XIcon";
+import { PlusIcon } from "./icons/PlusIcon";
+import { PencilIcon } from "./icons/PencilIcon";
 import { AppHeader } from "./components/AppHeader";
+import { PageEyebrow } from "./components/PageEyebrow";
+import { ChapterHeading } from "./components/ChapterHeading";
 import { IntroOverlay } from "./components/IntroOverlay";
 import { MeetingsWidget } from "./components/MeetingsWidget";
 import { MonthView } from "./components/MonthView";
@@ -231,6 +249,22 @@ export default function App() {
   const [pendingAchs, setPendingAchs] = useState<Ach[]>([]);
   const [achStats, setAchStats] = useState<AchStats>(EMPTY_ACH_STATS);
   const [achStatsLoaded, setAchStatsLoaded] = useState(false);
+  const [lastCelebratedDate, setLastCelebratedDate] = useState<string>("");
+  const [goalCelebration, setGoalCelebration] = useState<{
+    title: string;
+    sub: string;
+  } | null>(null);
+  const [justHitGoal, setJustHitGoal] = useState(false);
+  const [justBumpedStreak, setJustBumpedStreak] = useState(false);
+  const prevStreakRef = useRef<number>(0);
+  const [windowFocused, setWindowFocused] = useState(
+    typeof document === "undefined" ? true : !document.hidden,
+  );
+  const [saveToast, setSaveToast] = useState<{
+    cheer: string;
+    hours: string;
+    xp: number;
+  } | null>(null);
   const fid = useRef(0);
 
   // Timer state
@@ -242,6 +276,7 @@ export default function App() {
   const [tNote, setTNote] = useState("");
   const [tInv, setTInv] = useState(true);
   const [timerLoaded, setTimerLoaded] = useState(false);
+  const [timerFormOpen, setTimerFormOpen] = useState(true);
   const tick = useRef<number | null>(null);
 
   const prevDisplayXp = useRef(0);
@@ -286,6 +321,19 @@ export default function App() {
     onClose: () => setConfirmation(null),
   });
 
+  // Side-quest stack: when an interruption comes in, freeze the main timer and
+  // start a fresh one. Restore the main when the side quest is logged/abandoned.
+  const [stashedTimer, setStashedTimer] = useState<{
+    co: string;
+    pr: string;
+    desc: string;
+    note: string;
+    inv: boolean;
+    sec: number;
+    draftId: string | null;
+    coName: string;
+  } | null>(null);
+
   const resetTimer = () => {
     setTRun(false);
     setTSec(0);
@@ -296,13 +344,60 @@ export default function App() {
     setTInv(true);
     setDraftId(null);
     draftIdRef.current = null;
+    setTimerFormOpen(true);
+  };
+
+  const startSideQuest = () => {
+    if (stashedTimer) return; // single level of nesting
+    const coName = companies.find((c) => c.id === tCo)?.name || "";
+    setStashedTimer({
+      co: tCo,
+      pr: tPr,
+      desc: tD,
+      note: tNote,
+      inv: tInv,
+      sec: tSec,
+      draftId: draftIdRef.current,
+      coName,
+    });
+    // Fresh blank timer, running immediately — details filled later.
+    setTCo("");
+    setTPr("");
+    setTD("");
+    setTNote("");
+    setTInv(true);
+    setTSec(0);
+    setDraftId(null);
+    draftIdRef.current = null;
+    setTimerFormOpen(true);
+    setTRun(true);
+  };
+
+  const restoreStashedTimer = () => {
+    if (!stashedTimer) return;
+    setTCo(stashedTimer.co);
+    setTPr(stashedTimer.pr);
+    setTD(stashedTimer.desc);
+    setTNote(stashedTimer.note);
+    setTInv(stashedTimer.inv);
+    setTSec(stashedTimer.sec);
+    setDraftId(stashedTimer.draftId);
+    draftIdRef.current = stashedTimer.draftId;
+    setStashedTimer(null);
+    setTimerFormOpen(false);
+    setTRun(false); // restored paused — user taps resume
   };
 
   const [pendingCancelTimer, setPendingCancelTimer] = useState(false);
   const cancelTimer = async () => {
     setPendingCancelTimer(false);
     const id = draftIdRef.current;
-    resetTimer();
+    if (stashedTimer) {
+      // Abandoning a side quest — pop the main timer back instead of clearing.
+      restoreStashedTimer();
+    } else {
+      resetTimer();
+    }
     if (id) {
       // Best-effort: remove the crash-safe draft from the server. Swallow
       // errors — the local state is already cleared, so the user's intent
@@ -520,6 +615,11 @@ export default function App() {
       if (l === "en" || l === "sv") setLang(l);
       setXp(typeof x === "number" ? x : 0);
       setUnlocked(Array.isArray(u) ? u : []);
+      const savedCelebrated = await window.electronAPI.storeGet(
+        "lastCelebratedDate",
+      );
+      if (typeof savedCelebrated === "string")
+        setLastCelebratedDate(savedCelebrated);
       const savedStats = await window.electronAPI.storeGet("achStats");
       setAchStats(
         savedStats && typeof savedStats === "object"
@@ -976,6 +1076,57 @@ export default function App() {
   const done = todayH >= GOAL;
   const gpct = Math.min((todayH / GOAL) * 100, 100);
 
+  // Save flash — auto-dismiss after 2.1s.
+  useEffect(() => {
+    if (!saveToast) return;
+    const t = window.setTimeout(() => setSaveToast(null), 2100);
+    return () => clearTimeout(t);
+  }, [saveToast]);
+
+  // Window focus tracking — pauses decorative animations (marquee, shimmer)
+  // when the window is blurred or hidden, saving battery on idle top-bar.
+  useEffect(() => {
+    const onFocus = () => setWindowFocused(true);
+    const onBlur = () => setWindowFocused(false);
+    const onVis = () => setWindowFocused(!document.hidden);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
+  // Streak increment — pop animation when streak goes up after first hydration.
+  useEffect(() => {
+    const prev = prevStreakRef.current;
+    prevStreakRef.current = streak;
+    if (streak > prev && prev > 0) {
+      setJustBumpedStreak(true);
+      const t = window.setTimeout(() => setJustBumpedStreak(false), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [streak]);
+
+  // 8h goal celebration — fires once per calendar day on first crossing.
+  useEffect(() => {
+    if (!authed || !done) return;
+    const today = formatLocalDate(new Date());
+    if (lastCelebratedDate === today) return;
+    setGoalCelebration({ title: goalDoneCheer(lang), sub: goalDoneSub(lang) });
+    setJustHitGoal(true);
+    setLastCelebratedDate(today);
+    window.electronAPI.storeSet("lastCelebratedDate", today);
+    const bloomEnd = window.setTimeout(() => setJustHitGoal(false), 1700);
+    const toastEnd = window.setTimeout(() => setGoalCelebration(null), 4200);
+    return () => {
+      clearTimeout(bloomEnd);
+      clearTimeout(toastEnd);
+    };
+  }, [done, authed, lastCelebratedDate, lang]);
+
   // Lazy load projects for a company
   const ensureProjects = async (cid: string) => {
     if (projectCache[cid]) return projectCache[cid];
@@ -1087,7 +1238,11 @@ export default function App() {
 
     const earned = Math.round(10 + hours * 8);
     setXp((x) => x + earned);
-    addFloat(`${saveCheer(lang)} +${fmtHours(hours)}  +${earned} XP`, M.ac);
+    setSaveToast({
+      cheer: saveCheer(lang),
+      hours: fmtHours(hours),
+      xp: earned,
+    });
 
     // Skip achievement evaluation on edits — only fresh entries advance stats.
     if (existingId) return saved?.id || existingId || null;
@@ -1258,9 +1413,9 @@ export default function App() {
   void nowTick;
   const now = new Date();
   const clockDate = now.toLocaleDateString(locale, {
-    weekday: "short",
+    weekday: "long",
     day: "numeric",
-    month: "short",
+    month: "long",
   });
   const clockTime = now.toLocaleTimeString(locale, {
     hour: "2-digit",
@@ -1270,13 +1425,14 @@ export default function App() {
   // ─── Header ────────────────────────────────────────────────────────────
   const hdr = (
     <AppHeader
-      M={M}
       tab={tab}
       onTabChange={setTab}
       tRun={tRun}
       tSec={tSec}
       todayH={todayH}
+      goalHours={GOAL}
       done={done}
+      justHitGoal={justHitGoal}
       clockDate={clockDate}
       clockTime={clockTime}
       onMinimize={() => goSize("top")}
@@ -1294,17 +1450,18 @@ export default function App() {
   const streakBadge =
     streak > 0 ? (
       <span
+        className={justBumpedStreak ? "streak-pop" : undefined}
         style={{
           fontSize: 10,
           fontWeight: 700,
           color: M.pk,
-          fontFamily: "monospace",
+          fontFamily: '"JetBrains Mono",ui-monospace,monospace',
           display: "inline-flex",
           alignItems: "center",
           gap: 3,
         }}
       >
-        <span style={{ fontSize: 11 }}>🔥</span>
+        <FlameIcon size={12} />
         {streak}d
       </span>
     ) : null;
@@ -1418,50 +1575,72 @@ export default function App() {
       : done
         ? t("today.goalReachedLine")
         : t("today.leftToHit", { hours: fmtHours(GOAL - todayH), goal: GOAL });
+
+    // ISO week + 1-indexed weekday for the page eyebrow hint.
+    const eyebrowDate = new Date(
+      Date.UTC(
+        todayDate.getFullYear(),
+        todayDate.getMonth(),
+        todayDate.getDate(),
+      ),
+    );
+    const dayNum = eyebrowDate.getUTCDay() || 7;
+    eyebrowDate.setUTCDate(eyebrowDate.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(eyebrowDate.getUTCFullYear(), 0, 1));
+    const isoWeek = Math.ceil(
+      ((eyebrowDate.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+    );
+
+    // Today XP + billable % for the chip row.
+    const todayBillableH = entries.reduce(
+      (s, e) => s + (e.invoice === "1" ? parseFloat(e.hour) : 0),
+      0,
+    );
+    const todayBillablePct =
+      todayH > 0 ? Math.round((todayBillableH / todayH) * 100) : 0;
+    const todayXp = entries.reduce(
+      (s, e) => s + Math.round(10 + parseFloat(e.hour) * 8),
+      0,
+    );
+
     return (
       <div style={{ paddingBottom: 24 }}>
         {firstName && (
-          <div
-            style={{
-              padding: "12px 14px 4px",
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 8,
-            }}
-          >
-            <span style={{ fontSize: 18, lineHeight: 1.1 }}>{emoji}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ padding: "16px 14px 4px" }}>
+            <div
+              style={{
+                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontStyle: "italic",
+                fontSize: 22,
+                color: M.t1,
+                letterSpacing: -0.3,
+                lineHeight: 1.15,
+              }}
+            >
+              {greeting}, {firstName}.
+            </div>
+            {greetingMsg && (
               <div
                 style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: M.t1,
-                  letterSpacing: -0.3,
-                  lineHeight: 1.1,
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontStyle: "italic",
+                  fontSize: 14,
+                  color: M.ac,
+                  marginTop: 6,
+                  lineHeight: 1.4,
+                  letterSpacing: -0.1,
                 }}
               >
-                {greeting}, {firstName}
+                {greetingMsg}
               </div>
-              <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>
-                {subtitle}
-              </div>
-              {greetingMsg && (
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: M.ac,
-                    marginTop: 4,
-                    fontStyle: "italic",
-                    opacity: 0.85,
-                  }}
-                >
-                  {greetingMsg}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
-        {pbar}
+        <PageEyebrow
+          title={t("page.today")}
+          hint={t("today.eyebrowHint", { week: isoWeek, day: dayNum })}
+          M={M}
+        />
         <div
           style={{
             padding: "12px 14px 0",
@@ -1473,137 +1652,224 @@ export default function App() {
           <div
             data-tour="today-stats"
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1.7fr 1fr",
-              gap: 6,
+              textAlign: "center",
+              padding: "20px 0 22px",
             }}
           >
             <div
+              className={justHitGoal ? "goal-bloom" : undefined}
               style={{
-                background: M.s1,
-                border: `1px solid ${M.b1}`,
-                borderRadius: 11,
-                padding: "11px 6px",
-                textAlign: "center",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
+                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontSize: 90,
+                fontWeight: 400,
+                color: done ? M.gn : M.t1,
+                letterSpacing: -3,
+                lineHeight: 0.9,
+                display: "inline-block",
+                textDecoration: "none",
+                fontVariantNumeric: "tabular-nums",
               }}
             >
-              <div
+              {fmtHours(todayH).split(":")[0]}
+              <span
+                aria-hidden
                 style={{
-                  fontFamily: "monospace",
-                  fontSize: 14,
+                  display: "inline-flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  gap: "0.13em",
+                  height: "0.65em",
+                  verticalAlign: "0.18em",
+                  margin: "0 0.12em",
+                }}
+              >
+                <span
+                  style={{
+                    width: "0.085em",
+                    height: "0.085em",
+                    borderRadius: "50%",
+                    background: "currentColor",
+                  }}
+                />
+                <span
+                  style={{
+                    width: "0.085em",
+                    height: "0.085em",
+                    borderRadius: "50%",
+                    background: "currentColor",
+                  }}
+                />
+              </span>
+              {fmtHours(todayH).split(":")[1]}
+              <span
+                style={{
+                  fontStyle: "italic",
+                  fontSize: 40,
+                  color: done ? M.gn : M.ac,
+                  marginLeft: 4,
+                }}
+              >
+                h
+              </span>
+            </div>
+            <div
+              style={{
+                marginTop: 16,
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontSize: 12,
+                color: M.t3,
+                lineHeight: 1.4,
+                textTransform: "uppercase",
+                letterSpacing: 2.4,
+                fontWeight: 500,
+                textDecoration: "none",
+              }}
+            >
+              {done
+                ? t("today.dayDoneSubtitle", { extra: fmtHours(todayH - GOAL) })
+                : t("today.toGoSubtitle", {
+                    remaining: fmtHours(Math.max(0, GOAL - todayH)),
+                  })}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+           <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            <div
+              className={`engrave-card${justBumpedStreak ? " streak-pop" : ""}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px 6px 9px",
+                borderRadius: 999,
+                background: M.pb,
+                border: `1px solid ${M.pp}`,
+                color: M.pk,
+              }}
+            >
+              <FlameIcon size={11} />
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: M.pk,
+                  letterSpacing: 0.3,
+                }}
+              >
+                {streak}
+              </span>
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: M.t3,
+                  textTransform: "uppercase",
+                  letterSpacing: 1.4,
+                }}
+              >
+                {t("today.stat.streak")}
+              </span>
+            </div>
+            <div
+              className="engrave-card"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px 6px 9px",
+                borderRadius: 999,
+                background: M.gb,
+                border: `1px solid ${M.gd}`,
+                color: M.gn,
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="11"
+                height="11"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: M.gn,
+                  letterSpacing: 0.3,
+                }}
+              >
+                {todayBillablePct}%
+              </span>
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: M.t3,
+                  textTransform: "uppercase",
+                  letterSpacing: 1.4,
+                }}
+              >
+                {t("today.stat.billable")}
+              </span>
+            </div>
+           </div>
+            <div
+              className="engrave-card"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px 6px 11px",
+                borderRadius: 999,
+                background: `${M.ac}14`,
+                border: `1px solid ${M.ac}33`,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 11,
                   fontWeight: 700,
                   color: M.ac,
+                  letterSpacing: 0.3,
                 }}
               >
-                {fmtHours(todayH)}
-              </div>
-              <div
+                {todayXp}
+              </span>
+              <span
                 style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                   fontSize: 9,
-                  color: M.t3,
-                  marginTop: 3,
                   fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}
-              >
-                {t("today.stat.today")}
-              </div>
-            </div>
-            <div
-              style={{
-                background: M.pb,
-                border: `2px solid ${M.pp}`,
-                borderRadius: 11,
-                padding: "10px 6px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-              }}
-            >
-              <div style={{ textAlign: "center" }}>
-                <div
-                  style={{
-                    fontFamily: "monospace",
-                    fontSize: 22,
-                    fontWeight: 800,
-                    color: M.pk,
-                    letterSpacing: -1,
-                    lineHeight: 1,
-                  }}
-                >
-                  {streak}d
-                </div>
-                <div
-                  style={{
-                    fontSize: 9,
-                    color: M.pk,
-                    marginTop: 4,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.5,
-                    opacity: 0.7,
-                  }}
-                >
-                  {t("today.stat.streak")}
-                </div>
-              </div>
-              <div
-                style={{
-                  fontSize: 20,
-                  lineHeight: 1,
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                }}
-              >
-                🔥
-              </div>
-            </div>
-            <div
-              style={{
-                background: M.s1,
-                border: `1px solid ${M.b1}`,
-                borderRadius: 11,
-                padding: "11px 6px",
-                textAlign: "center",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: "monospace",
-                  fontSize: 14,
-                  fontWeight: 700,
                   color: M.t3,
-                }}
-              >
-                {fmtHours(weekTotal)}
-              </div>
-              <div
-                style={{
-                  fontSize: 9,
-                  color: M.t3,
-                  marginTop: 3,
-                  fontWeight: 600,
                   textTransform: "uppercase",
-                  letterSpacing: 0.5,
+                  letterSpacing: 1.4,
                 }}
               >
-                {t("today.stat.week")}
-              </div>
+                {t("today.stat.xpToday")}
+              </span>
             </div>
           </div>
 
           <MeetingsWidget
-            M={M}
             onStartForMeeting={(title) => {
               setTD(title);
               setTab("timer");
@@ -1622,13 +1888,7 @@ export default function App() {
                 { cid: string; h: number; entries: TimeEntry[] },
               ][]
             ).map(([co, g], gi) => (
-              <div
-                key={co}
-                style={{
-                  paddingLeft: 11,
-                  borderLeft: `3px solid ${M.co[gi % M.co.length]}`,
-                }}
-              >
+              <div key={co}>
                 <div
                   style={{
                     display: "flex",
@@ -1639,9 +1899,11 @@ export default function App() {
                 >
                   <span
                     style={{
-                      fontSize: 12,
-                      fontWeight: 700,
+                      fontFamily: '"Instrument Serif","Georgia",serif',
+                      fontSize: 17,
+                      lineHeight: 1.1,
                       color: M.co[gi % M.co.length],
+                      letterSpacing: -0.1,
                     }}
                   >
                     {co}
@@ -1651,7 +1913,7 @@ export default function App() {
                       fontSize: 11,
                       fontWeight: 700,
                       color: M.t3,
-                      fontFamily: "monospace",
+                      fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                     }}
                   >
                     {fmtHours(g.h)}
@@ -1668,6 +1930,7 @@ export default function App() {
                         style={{ display: "flex", flexDirection: "column" }}
                       >
                         <div
+                          className="entry-card"
                           onDoubleClick={() => editEntry(e)}
                           title={t("entry.doubleClickEdit")}
                           style={{
@@ -1680,7 +1943,6 @@ export default function App() {
                             borderBottom: isPending
                               ? "none"
                               : `1px solid ${M.b1}`,
-                            transition: "border-color .15s",
                             cursor: "pointer",
                           }}
                         >
@@ -1737,7 +1999,7 @@ export default function App() {
                             >
                               <span
                                 style={{
-                                  fontFamily: "monospace",
+                                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                                   fontSize: 12,
                                   fontWeight: 700,
                                   color: M.ac,
@@ -2007,11 +2269,48 @@ export default function App() {
                 fontSize: 17,
                 fontWeight: 700,
                 color: done ? M.gn : M.ac,
-                fontFamily: "monospace",
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
               }}
             >
               {fmtHours(todayH)}
             </span>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              paddingTop: 14,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setTab("timer");
+                setLogOpen(true);
+              }}
+              aria-label={t("timer.logPastTime")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "9px 18px 9px 14px",
+                borderRadius: 999,
+                background: "transparent",
+                border: `1px solid ${M.b1}`,
+                color: M.t2,
+                cursor: "pointer",
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+                transition: "all .15s ease",
+              }}
+            >
+              <PlusIcon size={13} />
+              {t("today.logTime")}
+            </button>
           </div>
         </div>
       </div>
@@ -2043,10 +2342,20 @@ export default function App() {
         new Date(),
         draftId,
       );
-      resetTimer();
-      setTab("today");
+      if (stashedTimer) {
+        // Side quest logged — pop the main timer back (paused).
+        restoreStashedTimer();
+      } else {
+        resetTimer();
+        setTab("today");
+      }
     };
 
+    const timerHint = tRun
+      ? t("page.timerRunning")
+      : tSec > 0
+        ? t("page.timerPaused")
+        : t("page.timerIdle");
     return (
       <div
         style={{
@@ -2054,144 +2363,259 @@ export default function App() {
           display: "flex",
           flexDirection: "column",
           gap: 10,
+          minHeight: "100%",
         }}
       >
-        {tRun && (
-          <div
+        <div style={{ margin: "-16px -14px 4px" }}>
+          <PageEyebrow title={t("page.timer")} hint={timerHint} M={M} />
+        </div>
+
+        {stashedTimer && (
+          <button
+            type="button"
+            onClick={restoreStashedTimer}
+            title={t("timer.returnToMain")}
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
+              justifyContent: "space-between",
+              gap: 10,
+              padding: "9px 12px",
+              borderRadius: 12,
+              background: M.ad,
+              border: `1px solid ${M.b1}`,
+              cursor: "pointer",
+              textAlign: "left",
+              width: "100%",
             }}
           >
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: M.pk,
-                animation: "pulse 1.2s ease-in-out infinite",
-              }}
-            />
             <span
               style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: M.pk,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
+                display: "inline-flex",
+                alignItems: "baseline",
+                gap: 8,
+                minWidth: 0,
               }}
             >
-              {t("timer.recording")}
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 8,
+                  fontWeight: 700,
+                  color: M.tf,
+                  textTransform: "uppercase",
+                  letterSpacing: 1.6,
+                  flexShrink: 0,
+                }}
+              >
+                {t("timer.mainPaused")}
+              </span>
+              <span
+                style={{
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontStyle: "italic",
+                  fontSize: 15,
+                  color: M.at,
+                  letterSpacing: -0.1,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  minWidth: 0,
+                }}
+              >
+                {stashedTimer.coName}
+              </span>
             </span>
-          </div>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: M.t2,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {fmtClock(stashedTimer.sec)}
+              </span>
+              <span
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 8,
+                  fontWeight: 700,
+                  color: M.ac,
+                  textTransform: "uppercase",
+                  letterSpacing: 1.4,
+                }}
+              >
+                {t("timer.returnShort")} ↩
+              </span>
+            </span>
+          </button>
         )}
 
         <div
-          style={{ textAlign: "center", padding: tRun ? "4px 0" : "8px 0 6px" }}
+          className="timer-dial-zone"
+          style={{ padding: "12px 0 6px" }}
         >
-          <div
-            style={{
-              fontFamily: "'SF Mono','Cascadia Code',monospace",
-              fontSize: tRun ? 50 : 44,
-              fontWeight: 300,
-              color: tRun ? M.ac : M.id === "dark" ? "#2e2e2e" : "#d4c8f5",
-              letterSpacing: 3,
-              lineHeight: 1,
-              marginBottom: 6,
-            }}
+          <div className="timer-dial-content">
+          <ActivityRing
+            progress={GOAL > 0 ? todayH / GOAL : 0}
+            done={done}
+            size={210}
+            stroke={3}
+            withTicks
           >
-            {fmtClock(tSec)}
-          </div>
-          {(() => {
-            const v = getTimerVibe(tSec, tRun, lang);
-            return (
+            <div style={{ textAlign: "center", padding: "0 8px" }}>
               <div
                 style={{
-                  position: "relative",
-                  textAlign: "center",
-                  fontSize: 12,
-                  color: tRun ? M.ac : M.tf,
-                  fontWeight: tRun ? 600 : 400,
-                  letterSpacing: 0.2,
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontSize: 38,
+                  fontWeight: 400,
+                  color: tRun ? M.t1 : M.t3,
+                  letterSpacing: -1.5,
+                  lineHeight: 0.95,
+                  fontVariantNumeric: "tabular-nums",
                 }}
               >
-                <span style={{ position: "relative", display: "inline-block" }}>
-                  {v.text}
-                  {v.icon && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        left: "100%",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        marginLeft: 6,
-                      }}
-                    >
-                      {v.icon}
-                    </span>
-                  )}
-                </span>
+                {fmtClock(tSec)}
               </div>
-            );
-          })()}
-          {timerInsight && (
-            <div
-              style={{
-                textAlign: "center",
-                fontSize: 11,
-                color: M.t3,
-                fontStyle: "italic",
-                marginTop: 4,
-                padding: "0 14px",
-                lineHeight: 1.3,
-              }}
-            >
-              {timerInsight}
+              <div
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 8,
+                  color: tRun ? M.pk : M.tf,
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  marginTop: 8,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                {tRun && (
+                  <span
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: M.pk,
+                      animation: "pulse 1.2s ease-in-out infinite",
+                    }}
+                  />
+                )}
+                {tRun
+                  ? t("timer.recording")
+                  : tSec > 0
+                    ? t("status.paused")
+                    : t("status.idle")}
+              </div>
+            </div>
+          </ActivityRing>
+          </div>
+          {tRun && (
+            <div className="timer-dial-controls">
+              <button
+                type="button"
+                onClick={() => setTRun(false)}
+                aria-label={t("timer.pause")}
+                title={t("timer.pause")}
+                className="timer-dial-btn"
+                style={{
+                  background: M.s1,
+                  border: `1px solid ${M.b1}`,
+                  color: M.t1,
+                }}
+              >
+                <PauseIcon size={22} />
+              </button>
+              <button
+                type="button"
+                onClick={stop}
+                aria-label={t("timer.stopLog")}
+                title={t("timer.stopLog")}
+                className="timer-dial-btn"
+                style={{
+                  background: M.btn,
+                  color: "#fff",
+                  boxShadow: M.bsh,
+                }}
+              >
+                <StopIcon size={22} />
+              </button>
             </div>
           )}
         </div>
 
-        {tRun && (
+        {!tRun &&
+          (() => {
+            const v = getTimerVibe(tSec, tRun, lang);
+            return (
+              <div
+                style={{
+                  textAlign: "center",
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontStyle: "italic",
+                  fontSize: 15,
+                  color: M.t3,
+                  lineHeight: 1.3,
+                  padding: "0 8px",
+                }}
+              >
+                {v.text}
+                {v.icon && <span style={{ marginLeft: 6 }}>{v.icon}</span>}
+              </div>
+            );
+          })()}
+        {!tRun && timerInsight && (
           <div
             style={{
-              background: M.ad,
-              border: `1px solid ${M.am}`,
-              borderRadius: 10,
-              padding: "9px 13px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
+              textAlign: "center",
+              fontFamily: '"Instrument Serif","Georgia",serif',
+              fontStyle: "italic",
+              fontSize: 13,
+              color: M.tf,
+              padding: "0 18px",
+              lineHeight: 1.4,
             }}
           >
-            <span style={{ fontSize: 11, color: M.t2 }}>
-              {t("timer.xpSession")}
-            </span>
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 800,
-                color: M.ac,
-                fontFamily: "monospace",
-              }}
-            >
-              +{sessXP} XP
-            </span>
+            {timerInsight}
           </div>
         )}
 
+
+        {(!tRun || !hasCtx || timerFormOpen) && (
         <div
           style={{
-            background: M.s2,
-            border: `1px solid ${M.b1}`,
-            borderRadius: 14,
-            padding: "13px 13px 11px",
+            padding: "4px 0 0",
             display: "flex",
             flexDirection: "column",
-            gap: 9,
+            gap: 10,
           }}
         >
+          {tRun && !canStart && (
+            <div
+              style={{
+                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontStyle: "italic",
+                fontSize: 14,
+                color: M.pk,
+                textAlign: "center",
+                padding: "4px 8px",
+                lineHeight: 1.4,
+              }}
+            >
+              {t("timer.runningNeedFields")}
+            </div>
+          )}
           {!tRun &&
             (tSec > 0 && canStart ? (
               <div
@@ -2204,15 +2628,16 @@ export default function App() {
                 <button
                   onClick={() => setTRun(true)}
                   style={{
-                    padding: 13,
-                    background: M.btn,
-                    border: "1px solid transparent",
-                    borderRadius: 11,
-                    color: "#fff",
-                    fontSize: 14,
-                    fontWeight: 700,
+                    height: 44,
+                    background: "transparent",
+                    border: `1px solid ${M.b1}`,
+                    borderRadius: 999,
+                    color: M.t1,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    letterSpacing: 1.4,
+                    textTransform: "uppercase",
                     cursor: "pointer",
-                    boxShadow: M.bsh,
                   }}
                 >
                   {t("timer.resume")}
@@ -2220,15 +2645,17 @@ export default function App() {
                 <button
                   onClick={() => void stopAndLogCurrent()}
                   style={{
-                    padding: 13,
-                    background: M.gn,
-                    border: "none",
-                    borderRadius: 11,
-                    color: M.id === "dark" ? "#022c22" : "#fff",
-                    fontSize: 14,
-                    fontWeight: 700,
+                    height: 44,
+                    background: M.btn,
+                    border: "1px solid transparent",
+                    borderRadius: 999,
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    letterSpacing: 1.4,
+                    textTransform: "uppercase",
                     cursor: "pointer",
-                    boxShadow: `0 4px 14px ${M.gn}55`,
+                    boxShadow: M.bsh,
                   }}
                 >
                   {t("timer.stopLog")}
@@ -2240,13 +2667,15 @@ export default function App() {
                 onClick={() => setTRun(true)}
                 style={{
                   width: "100%",
-                  padding: 13,
+                  height: 44,
                   background: M.btn,
                   border: "1px solid transparent",
-                  borderRadius: 11,
+                  borderRadius: 999,
                   color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 700,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
                   cursor: "pointer",
                   boxShadow: M.bsh,
                 }}
@@ -2254,28 +2683,21 @@ export default function App() {
                 {tSec > 0 ? t("timer.resume") : t("timer.start")}
               </button>
             ))}
-          {tRun && !canStart && (
-            <div
-              style={{
-                fontSize: 11,
-                color: M.pk,
-                fontWeight: 600,
-                textAlign: "center",
-                padding: "4px 0",
-              }}
-            >
-              Timer is running — fill in fields below to be able to save
-            </div>
-          )}
-
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              margin: "20px 0 14px",
+            }}
+          >
             <div style={{ flex: 1, height: 1, background: M.b1 }} />
             <span
               style={{
                 fontSize: 10,
                 color: M.t2,
                 fontWeight: 700,
-                letterSpacing: 1,
+                letterSpacing: 1.4,
                 textTransform: "uppercase",
                 whiteSpace: "nowrap",
               }}
@@ -2290,8 +2712,7 @@ export default function App() {
               value={tCo}
               items={companies}
               placeholder={`${t("form.searchClient")} (${companies.length})`}
-              theme={M}
-              onChange={async (id) => {
+                onChange={async (id) => {
                 setTCo(id);
                 setTPr("");
                 if (id) await ensureProjects(id);
@@ -2309,8 +2730,7 @@ export default function App() {
                     ? `${t("form.searchProject")} (${prList.length})`
                     : t("form.loadingProjects")
                 }
-                theme={M}
-                onChange={setTPr}
+                    onChange={setTPr}
               />
             </div>
           )}
@@ -2323,31 +2743,75 @@ export default function App() {
                 onChange={(e) => setTD(e.target.value)}
                 placeholder={t("timer.taskDescription")}
                 style={{
-                  padding: "11px 12px",
-                  background: M.s1,
-                  border: `1.5px solid ${tD.trim() ? M.ac : M.b2}`,
-                  borderRadius: 10,
+                  padding: "8px 6px",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: `1px solid ${tD.trim() ? M.ac : M.b1}`,
+                  borderRadius: 8,
                   color: M.t1,
-                  fontSize: 13,
+                  fontSize: 14,
                   outline: "none",
                   width: "100%",
                 }}
               />
+              {(() => {
+                const recentDescs = Array.from(
+                  new Set(
+                    entries
+                      .filter((e) => e._project_id === tPr && e.description?.trim())
+                      .map((e) => e.description.trim()),
+                  ),
+                ).slice(0, 3);
+                if (recentDescs.length === 0) return null;
+                return (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: -2 }}>
+                    {recentDescs.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setTD(d)}
+                        title={d}
+                        style={{
+                          display: "inline-flex",
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          background: "transparent",
+                          border: `1px solid ${M.b1}`,
+                          color: M.t3,
+                          fontFamily: '"Instrument Serif","Georgia",serif',
+                          fontStyle: "italic",
+                          fontSize: 12,
+                          cursor: "pointer",
+                          maxWidth: 220,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        &ldquo;{d}&rdquo;
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
               <textarea
                 value={tNote}
                 onChange={(e) => setTNote(e.target.value)}
                 placeholder={t("timer.internalNotes")}
                 rows={2}
                 style={{
-                  padding: "11px 12px",
-                  background: M.s1,
-                  border: `1.5px solid ${M.b2}`,
-                  borderRadius: 10,
+                  padding: "8px 6px",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: `1px solid ${M.b1}`,
+                  borderRadius: 8,
                   color: M.t1,
                   fontSize: 13,
                   outline: "none",
                   width: "100%",
                   resize: "none",
+                  fontFamily: "inherit",
                 }}
               />
               <button
@@ -2359,22 +2823,33 @@ export default function App() {
                 style={{
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: "space-between",
                   gap: 10,
-                  padding: "8px 10px",
-                  background: M.bg,
-                  border: `1px solid ${M.b1}`,
-                  borderRadius: 9,
+                  padding: "8px 2px",
+                  background: "transparent",
+                  border: "none",
                   cursor: "pointer",
                   textAlign: "left",
                   font: "inherit",
                   color: "inherit",
                 }}
               >
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: M.t2,
+                    textTransform: "uppercase",
+                    letterSpacing: 1.4,
+                    fontWeight: 600,
+                  }}
+                >
+                  {t("timer.invoiceable")}
+                </span>
                 <div
                   style={{
-                    width: 36,
-                    height: 20,
-                    borderRadius: 10,
+                    width: 28,
+                    height: 16,
+                    borderRadius: 999,
                     background: tInv ? M.ac : M.b1,
                     display: "flex",
                     alignItems: "center",
@@ -2384,287 +2859,397 @@ export default function App() {
                 >
                   <div
                     style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: 8,
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
                       background: "#fff",
-                      transform: `translateX(${tInv ? 16 : 0}px)`,
+                      transform: `translateX(${tInv ? 12 : 0}px)`,
                       transition: "transform .2s",
-                      boxShadow: "0 1px 3px rgba(0,0,0,.25)",
                     }}
                   />
                 </div>
-                <span style={{ fontSize: 12, color: M.t1 }}>
-                  {t("timer.invoiceable")}
-                </span>
               </button>
             </>
           )}
-        </div>
-
-        {tRun && hasCtx && (
-          <div
-            style={{
-              background: M.s1,
-              border: `1.5px solid ${M.am}`,
-              borderRadius: 13,
-              padding: "11px 13px",
-            }}
-          >
-            <div
+          {tRun && canStart && (
+            <button
+              type="button"
+              onClick={() => setTimerFormOpen(false)}
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 7,
+                alignSelf: "center",
+                marginTop: 8,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 22px",
+                borderRadius: 999,
+                background: M.btn,
+                border: "none",
+                color: "#fff",
+                cursor: "pointer",
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+                boxShadow: M.bsh,
               }}
             >
-              <span
+              {t("timer.formDone")}
+            </button>
+          )}
+        </div>
+        )}
+
+        {tRun && hasCtx && !timerFormOpen && (
+          <div style={{ textAlign: "center", padding: "4px 14px" }}>
+            <div
+              style={{
+                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontSize: 24,
+                color: M.t1,
+                letterSpacing: -0.3,
+                lineHeight: 1.1,
+              }}
+            >
+              {coObj?.name}
+            </div>
+            {prObj?.name && (
+              <div
                 style={{
-                  fontSize: 9,
-                  fontWeight: 700,
-                  color: M.t3,
-                  letterSpacing: 1.2,
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 10,
+                  color: M.tf,
                   textTransform: "uppercase",
+                  letterSpacing: 1.8,
+                  fontWeight: 600,
+                  marginTop: 6,
                 }}
               >
-                {t("timer.nowTracking")}
-              </span>
-              <button
-                onClick={() => setTRun(false)}
-                style={{
-                  fontSize: 11,
-                  color: M.ac,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-              >
-                {t("timer.change")}
-              </button>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: M.co[0],
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: M.t1,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {coObj?.name}
-                </div>
-                <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>
-                  {prObj?.name}
-                </div>
-                {tD && (
-                  <div style={{ fontSize: 11, color: M.t1, marginTop: 2 }}>
-                    {tD}
-                  </div>
-                )}
-                {tNote && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: M.tf,
-                      marginTop: 2,
-                      fontStyle: "italic",
-                    }}
-                  >
-                    {tNote}
-                  </div>
-                )}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  background: tInv ? M.gb : M.s2,
-                  border: `1px solid ${tInv ? M.gd : M.b1}`,
-                  borderRadius: 6,
-                  padding: "3px 7px",
-                  flexShrink: 0,
-                }}
-              >
-                <div
-                  style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    background: tInv ? M.gn : M.tf,
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    color: tInv ? M.gn : M.t3,
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  {tInv ? t("entry.billShort") : t("entry.noBillShort")}
-                </span>
-              </div>
-            </div>
-            {prObj && parseFloat(prObj.hour_price) > 0 && (
-              <div
-                style={{
-                  marginTop: 8,
-                  paddingTop: 8,
-                  borderTop: `1px solid ${M.b1}`,
-                  display: "flex",
-                  justifyContent: "flex-end",
-                }}
-              >
-                <span
-                  style={{ fontSize: 11, color: M.t3, fontFamily: "monospace" }}
-                >
-                  {parseFloat(prObj.hour_price)}kr/h ·{" "}
-                  {((tSec / 3600) * parseFloat(prObj.hour_price)).toFixed(0)}kr
-                </span>
+                {prObj.name}
               </div>
             )}
+            {tD && (
+              <div
+                style={{
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontStyle: "italic",
+                  fontSize: 15,
+                  color: M.t3,
+                  marginTop: 14,
+                  padding: "0 6px",
+                  lineHeight: 1.45,
+                }}
+              >
+                &ldquo;{tD}&rdquo;
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
+              <button
+                type="button"
+                onClick={() => setTimerFormOpen(true)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  background: "transparent",
+                  border: `1px solid ${M.b1}`,
+                  color: M.t3,
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 9,
+                  fontWeight: 600,
+                  letterSpacing: 1.6,
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  transition: "all .15s ease",
+                }}
+              >
+                {t("timer.switchTask")}
+              </button>
+              {tRun && !stashedTimer && (
+                <button
+                  type="button"
+                  onClick={startSideQuest}
+                  title={t("timer.sideQuestHint")}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 999,
+                    background: "transparent",
+                    border: `1px solid ${M.ac}55`,
+                    color: M.ac,
+                    fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: 1.6,
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all .15s ease",
+                  }}
+                >
+                  ↯ {t("timer.sideQuest")}
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         {tRun && (
           <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
+            style={{
+              marginTop: "auto",
+              display: "flex",
+              justifyContent: "center",
+              gap: 18,
+              paddingBottom: 16,
+            }}
           >
             <button
+              type="button"
               onClick={() => setTRun(false)}
+              aria-label={t("timer.pause")}
+              title={t("timer.pause")}
               style={{
-                height: 46,
-                background: M.s2,
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: "transparent",
                 border: `1px solid ${M.b1}`,
-                borderRadius: 12,
-                color: M.t2,
-                fontSize: 13,
-                fontWeight: 600,
+                color: M.t1,
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all .15s ease",
               }}
             >
-              ⏸ {t("timer.pause")}
+              <PauseIcon size={16} />
             </button>
             <button
+              type="button"
               onClick={stop}
+              aria-label={t("timer.stopLog")}
+              title={t("timer.stopLog")}
               style={{
-                height: 46,
-                background: M.gn,
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: M.btn,
                 border: "none",
-                borderRadius: 12,
-                color: M.id === "dark" ? "#022c22" : "#fff",
-                fontSize: 13,
-                fontWeight: 700,
+                color: "#fff",
                 cursor: "pointer",
-                boxShadow: `0 4px 14px ${M.gn}55`,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: M.bsh,
+                transition: "all .15s ease",
               }}
             >
-              {t("timer.stopLog")}
+              <StopIcon size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingCancelTimer((v) => !v)}
+              aria-label={t("timer.cancel")}
+              title={t("timer.cancel")}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: pendingCancelTimer
+                  ? "rgba(239,68,68,0.12)"
+                  : "transparent",
+                border: pendingCancelTimer
+                  ? "1px solid #ef4444"
+                  : `1px solid ${M.b1}`,
+                color: pendingCancelTimer ? "#ef4444" : M.t3,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all .15s ease",
+              }}
+            >
+              <XIcon size={14} />
             </button>
           </div>
         )}
 
-        {(tRun || tSec > 0) && (
+        {tRun && pendingCancelTimer && (
           <div
             style={{
-              borderRadius: 11,
-              overflow: "hidden",
-              border: pendingCancelTimer
-                ? `1px solid #ef4444`
-                : "1px solid transparent",
+              display: "flex",
+              gap: 8,
+              padding: "0 0 12px",
+              justifyContent: "center",
             }}
           >
             <button
-              onClick={() => setPendingCancelTimer((v) => !v)}
+              onClick={() => setPendingCancelTimer(false)}
               style={{
-                width: "100%",
-                padding: "9px 0",
-                background: "none",
-                border: "none",
-                color: pendingCancelTimer ? "#ef4444" : M.tf,
+                padding: "9px 18px",
+                background: "transparent",
+                border: `1px solid ${M.b1}`,
+                borderRadius: 999,
+                color: M.t2,
                 fontSize: 11,
-                fontWeight: pendingCancelTimer ? 700 : 500,
+                fontWeight: 600,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
                 cursor: "pointer",
-                letterSpacing: 0.3,
               }}
             >
-              {t("timer.cancel")}
+              {t("entry.cancel")}
             </button>
-            <div
+            <button
+              onClick={() => void cancelTimer()}
               style={{
-                maxHeight: pendingCancelTimer ? 44 : 0,
-                overflow: "hidden",
-                transition: "max-height .22s ease",
+                padding: "9px 18px",
+                background: "#ef4444",
+                border: "none",
+                borderRadius: 999,
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+                cursor: "pointer",
               }}
             >
-              <div style={{ display: "flex" }}>
-                <button
-                  onClick={() => setPendingCancelTimer(false)}
-                  style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    background: M.s2,
-                    border: "none",
-                    color: M.t2,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  {t("entry.cancel")}
-                </button>
-                <button
-                  onClick={() => void cancelTimer()}
-                  style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    background: "#ef4444",
-                    border: "none",
-                    color: "#fff",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  {t("timer.cancelDiscard")}
-                </button>
+              {t("timer.cancelDiscard")}
+            </button>
+          </div>
+        )}
+
+        {tRun && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              gap: 8,
+              paddingTop: 18,
+              borderTop: `1px solid ${M.b1}`,
+              textAlign: "center",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontSize: 24,
+                  color: M.t1,
+                  lineHeight: 1,
+                  letterSpacing: -0.4,
+                }}
+              >
+                +{sessXP}
+              </div>
+              <div
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 8,
+                  color: M.tf,
+                  textTransform: "uppercase",
+                  letterSpacing: 1.6,
+                  fontWeight: 600,
+                  marginTop: 3,
+                }}
+              >
+                {t("timer.statSessionXp")}
+              </div>
+            </div>
+            <div>
+              <div
+                style={{
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontSize: 24,
+                  color: done ? M.gn : M.t1,
+                  lineHeight: 1,
+                  letterSpacing: -0.4,
+                }}
+              >
+                {fmtHours(todayH)}
+              </div>
+              <div
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 8,
+                  color: M.tf,
+                  textTransform: "uppercase",
+                  letterSpacing: 1.6,
+                  fontWeight: 600,
+                  marginTop: 3,
+                }}
+              >
+                {t("timer.statToday")}
+              </div>
+            </div>
+            <div>
+              <div
+                style={{
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontSize: 24,
+                  color: M.pk,
+                  lineHeight: 1,
+                  letterSpacing: -0.4,
+                }}
+              >
+                {streak}
+                <span style={{ fontSize: 16, opacity: 0.7 }}>d</span>
+              </div>
+              <div
+                style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 8,
+                  color: M.tf,
+                  textTransform: "uppercase",
+                  letterSpacing: 1.6,
+                  fontWeight: 600,
+                  marginTop: 3,
+                }}
+              >
+                {t("timer.statStreak")}
               </div>
             </div>
           </div>
         )}
 
-        <button
-          data-tour="log-pill"
-          onClick={() => setLogOpen(true)}
-          style={{
-            alignSelf: "center",
-            marginTop: 8,
-            padding: "8px 18px",
-            borderRadius: 999,
-            background: "transparent",
-            border: `1px solid ${M.b1}`,
-            color: M.t2,
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          {t("timer.logPastTime")}
-        </button>
+        {!tRun && tSec > 0 && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: 14,
+              paddingTop: 4,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setPendingCancelTimer((v) => !v)}
+              aria-label={t("timer.cancel")}
+              title={t("timer.cancel")}
+              style={{
+                width: 32,
+                height: 32,
+                padding: 0,
+                borderRadius: "50%",
+                background: pendingCancelTimer
+                  ? "rgba(239,68,68,0.10)"
+                  : "transparent",
+                border: pendingCancelTimer
+                  ? "1px solid #ef4444"
+                  : `1px solid ${M.b1}`,
+                color: pendingCancelTimer ? "#ef4444" : M.tf,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all .15s ease",
+              }}
+            >
+              <XIcon size={14} />
+            </button>
+          </div>
+        )}
+
       </div>
     );
   })();
@@ -2954,7 +3539,6 @@ export default function App() {
             value={fCo}
             items={companies}
             placeholder={`${t("form.searchClient")} (${companies.length})`}
-            theme={M}
             onChange={async (id) => {
               setFCo(id);
               setFPr("");
@@ -2985,8 +3569,7 @@ export default function App() {
                   ? `${t("form.searchProject")} (${prList.length})`
                   : t("form.loadingProjects")
               }
-              theme={M}
-              onChange={setFPr}
+                onChange={setFPr}
             />
           </div>
         )}
@@ -3053,7 +3636,7 @@ export default function App() {
               style={{
                 flex: 1,
                 textAlign: "center",
-                fontFamily: "monospace",
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                 fontSize: 22,
                 fontWeight: 700,
                 color: M.t1,
@@ -3099,7 +3682,7 @@ export default function App() {
                 marginTop: 4,
                 fontSize: 11,
                 color: M.t3,
-                fontFamily: "monospace",
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
               }}
             >
               {(fH * parseFloat(prObj.hour_price)).toFixed(0)} kr total ·{" "}
@@ -3268,82 +3851,71 @@ export default function App() {
           gap: 10,
         }}
       >
+        <div style={{ margin: "-14px -14px 4px" }}>
+          <PageEyebrow
+            title={t("page.progress")}
+            hint={`${t("page.level")} ${level}`}
+            M={M}
+          />
+        </div>
+        {/* Level hero */}
         <div
           data-tour="xp-level"
           style={{
-            background:
-              M.id === "dark"
-                ? M.s1
-                : "linear-gradient(135deg,#ede9fe,#ddd6fe)",
-            border: `1px solid ${M.id === "dark" ? M.b1 : M.am}`,
-            borderRadius: 14,
-            padding: 15,
+            textAlign: "center",
+            padding: "8px 0 10px",
           }}
         >
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: 13,
+              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+              fontSize: 9,
+              fontWeight: 700,
+              color: M.tf,
+              letterSpacing: 3,
+              textTransform: "uppercase",
             }}
           >
-            <div>
-              <div
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: M.ac,
-                  letterSpacing: 1.4,
-                  textTransform: "uppercase",
-                  marginBottom: 3,
-                }}
-              >
-                Level {level}
-              </div>
-              <div
-                style={{
-                  fontSize: 21,
-                  fontWeight: 800,
-                  color: M.t1,
-                  letterSpacing: -0.8,
-                  lineHeight: 1,
-                }}
-              >
-                {level >= 5
-                  ? "Principal Dev"
-                  : level >= 3
-                    ? "Senior Dev"
-                    : "Dev"}
-              </div>
-              <div style={{ fontSize: 11, color: M.t2, marginTop: 3 }}>
-                {xp} / {xpNext} XP
-              </div>
-            </div>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 11,
-                background: M.id === "dark" ? "#262626" : "#fff",
-                border: `2px solid ${M.id === "dark" ? M.b2 : M.am}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <polygon
-                  points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-                  fill={M.ac}
-                />
-              </svg>
-            </div>
+            {t("page.level")}
           </div>
           <div
             style={{
-              height: 9,
-              background: M.id === "dark" ? "#0e0e0e" : "#fff",
-              borderRadius: 5,
+              fontFamily: '"Instrument Serif","Georgia",serif',
+              fontSize: 92,
+              fontWeight: 400,
+              color: M.t1,
+              letterSpacing: -3,
+              lineHeight: 0.9,
+              margin: "4px 0 4px",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {level}
+          </div>
+          <div
+            style={{
+              fontFamily: '"Instrument Serif","Georgia",serif',
+              fontStyle: "italic",
+              fontSize: 16,
+              color: M.t3,
+              lineHeight: 1.3,
+              letterSpacing: -0.1,
+            }}
+          >
+            {level >= 5
+              ? t("xp.titlePrincipal")
+              : level >= 3
+                ? t("xp.titleSenior")
+                : t("xp.titleDev")}
+          </div>
+        </div>
+
+        {/* XP progress bar */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div
+            style={{
+              height: 2,
+              background: M.b1,
               overflow: "hidden",
             }}
           >
@@ -3351,51 +3923,92 @@ export default function App() {
               style={{
                 height: "100%",
                 width: `${pct}%`,
-                background: M.ac,
-                borderRadius: 5,
+                background: `linear-gradient(90deg, ${M.ac}, ${M.pk})`,
+                transition: "width 500ms cubic-bezier(.22,1,.36,1)",
               }}
             />
           </div>
           <div
             style={{
-              fontSize: 11,
+              display: "flex",
+              justifyContent: "space-between",
+              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+              fontSize: 10,
               color: M.t3,
+              fontWeight: 600,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            <span>{xp.toLocaleString()} XP</span>
+            <span style={{ color: M.tf }}>
+              {(xpNext - xp).toLocaleString()} {t("xp.toNext")}
+            </span>
+          </div>
+        </div>
+
+        {xpCoach && (
+          <div
+            style={{
+              fontFamily: '"Instrument Serif","Georgia",serif',
               fontStyle: "italic",
-              marginTop: 10,
+              fontSize: 14,
+              color: M.t3,
               lineHeight: 1.4,
+              textAlign: "center",
+              padding: "0 8px",
             }}
           >
             {xpCoach}
           </div>
-        </div>
+        )}
 
+        {/* Week bar chart */}
         <div
           style={{
-            background: M.s1,
-            border: `1px solid ${M.b1}`,
-            borderRadius: 13,
-            padding: 13,
+            paddingTop: 14,
+            borderTop: `1px solid ${M.b1}`,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
           }}
         >
           <div
             style={{
-              fontSize: 9,
-              fontWeight: 700,
-              color: M.t3,
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-              marginBottom: 11,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
             }}
           >
-            {t("xp.thisWeek")}
+            <span
+              style={{
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontSize: 9,
+                fontWeight: 600,
+                color: M.t3,
+                letterSpacing: 2.2,
+                textTransform: "uppercase",
+              }}
+            >
+              {t("xp.thisWeek")}
+            </span>
+            <span
+              style={{
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontSize: 10,
+                color: M.ac,
+                fontWeight: 700,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              +{Math.round(weekTotal * 8).toLocaleString()} XP
+            </span>
           </div>
           <div
             style={{
               display: "flex",
-              gap: 6,
+              gap: 8,
               alignItems: "flex-end",
-              height: 100,
-              marginBottom: 8,
+              height: 90,
             }}
           >
             {weekH.map((h, i) => {
@@ -3403,7 +4016,7 @@ export default function App() {
                 isToday = i === todayI,
                 empty = !isFut && h === 0;
               const p2 = isFut ? 0 : Math.min((h / GOAL) * 100, 100);
-              const bc = h >= GOAL ? M.gn : M.ac;
+              const bc = h >= GOAL ? M.gn : isToday ? M.ac : "#d97706";
               return (
                 <div
                   key={i}
@@ -3413,7 +4026,7 @@ export default function App() {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: 4,
+                    gap: 5,
                   }}
                 >
                   <div
@@ -3430,8 +4043,8 @@ export default function App() {
                         style={{
                           width: "100%",
                           height: "100%",
-                          borderRadius: "5px 5px 3px 3px",
-                          border: `1.5px dashed ${M.b1}`,
+                          border: `1px dashed ${M.b1}`,
+                          borderRadius: 4,
                         }}
                       />
                     ) : empty ? (
@@ -3439,9 +4052,9 @@ export default function App() {
                         style={{
                           width: "100%",
                           height: "100%",
-                          borderRadius: "5px 5px 3px 3px",
-                          border: "2px dashed #ef4444",
-                          background: M.id === "dark" ? "#1a0808" : "#fff5f5",
+                          border: "1px dashed rgba(239, 68, 68, 0.35)",
+                          background: "rgba(239, 68, 68, 0.05)",
+                          borderRadius: 4,
                         }}
                       />
                     ) : (
@@ -3450,16 +4063,19 @@ export default function App() {
                           width: "100%",
                           height: `${p2}%`,
                           background: bc,
-                          borderRadius: "5px 5px 3px 3px",
-                          border: isToday ? `2px solid ${M.at}` : "none",
-                          minHeight: 4,
+                          borderRadius: 4,
+                          minHeight: 6,
+                          outline: isToday ? `1.5px solid ${M.ac}` : "none",
+                          outlineOffset: 1,
                         }}
                       />
                     )}
                   </div>
                   <span
                     style={{
-                      fontSize: 9,
+                      fontFamily:
+                        '"JetBrains Mono",ui-monospace,monospace',
+                      fontSize: 8,
                       fontWeight: 700,
                       color: empty
                         ? "#ef4444"
@@ -3467,16 +4083,22 @@ export default function App() {
                           ? M.ac
                           : isFut
                             ? M.tf
-                            : M.t3,
+                            : M.t2,
+                      letterSpacing: 0.2,
+                      fontVariantNumeric: "tabular-nums",
                     }}
                   >
-                    {isFut ? "--" : fmtHours(h)}
+                    {isFut ? "—" : fmtHours(h)}
                   </span>
                   <span
                     style={{
-                      fontSize: 9,
-                      fontWeight: isToday ? 700 : 500,
+                      fontFamily:
+                        '"JetBrains Mono",ui-monospace,monospace',
+                      fontSize: 8,
+                      fontWeight: isToday ? 700 : 600,
                       color: isToday ? M.ac : M.t3,
+                      letterSpacing: 1.4,
+                      textTransform: "uppercase",
                     }}
                   >
                     {DAYS[i]}
@@ -3487,38 +4109,31 @@ export default function App() {
           </div>
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              paddingTop: 9,
-              borderTop: `1px solid ${M.s2}`,
+              fontFamily: '"Instrument Serif","Georgia",serif',
+              fontStyle: "italic",
+              fontSize: 13,
+              color: M.t3,
+              textAlign: "center",
+              lineHeight: 1.4,
             }}
           >
-            <span style={{ fontSize: 11, color: M.t3 }}>
-              {t("xp.thisWeekLine", { hours: fmtHours(weekTotal) })}
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: M.ac }}>
-              +{Math.round(weekTotal * 8)} XP
-            </span>
+            {t("xp.thisWeekLine", { hours: fmtHours(weekTotal) })}
           </div>
         </div>
 
-        <div
-          style={{
-            fontSize: 9,
-            fontWeight: 700,
-            color: M.t3,
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-          }}
-        >
-          {t("xp.achievements")}
+        <div style={{ paddingTop: 14, borderTop: `1px solid ${M.b1}` }}>
+          <ChapterHeading
+            title={t("xp.achievements")}
+            hint={`${unlocked.length} / ${ACHS.length}`}
+            M={M}
+          />
         </div>
         <div
           data-tour="xp-achievements"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 6,
+            gap: 8,
           }}
         >
           {ACHS.map((a) => {
@@ -3526,23 +4141,30 @@ export default function App() {
             return (
               <div
                 key={a.id}
+                className="engrave-card"
                 style={{
                   background: got
                     ? M.id === "dark"
-                      ? `${a.co}18`
-                      : `${a.co}10`
-                    : M.s2,
-                  border: `1px solid ${got ? a.co + "44" : M.b1}`,
-                  borderRadius: 12,
-                  padding: "11px 6px",
+                      ? `${a.co}14`
+                      : `${a.co}0d`
+                    : "transparent",
+                  border: got
+                    ? `1px solid ${a.co}55`
+                    : `1px solid ${M.b1}`,
+                  borderRadius: 10,
+                  padding: "12px 6px 10px",
                   textAlign: "center",
-                  opacity: got ? 1 : 0.4,
+                  opacity: got ? 1 : 0.45,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 4,
                 }}
               >
                 <div
                   style={{
                     fontSize: 22,
-                    marginBottom: 4,
+                    lineHeight: 1,
                     filter: got ? "none" : "grayscale(1)",
                   }}
                 >
@@ -3550,25 +4172,27 @@ export default function App() {
                 </div>
                 <div
                   style={{
-                    fontSize: 10,
-                    fontWeight: 700,
+                    fontFamily: '"Instrument Serif","Georgia",serif',
+                    fontSize: 13,
                     color: got ? a.co : M.t3,
-                    lineHeight: 1.3,
+                    lineHeight: 1.15,
+                    letterSpacing: -0.1,
+                    marginTop: 2,
                   }}
                 >
                   {got ? achName(a.id, lang) : t("xp.locked")}
                 </div>
-                <div style={{ fontSize: 9, color: M.t3, marginTop: 2 }}>
-                  {achDescription(a.id, lang)}
-                </div>
                 {got && (
                   <div
                     style={{
-                      fontSize: 9,
+                      fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                      fontSize: 8,
                       fontWeight: 700,
                       color: a.co,
-                      marginTop: 3,
-                      fontFamily: "monospace",
+                      letterSpacing: 1.4,
+                      textTransform: "uppercase",
+                      marginTop: 2,
+                      fontVariantNumeric: "tabular-nums",
                     }}
                   >
                     +{a.xp} XP
@@ -3643,32 +4267,83 @@ export default function App() {
     });
     const dayClosed = monthClosure.isClosed(selectedDate.getFullYear(), selectedDate.getMonth()) === true;
 
+    void dayClosed;
+    const dayBillableH = dayEntries.reduce(
+      (s, e) => s + (e.invoice === "1" ? parseFloat(e.hour) : 0),
+      0,
+    );
+    const dayBillablePct = dayH > 0 ? Math.round((dayBillableH / dayH) * 100) : 0;
+    const dayDate = smartDate(selectedDate, lang, t);
+
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Editorial date label */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
+            fontFamily: '"Instrument Serif","Georgia",serif',
+            fontStyle: "italic",
+            fontSize: 22,
+            color: M.t1,
+            letterSpacing: -0.3,
+            lineHeight: 1.15,
+            textAlign: "center",
+            paddingTop: 4,
           }}
         >
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: M.t1,
-              letterSpacing: -0.2,
-            }}
-          >
-            {dateLabel}
-          </div>
-          {dayClosed && (
-            <span style={{ background: `${M.gn}20`, border: `1px solid ${M.gn}55`, color: M.gn, borderRadius: 6, padding: "2px 7px", fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>
-              ✓ {t("month.closed")}
-            </span>
-          )}
+          {dayDate}
         </div>
+
+        {/* Day hero */}
+        {dayEntries.length > 0 && (
+          <div style={{ textAlign: "center", padding: "6px 0 8px" }}>
+            <div
+              style={{
+                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontSize: 74,
+                fontWeight: 400,
+                color: dayH >= GOAL ? M.gn : M.t1,
+                letterSpacing: -2.4,
+                lineHeight: 0.9,
+                fontVariantNumeric: "tabular-nums",
+                display: "inline-block",
+              }}
+            >
+              {fmtHours(dayH).split(":")[0]}
+              <span
+                aria-hidden
+                style={{
+                  display: "inline-flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  gap: "0.13em",
+                  height: "0.65em",
+                  verticalAlign: "0.18em",
+                  margin: "0 0.12em",
+                }}
+              >
+                <span style={{ width: "0.085em", height: "0.085em", borderRadius: "50%", background: "currentColor" }} />
+                <span style={{ width: "0.085em", height: "0.085em", borderRadius: "50%", background: "currentColor" }} />
+              </span>
+              {fmtHours(dayH).split(":")[1]}
+              <span style={{ fontStyle: "italic", fontSize: 34, color: dayH >= GOAL ? M.gn : M.ac, marginLeft: 4 }}>h</span>
+            </div>
+            <div
+              style={{
+                marginTop: 10,
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontSize: 10,
+                color: M.t3,
+                textTransform: "uppercase",
+                letterSpacing: 2.2,
+                fontWeight: 500,
+              }}
+            >
+              {dayH >= GOAL
+                ? `Day complete · ${dayBillablePct}% billable`
+                : `${dayBillablePct}% billable · ${dayEntries.length} ${dayEntries.length === 1 ? "entry" : "entries"}`}
+            </div>
+          </div>
+        )}
 
         {dayEntries.length === 0 && dayEntriesLoading && (
           <div
@@ -3717,36 +4392,46 @@ export default function App() {
             { cid: string; h: number; entries: TimeEntry[] },
           ][]
         ).map(([co, g], gi) => (
-          <div
-            key={co}
-            style={{
-              paddingLeft: 11,
-              borderLeft: `3px solid ${M.co[gi % M.co.length]}`,
-            }}
-          >
+          <div key={co}>
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 6,
+                alignItems: "baseline",
+                marginBottom: 8,
+                paddingLeft: 12,
+                position: "relative",
               }}
             >
               <span
                 style={{
-                  fontSize: 12,
-                  fontWeight: 700,
+                  position: "absolute",
+                  left: 0,
+                  top: 4,
+                  bottom: 4,
+                  width: 3,
+                  borderRadius: 2,
+                  background: M.co[gi % M.co.length],
+                }}
+              />
+              <span
+                style={{
+                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontSize: 17,
                   color: M.co[gi % M.co.length],
+                  letterSpacing: -0.1,
+                  lineHeight: 1.1,
                 }}
               >
                 {co}
               </span>
               <span
                 style={{
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                   fontSize: 11,
-                  fontWeight: 700,
-                  color: M.t3,
-                  fontFamily: "monospace",
+                  fontWeight: 600,
+                  color: M.t2,
+                  fontVariantNumeric: "tabular-nums",
                 }}
               >
                 {fmtHours(g.h)}
@@ -3828,7 +4513,7 @@ export default function App() {
                         >
                           <span
                             style={{
-                              fontFamily: "monospace",
+                              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                               fontSize: 12,
                               fontWeight: 700,
                               color: M.ac,
@@ -3839,38 +4524,50 @@ export default function App() {
                           <button
                             onClick={() => editEntry(e)}
                             title={t("entry.doubleClickEdit")}
+                            aria-label={t("entry.doubleClickEdit")}
                             style={{
-                              width: 22,
-                              height: 22,
+                              width: 24,
+                              height: 24,
                               borderRadius: "50%",
-                              background: M.s2,
+                              background: "transparent",
                               border: `1px solid ${M.b1}`,
-                              display: "flex",
+                              display: "inline-flex",
                               alignItems: "center",
                               justifyContent: "center",
                               cursor: "pointer",
                               padding: 0,
                               color: M.t2,
-                              fontSize: 11,
+                              transition: "all .15s ease",
                             }}
                           >
-                            ✎
+                            <PencilIcon size={12} />
                           </button>
                           <button
                             onClick={() =>
                               setPendingDeleteId(isPending ? null : e.id)
                             }
+                            aria-label={t("entry.delete")}
+                            title={t("entry.delete")}
                             style={{
-                              background: "none",
-                              border: "none",
-                              color: isPending ? "#ef4444" : M.t3,
-                              fontSize: 12,
+                              width: 24,
+                              height: 24,
+                              borderRadius: "50%",
+                              background: isPending
+                                ? "rgba(239,68,68,0.10)"
+                                : "transparent",
+                              border: isPending
+                                ? "1px solid #ef4444"
+                                : `1px solid ${M.b1}`,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
                               cursor: "pointer",
-                              padding: "2px 4px",
-                              fontWeight: isPending ? 700 : 400,
+                              padding: 0,
+                              color: isPending ? "#ef4444" : M.t3,
+                              transition: "all .15s ease",
                             }}
                           >
-                            ✕
+                            <XIcon size={12} />
                           </button>
                         </div>
                       </div>
@@ -3937,22 +4634,32 @@ export default function App() {
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
-              alignItems: "center",
-              gap: 8,
-              paddingTop: 8,
-              borderTop: `1px solid ${M.s2}`,
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              paddingTop: 12,
+              borderTop: `1px solid ${M.b1}`,
             }}
           >
-            <span style={{ fontSize: 12, color: M.t3 }}>
+            <span
+              style={{
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontSize: 9,
+                color: M.tf,
+                textTransform: "uppercase",
+                letterSpacing: 2.2,
+                fontWeight: 600,
+              }}
+            >
               {t("today.totalLabel")}
             </span>
             <span
               style={{
-                fontSize: 17,
-                fontWeight: 700,
-                color: dayH >= GOAL ? M.gn : M.ac,
-                fontFamily: "monospace",
+                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontSize: 22,
+                color: dayH >= GOAL ? M.gn : M.t1,
+                lineHeight: 1,
+                letterSpacing: -0.4,
+                fontVariantNumeric: "tabular-nums",
               }}
             >
               {fmtHours(dayH)}
@@ -3970,20 +4677,29 @@ export default function App() {
             setEditingDate(new Date(y, mo, da));
             setLogOpen(true);
           }}
+          aria-label={t("timer.logPastTime")}
+          title={t("timer.logPastTime")}
           style={{
             alignSelf: "center",
             marginTop: 4,
-            padding: "8px 18px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "9px 18px 9px 14px",
             borderRadius: 999,
             background: "transparent",
             border: `1px solid ${M.b1}`,
             color: M.t2,
-            fontSize: 12,
-            fontWeight: 600,
             cursor: "pointer",
+            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: 1.4,
+            textTransform: "uppercase",
           }}
         >
-          {t("timer.logPastTime")}
+          <PlusIcon size={13} />
+          {t("today.logTime")}
         </button>
       </div>
     );
@@ -3998,6 +4714,13 @@ export default function App() {
         gap: 12,
       }}
     >
+      <div style={{ margin: "-16px -14px 0" }}>
+        <PageEyebrow
+          title={t("page.history")}
+          hint={t(`scale.${historyScale}` as "scale.week")}
+          M={M}
+        />
+      </div>
       <div
         style={{
           display: "flex",
@@ -4008,33 +4731,31 @@ export default function App() {
       >
         <div
           role="tablist"
-          style={{
-            display: "flex",
-            gap: 2,
-            background: M.s2,
-            border: `1px solid ${M.b1}`,
-            borderRadius: 8,
-            padding: 2,
-          }}
+          style={{ display: "flex", gap: 4 }}
         >
           {(["day", "week", "month"] as const).map((v) => {
             const labelKey =
               v === "day" ? "daily" : v === "week" ? "weekly" : "monthly";
+            const isActive = historyScale === v;
             return (
               <button
                 key={v}
                 role="tab"
-                aria-selected={historyScale === v}
+                aria-selected={isActive}
                 onClick={() => setHistoryScale(v)}
                 style={{
-                  padding: "5px 10px",
+                  padding: "6px 12px",
                   border: "none",
-                  borderRadius: 6,
-                  background: historyScale === v ? M.s1 : "transparent",
-                  color: historyScale === v ? M.t1 : M.t3,
-                  fontSize: 11,
-                  fontWeight: 600,
+                  borderRadius: 999,
+                  background: isActive ? M.ac : "transparent",
+                  color: isActive ? "#fff" : M.t3,
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
                   cursor: "pointer",
+                  transition: "all 150ms ease",
                 }}
               >
                 {t(`history.${labelKey}`)}
@@ -4049,17 +4770,23 @@ export default function App() {
               scale: t(`scale.${historyScale}` as "scale.week"),
             })}
             style={{
-              background: "none",
-              border: "none",
-              color: M.tf,
-              fontSize: 16,
-              fontWeight: 600,
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              background: "transparent",
+              border: `1px solid ${M.b1}`,
+              color: M.t2,
               cursor: "pointer",
-              padding: "0 6px",
-              lineHeight: 1,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+              transition: "all 140ms ease",
             }}
           >
-            ‹
+            <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
           </button>
           <button
             onClick={() => stepHistoryDate(1)}
@@ -4067,17 +4794,23 @@ export default function App() {
               scale: t(`scale.${historyScale}` as "scale.week"),
             })}
             style={{
-              background: "none",
-              border: "none",
-              color: M.tf,
-              fontSize: 16,
-              fontWeight: 600,
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              background: "transparent",
+              border: `1px solid ${M.b1}`,
+              color: M.t2,
               cursor: "pointer",
-              padding: "0 6px",
-              lineHeight: 1,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+              transition: "all 140ms ease",
             }}
           >
-            ›
+            <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
           </button>
           {!historyIsOnCurrent && (
             <button
@@ -4086,14 +4819,15 @@ export default function App() {
                 background: M.ac,
                 border: "none",
                 color: "#fff",
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                 fontSize: 9,
                 fontWeight: 700,
                 cursor: "pointer",
-                padding: "0 7px",
-                height: 18,
+                padding: "0 10px",
+                height: 22,
                 marginLeft: 4,
-                borderRadius: 9,
-                letterSpacing: 0.3,
+                borderRadius: 999,
+                letterSpacing: 1.2,
                 textTransform: "uppercase",
               }}
             >
@@ -4181,7 +4915,7 @@ export default function App() {
             }}
           >
             <div
-              className="top-fill"
+              className={`top-fill${windowFocused ? "" : " paused"}`}
               style={{
                 position: "absolute",
                 left: 0,
@@ -4198,6 +4932,7 @@ export default function App() {
             <button
               onClick={() => setTRun((r) => !r)}
               title={tRun ? "Pause" : "Start"}
+              className="top-play-btn"
               style={{
                 width: 14,
                 height: 14,
@@ -4210,6 +4945,7 @@ export default function App() {
                 flexShrink: 0,
                 zIndex: 1,
                 cursor: "pointer",
+                padding: 0,
               }}
             >
               {tRun ? (
@@ -4259,7 +4995,7 @@ export default function App() {
               />
               <div
                 style={{
-                  fontFamily: "monospace",
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                   fontSize: 10,
                   fontWeight: 700,
                   color: tRun ? M.ac : topBarFg,
@@ -4270,10 +5006,6 @@ export default function App() {
                 {fmtClock(tSec)}
               </div>
             </div>
-
-            <div
-              style={{ width: 1, height: 12, background: M.b1, zIndex: 1 }}
-            />
 
             <div
               style={{
@@ -4294,13 +5026,13 @@ export default function App() {
                   return (
                     <div className="status-marquee" style={{ zIndex: 1 }}>
                       <div
-                        className="status-marquee-track"
+                        className={`status-marquee-track${windowFocused ? "" : " paused"}`}
                         style={{
                           fontSize: 10,
                           fontWeight: 800,
                           letterSpacing: 1.4,
-                          color: "#fff",
-                          fontFamily: "monospace",
+                          color: topBarFg,
+                          fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                         }}
                       >
                         {half}
@@ -4325,66 +5057,46 @@ export default function App() {
                       <>
                         <span
                           style={{
-                            fontSize: 10,
-                            fontWeight: 700,
+                            fontFamily: '"Instrument Serif","Georgia",serif',
+                            fontSize: 14,
                             color: M.t1,
+                            letterSpacing: -0.2,
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             flexShrink: 0,
+                            lineHeight: 1,
                           }}
                         >
                           {coObj.name}
                         </span>
-                        <span
-                          style={{ fontSize: 9, color: M.t3, flexShrink: 0 }}
-                        >
-                          ·
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 10,
-                            color: M.t2,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            minWidth: 0,
-                          }}
-                        >
-                          {prObj?.name || ""}
-                        </span>
-                        {tD.trim() && (
-                          <>
-                            <span
-                              style={{
-                                fontSize: 9,
-                                color: M.t3,
-                                flexShrink: 0,
-                              }}
-                            >
-                              —
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 10,
-                                color: M.t3,
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                minWidth: 0,
-                              }}
-                            >
-                              {tD}
-                            </span>
-                          </>
+                        {prObj?.name && (
+                          <span
+                            style={{
+                              fontFamily:
+                                '"JetBrains Mono",ui-monospace,monospace',
+                              fontSize: 8,
+                              color: M.tf,
+                              textTransform: "uppercase",
+                              letterSpacing: 1.4,
+                              fontWeight: 600,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              minWidth: 0,
+                            }}
+                          >
+                            · {prObj.name}
+                          </span>
                         )}
                       </>
                     ) : (
                       <span
                         style={{
-                          fontSize: 10,
-                          color: M.t3,
+                          fontFamily: '"Instrument Serif","Georgia",serif',
                           fontStyle: "italic",
+                          fontSize: 13,
+                          color: M.t3,
                         }}
                       >
                         {t("timer.noTaskSelected")}
@@ -4397,18 +5109,19 @@ export default function App() {
                       key={funMessage}
                       className="fun-msg"
                       style={{
-                        fontSize: 10,
-                        color: M.ac,
+                        fontFamily: '"Instrument Serif","Georgia",serif',
                         fontStyle: "italic",
+                        fontSize: 13,
+                        color: M.ac,
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        fontWeight: 500,
                         flex: 1,
                         minWidth: 0,
+                        letterSpacing: -0.1,
                       }}
                     >
-                      {funMessage}
+                      &ldquo;{funMessage}&rdquo;
                     </span>
                   )}
                 </>
@@ -4419,13 +5132,13 @@ export default function App() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: 10,
               flexShrink: 0,
-              padding: "0 8px",
+              padding: "0 10px",
               background: M.bg,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
               {weekH.map((h, i) => {
                 const p = Math.min(1, h / GOAL);
                 const filled = p > 0;
@@ -4439,161 +5152,152 @@ export default function App() {
                       height: 4,
                       borderRadius: "50%",
                       background: color,
-                      opacity: filled ? 0.35 + p * 0.65 : 0.4,
+                      opacity: filled ? 0.4 + p * 0.6 : 0.35,
                     }}
                   />
                 );
               })}
             </div>
 
-            <div style={{ width: 1, height: 9, background: M.b1 }} />
-
             <div
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "baseline",
-                gap: 2,
+                gap: 3,
                 position: "relative",
               }}
             >
-              <span style={{ fontSize: 9, lineHeight: 1 }}>
-                {gpct >= 100
-                  ? "🚀"
-                  : gpct >= 75
-                    ? "🎯"
-                    : gpct >= 50
-                      ? "🔥"
-                      : gpct >= 25
-                        ? "☕"
-                        : "🌱"}
-              </span>
-              <div
+              <span
                 style={{
-                  fontSize: 9,
-                  fontWeight: 800,
-                  color: displaySessionXp > 0 ? M.ac : M.t3,
-                  fontFamily: "monospace",
-                  opacity: displaySessionXp > 0 ? 1 : 0.55,
-                  position: "relative",
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: displaySessionXp > 0 ? M.ac : M.tf,
+                  fontVariantNumeric: "tabular-nums",
+                  letterSpacing: 0.2,
                 }}
               >
                 +{displaySessionXp}
-                {xpBump && (
-                  <span
-                    key={xpBump.id}
-                    className="xp-bump"
-                    style={{ color: M.ac }}
-                  >
-                    +{xpBump.delta}
-                  </span>
-                )}
-              </div>
-              <div
+              </span>
+              <span
                 style={{
-                  fontSize: 8,
-                  color: M.t3,
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 7,
+                  color: M.tf,
                   textTransform: "uppercase",
-                  letterSpacing: 0.5,
+                  letterSpacing: 1.4,
                   fontWeight: 600,
                 }}
               >
                 xp
-              </div>
-              <div
+              </span>
+              {xpBump && (
+                <span
+                  key={xpBump.id}
+                  className="xp-bump"
+                  style={{ color: M.ac }}
+                >
+                  +{xpBump.delta}
+                </span>
+              )}
+            </div>
+
+            <ActivityRing
+              progress={gpct / 100}
+              done={done}
+              size={22}
+              stroke={1.5}
+            >
+              <span
                 style={{
-                  width: 1,
-                  height: 9,
-                  background: M.b1,
-                  margin: "0 2px",
-                  alignSelf: "center",
-                }}
-              />
-              <div
-                style={{
-                  fontSize: 10,
-                  fontWeight: 800,
+                  fontSize: 7,
+                  fontWeight: 700,
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                   color: done ? M.gn : M.t1,
-                  fontFamily: "monospace",
-                  letterSpacing: -0.3,
+                  letterSpacing: -0.2,
+                  lineHeight: 1,
+                  fontVariantNumeric: "tabular-nums",
                 }}
+                title={`${fmtHours(todayH)} / ${GOAL}h`}
               >
                 {fmtHours(todayH)}
-              </div>
-              <div
-                style={{
-                  fontSize: 8,
-                  color: M.t3,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                  fontWeight: 600,
-                }}
-              >
-                / {GOAL}h
-              </div>
-            </div>
+              </span>
+            </ActivityRing>
 
-            <div style={{ width: 1, height: 9, background: M.b1 }} />
-
-            <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-              <div
+            <div
+              className={justBumpedStreak ? "streak-pop" : undefined}
+              style={{
+                display: "inline-flex",
+                alignItems: "baseline",
+                gap: 3,
+                color: M.pk,
+              }}
+            >
+              <FlameIcon size={10} />
+              <span
                 style={{
-                  fontSize: 9,
-                  fontWeight: 800,
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 10,
+                  fontWeight: 700,
                   color: M.pk,
-                  fontFamily: "monospace",
+                  fontVariantNumeric: "tabular-nums",
+                  letterSpacing: 0.2,
                 }}
               >
-                {streak}d
-              </div>
-              <div
+                {streak}
+              </span>
+              <span
                 style={{
-                  fontSize: 8,
-                  color: M.t3,
+                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontSize: 7,
+                  color: M.tf,
                   textTransform: "uppercase",
-                  letterSpacing: 0.5,
+                  letterSpacing: 1.4,
                   fontWeight: 600,
                 }}
               >
-                streak
-              </div>
+                {t("today.stat.streak")}
+              </span>
             </div>
-
-            <div style={{ width: 1, height: 9, background: M.b1 }} />
 
             <button
               onClick={() => setMode(mode === "light" ? "dark" : "light")}
               title={mode === "light" ? "Switch to dark" : "Switch to light"}
               style={{
-                width: 14,
-                height: 14,
-                borderRadius: 3,
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
                 background: "transparent",
                 border: `1px solid ${M.b1}`,
-                color: M.t3,
-                fontSize: 8,
+                color: M.t2,
                 cursor: "pointer",
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
                 padding: 0,
+                transition: "all .15s ease",
               }}
             >
-              {mode === "light" ? "☀️" : "🌙"}
+              {mode === "light" ? <SunIcon size={11} /> : <MoonIcon size={11} />}
             </button>
 
             <button
               onClick={() => goSize("full")}
               title={lang === "sv" ? "Öppna sidomenyn" : "Open sidebar"}
               style={{
-                height: 14,
-                padding: "0 6px",
-                borderRadius: 3,
-                background: M.s2,
-                border: `1px solid ${M.b1}`,
-                color: M.t2,
-                fontSize: 8,
-                fontWeight: 600,
+                height: 22,
+                padding: "0 12px",
+                borderRadius: 999,
+                background: M.ac,
+                border: "none",
+                color: "#fff",
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
                 cursor: "pointer",
+                transition: "all .15s ease",
               }}
             >
               {lang === "sv" ? "Öppna" : "Open"}
@@ -4618,8 +5322,6 @@ export default function App() {
           color: M.t1,
           position: "relative",
           overflow: "hidden",
-          boxShadow: warnColor ? `inset 0 0 0 2px ${warnColor}` : undefined,
-          transition: "box-shadow 200ms ease-out",
           display: "flex",
           flexDirection: "column",
         }}
@@ -4866,7 +5568,7 @@ export default function App() {
               fontSize: 15,
               fontWeight: 800,
               color: f.col,
-              fontFamily: "monospace",
+              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
               pointerEvents: "none",
               animation: "floatUp 1.5s ease-out forwards",
               whiteSpace: "nowrap",
@@ -4877,6 +5579,213 @@ export default function App() {
             {f.txt}
           </div>
         ))}
+
+        {saveToast && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background:
+                M.id === "dark"
+                  ? "rgba(11, 9, 16, 0.55)"
+                  : "rgba(253, 252, 251, 0.65)",
+              animation: "saveFlashBackdrop 2.1s cubic-bezier(.22,1,.36,1) forwards",
+              zIndex: 110,
+              pointerEvents: "none",
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              className="glassy"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 14,
+                padding: "26px 30px 24px",
+                borderRadius: 22,
+                background: M.s1,
+                border: `1.5px solid ${M.gn}55`,
+                boxShadow: `0 14px 48px ${M.gn}55, 0 0 0 1px ${M.gn}22`,
+                animation: "saveFlashCard 2.1s cubic-bezier(.22,1,.36,1) forwards",
+              }}
+            >
+              <svg
+                viewBox="0 0 72 72"
+                width={72}
+                height={72}
+                fill="none"
+                stroke={M.gn}
+                strokeWidth={5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <circle
+                  className="save-flash-ring"
+                  cx="36"
+                  cy="36"
+                  r="31"
+                  strokeDasharray="195"
+                  strokeDashoffset="195"
+                  style={{ transform: "rotate(-90deg)", transformOrigin: "center" }}
+                />
+                <polyline
+                  className="save-flash-check"
+                  points="22 38 32 48 52 26"
+                  strokeDasharray="40"
+                  strokeDashoffset="40"
+                />
+              </svg>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 800,
+                    color: M.t1,
+                    letterSpacing: -0.2,
+                  }}
+                >
+                  {saveToast.cheer}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: M.t3,
+                    fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  +{saveToast.hours}  ·  +{saveToast.xp} XP
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {justHitGoal && (
+          <div
+            className="confetti-burst"
+            aria-hidden
+            style={{ left: "50%", top: "30%" }}
+          >
+            {Array.from({ length: 22 }).map((_, i) => {
+              const angle = (i / 22) * Math.PI * 2;
+              const dist = 90 + Math.random() * 90;
+              const dx = Math.cos(angle) * dist;
+              const dy = Math.sin(angle) * dist - 30;
+              const rot = (Math.random() - 0.5) * 720;
+              const palette = [M.ac, M.pk, M.gn, "#e8c060"];
+              const color = palette[i % palette.length];
+              const delay = Math.random() * 120;
+              return (
+                <span
+                  key={i}
+                  className="confetti-piece"
+                  style={
+                    {
+                      background: color,
+                      "--cx": `${dx}px`,
+                      "--cy": `${dy}px`,
+                      "--cr": `${rot}deg`,
+                      animationDelay: `${delay}ms`,
+                    } as { [k: string]: string }
+                  }
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {goalCelebration && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: ach ? 90 : 14,
+              left: 12,
+              right: 12,
+              background: M.s1,
+              border: `1.5px solid ${M.gn}66`,
+              borderRadius: 14,
+              padding: "14px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: 13,
+              zIndex: 101,
+              animation: "goalToastIn .6s cubic-bezier(.34,1.56,.64,1)",
+              boxShadow: `0 10px 36px ${M.gn}55`,
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: `${M.gn}1f`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                color: M.gn,
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width={24}
+                height={24}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color: M.gn,
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                  marginBottom: 3,
+                }}
+              >
+                {t("goal.eyebrow")}
+              </div>
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 800,
+                  color: M.t1,
+                  marginBottom: 2,
+                  letterSpacing: -0.2,
+                }}
+              >
+                {goalCelebration.title}
+              </div>
+              <div style={{ fontSize: 11, color: M.t3 }}>
+                {goalCelebration.sub}
+              </div>
+            </div>
+          </div>
+        )}
 
         {ach && (
           <div
@@ -4944,7 +5853,7 @@ export default function App() {
                 fontSize: 12,
                 fontWeight: 800,
                 color: ach.co,
-                fontFamily: "monospace",
+                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
                 background: `${ach.co}18`,
                 borderRadius: 7,
                 padding: "4px 9px",

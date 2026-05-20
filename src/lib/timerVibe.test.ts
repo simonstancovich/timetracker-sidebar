@@ -16,7 +16,7 @@ describe('getTimerVibe — not running', () => {
 
   it('resolves Swedish strings', () => {
     expect(getTimerVibe(0, false, 'sv').text).toBe('Redo när du är')
-    expect(getTimerVibe(600, false, 'sv').text).toBe('På paus — tryck ▶ för att återuppta')
+    expect(getTimerVibe(600, false, 'sv').text).toBe('På paus — tryck resume när du är tillbaka.')
   })
 })
 

@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react'
 import { useTranslation } from '../lib/i18n'
-
-interface Theme {
-  bg: string; s1: string; s2: string; ac: string; ad: string; at: string
-  b1: string; b2: string; t1: string; t2: string; t3: string; tf: string
-}
+import { IconButton, MenuItem, Popover, Stack, Text, TextInput } from '../primitives'
 
 interface Item { id: string; name: string }
 
@@ -13,18 +18,23 @@ interface Props {
   items: Item[]
   onChange: (id: string) => void
   placeholder?: string
-  theme: Theme
   maxResults?: number
 }
 
-export function Combobox({ value, items, onChange, placeholder, theme, maxResults = 40 }: Props) {
+export function Combobox({ value, items, onChange, placeholder, maxResults = 40 }: Props) {
   const { t } = useTranslation()
-  const selected = items.find((i) => i.id === value)
+  const selected = useMemo(() => items.find((i) => i.id === value), [items, value])
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [highlight, setHighlight] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+
+  const listboxId = useId()
+  const optionPrefix = useId()
+  const optionDomId = (id: string) => `${optionPrefix}-${id}`
+
+  const mouseActiveRef = useRef(false)
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -35,6 +45,13 @@ export function Combobox({ value, items, onChange, placeholder, theme, maxResult
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
 
+  useEffect(() => {
+    if (!open) return
+    const onMove = () => { mouseActiveRef.current = true }
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [open])
+
   const filtered = useMemo(() => {
     if (!query) return items.slice(0, maxResults)
     const q = query.toLowerCase()
@@ -42,6 +59,13 @@ export function Combobox({ value, items, onChange, placeholder, theme, maxResult
   }, [items, query, maxResults])
 
   useEffect(() => { setHighlight(0) }, [query, open])
+
+  useEffect(() => {
+    if (!open) return
+    const active = filtered[highlight]
+    if (!active) return
+    document.getElementById(optionDomId(active.id))?.scrollIntoView?.({ block: 'nearest' })
+  }, [highlight, open, filtered])
 
   const pick = (id: string) => {
     onChange(id)
@@ -51,78 +75,129 @@ export function Combobox({ value, items, onChange, placeholder, theme, maxResult
   }
 
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHighlight((h) => Math.min(filtered.length - 1, h + 1)) }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((h) => Math.max(0, h - 1)) }
-    else if (e.key === 'Enter') {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setOpen(true)
+      mouseActiveRef.current = false
+      setHighlight((h) => Math.max(0, Math.min(filtered.length - 1, h + 1)))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      mouseActiveRef.current = false
+      setHighlight((h) => Math.max(0, h - 1))
+    } else if (e.key === 'Enter') {
       e.preventDefault()
       if (open && filtered[highlight]) pick(filtered[highlight].id)
       else setOpen(true)
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+      inputRef.current?.blur()
     }
-    else if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur() }
   }
 
+  const activeDescendant =
+    open && filtered[highlight] ? optionDomId(filtered[highlight].id) : undefined
+
+  const inputValue = open ? query : (selected?.name || '')
+  const inputPlaceholder = items.length === 0
+    ? t('form.loading')
+    : (placeholder || t('form.searchDefault'))
+  const isFilled = !!selected
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value)
+    setOpen(true)
+  }
+  const handleFocus = () => {
+    setOpen(true)
+    setQuery('')
+  }
+  const onClearMouseDown = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    pick('')
+  }
+  const onHoverHighlight = (i: number) => {
+    if (mouseActiveRef.current) setHighlight(i)
+  }
+  const renderOption = (item: Item, i: number) => {
+    const onPick = (e: MouseEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      pick(item.id)
+    }
+    const onHover = () => onHoverHighlight(i)
+    return (
+      <MenuItem
+        key={item.id}
+        id={optionDomId(item.id)}
+        highlighted={i === highlight}
+        onMouseDown={onPick}
+        onMouseEnter={onHover}
+      >
+        {item.name}
+      </MenuItem>
+    )
+  }
+
+  const showEmptyState = filtered.length === 0
+  const showResultsFooter = query === '' && items.length > maxResults
+  const resultsFooterText = t('form.showingResults', {
+    n: maxResults,
+    total: items.length,
+  })
+
   return (
-    <div ref={rootRef} style={{ position: 'relative', width: '100%' }}>
-      <input
+    <Stack ref={rootRef} position="relative" fullWidth>
+      <TextInput
         ref={inputRef}
-        value={open ? query : (selected?.name || '')}
-        onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
-        onFocus={() => { setOpen(true); setQuery('') }}
+        value={inputValue}
+        onChange={handleChange}
+        onFocus={handleFocus}
         onKeyDown={onKey}
-        placeholder={items.length === 0 ? 'Loading…' : (placeholder || 'Search…')}
-        style={{
-          width: '100%', padding: '11px 32px 11px 12px',
-          background: theme.s1, color: selected ? theme.t1 : theme.t3,
-          border: `1.5px solid ${selected ? theme.ac : theme.b2}`, borderRadius: 10,
-          fontSize: 13, outline: 'none', cursor: 'text',
-          fontWeight: selected ? 500 : 400,
-        }}
+        placeholder={inputPlaceholder}
+        filled={isFilled}
+        trailingSpace
+        fullWidth
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-haspopup="listbox"
+        aria-autocomplete="list"
+        aria-activedescendant={activeDescendant}
       />
       {value && (
-        <button
-          onMouseDown={(e) => { e.preventDefault(); pick('') }}
-          title="Clear"
-          style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: theme.t3, fontSize: 13, cursor: 'pointer', padding: '2px 6px', lineHeight: 1 }}
-        >✕</button>
+        <Stack
+          position="absolute"
+          top="none"
+          right="sm"
+          bottom="none"
+          justify="center"
+        >
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onMouseDown={onClearMouseDown}
+            title="Clear"
+            aria-label="Clear"
+          >
+            ✕
+          </IconButton>
+        </Stack>
       )}
       {open && (
-        <div
-          style={{
-            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-            background: theme.bg,
-            backgroundImage: `linear-gradient(${theme.s1}, ${theme.s1})`,
-            backdropFilter: 'blur(20px) saturate(140%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(140%)',
-            border: `1px solid ${theme.b2}`, borderRadius: 10,
-            boxShadow: '0 12px 32px rgba(0,0,0,0.45)', maxHeight: 220, overflowY: 'auto',
-            zIndex: 50,
-          }}
-        >
-          {filtered.length === 0 ? (
-            <div style={{ padding: '10px 12px', fontSize: 12, color: theme.t3 }}>{t('form.noMatches')}</div>
+        <Popover role="listbox" id={listboxId}>
+          {showEmptyState ? (
+            <Stack paddingX="md" paddingY="sm">
+              <Text size="base" color="tertiary">{t('form.noMatches')}</Text>
+            </Stack>
           ) : (
-            filtered.map((item, i) => (
-              <div
-                key={item.id}
-                onMouseDown={(e) => { e.preventDefault(); pick(item.id) }}
-                onMouseEnter={() => setHighlight(i)}
-                style={{
-                  padding: '8px 12px', fontSize: 13,
-                  color: i === highlight ? theme.at : theme.t1,
-                  background: i === highlight ? theme.ad : 'transparent',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}
-              >{item.name}</div>
-            ))
+            filtered.map(renderOption)
           )}
-          {query === '' && items.length > maxResults && (
-            <div style={{ padding: '6px 12px', fontSize: 11, color: theme.t3, borderTop: `1px solid ${theme.b1}` }}>
-              Showing {maxResults} of {items.length} — type to filter
-            </div>
+          {showResultsFooter && (
+            <Stack paddingX="md" paddingY="xs" border="top">
+              <Text size="sm" color="tertiary">{resultsFooterText}</Text>
+            </Stack>
           )}
-        </div>
+        </Popover>
       )}
-    </div>
+    </Stack>
   )
 }

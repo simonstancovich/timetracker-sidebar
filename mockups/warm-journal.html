@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TimeTracker — Warm Journal Concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --serif: 'Lora', Georgia, serif;
+    --sans: 'Manrope', -apple-system, system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  }
+  [data-theme="light"] {
+    --bg: #faf5eb;
+    --canvas: #ebe2d0;
+    --surface: #fffaef;
+    --raised: #f3ead9;
+    --paper-line: rgba(60,40,20,0.06);
+    --border: #d9cdb5;
+    --border-strong: #a89878;
+    --ink: #2a2520;
+    --ink-soft: #574a3c;
+    --muted: #8c7c66;
+    --faint: #b8a98e;
+    --accent: #b04727;
+    --accent-ink: #6a2810;
+    --accent-soft: #f4dfc9;
+    --olive: #6b7a3a;
+    --olive-soft: #e6e9c8;
+    --rose: #b56d7a;
+    --rose-soft: #f3dcdf;
+    --gold: #b88527;
+    --shadow-soft: 0 1px 2px rgba(60,40,20,0.10), 0 4px 14px rgba(60,40,20,0.05);
+    --shadow-stamp: 0 2px 0 rgba(106,40,16,0.12);
+  }
+  [data-theme="dark"] {
+    --bg: #1d1812;
+    --canvas: #0e0b08;
+    --surface: #28221b;
+    --raised: #322a22;
+    --paper-line: rgba(255,235,200,0.04);
+    --border: rgba(245,235,222,0.10);
+    --border-strong: rgba(245,235,222,0.22);
+    --ink: #f5ebde;
+    --ink-soft: #d8c9b3;
+    --muted: #998970;
+    --faint: #5d5040;
+    --accent: #d99373;
+    --accent-ink: #f4d4c3;
+    --accent-soft: rgba(217,147,115,0.12);
+    --olive: #a3b87b;
+    --olive-soft: rgba(163,184,123,0.10);
+    --rose: #d9a3b0;
+    --rose-soft: rgba(217,163,176,0.10);
+    --gold: #e8c060;
+    --shadow-soft: 0 1px 2px rgba(0,0,0,0.40), 0 6px 24px rgba(0,0,0,0.25);
+    --shadow-stamp: 0 2px 0 rgba(0,0,0,0.30);
+  }
+
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+    background: var(--canvas);
+    color: var(--ink);
+    transition: background 240ms ease, color 240ms ease;
+    overflow-x: hidden;
+  }
+
+  .page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 24px 80px;
+    gap: 24px;
+  }
+  .page-header {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .brand h1 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+    color: var(--ink);
+  }
+  .brand .sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .direction-nav { display: flex; gap: 6px; }
+  .dir-btn {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 160ms ease;
+  }
+  .dir-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .dir-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .controls { display: flex; gap: 6px; }
+  .toggle-btn {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 160ms ease;
+  }
+  .toggle-btn:hover { color: var(--ink); border-color: var(--border-strong); }
+  .toggle-btn.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  .stage { display: flex; gap: 32px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+
+  /* Sidebar — paper notebook */
+  .sidebar {
+    width: 320px;
+    min-height: 720px;
+    background: var(--bg);
+    background-image:
+      repeating-linear-gradient(
+        transparent 0,
+        transparent 27px,
+        var(--paper-line) 27px,
+        var(--paper-line) 28px
+      );
+    border-radius: 4px 22px 22px 4px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    isolation: isolate;
+    box-shadow:
+      0 30px 80px rgba(60,40,20,0.28),
+      0 8px 20px rgba(60,40,20,0.10),
+      inset 4px 0 0 var(--accent);
+  }
+  [data-theme="dark"] .sidebar {
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.50),
+      0 8px 20px rgba(0,0,0,0.30),
+      inset 4px 0 0 var(--accent);
+  }
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent 0%, var(--rose) 30%, var(--rose) 70%, transparent 100%);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Header */
+  .app-header {
+    padding: 22px 18px 12px 30px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .header-left { display: flex; flex-direction: column; }
+  .header-left .date {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--ink);
+    line-height: 1.1;
+    letter-spacing: -0.1px;
+  }
+  .header-left .time {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--rose);
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    font-weight: 600;
+  }
+  .live-badge .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--rose);
+    box-shadow: 0 0 6px var(--rose);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .live-time {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+  }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 16px; padding-top: 6px; }
+  .tab {
+    background: transparent;
+    border: none;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 4px 0 8px;
+    position: relative;
+    letter-spacing: 0.1px;
+    transition: color 160ms ease;
+  }
+  .tab:hover { color: var(--ink-soft); }
+  .tab.active { color: var(--ink); }
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    left: -4px;
+    right: -4px;
+    bottom: 0;
+    height: 6px;
+    background: var(--accent-soft);
+    z-index: -1;
+    border-radius: 4px 4px 2px 2px;
+    transform: skew(-6deg);
+  }
+
+  /* Content */
+  .content { flex: 1; overflow-y: auto; padding: 18px 22px 28px 30px; }
+  .content section { display: none; }
+  .content section.active { display: block; animation: fadeIn 320ms ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .marginalia {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--rose);
+    line-height: 1.45;
+    padding: 6px 0 4px 10px;
+    border-left: 2px solid var(--rose);
+    margin-bottom: 14px;
+  }
+
+  /* Today */
+  .today-hero {
+    margin: 4px 0 22px;
+  }
+  .today-hero .pre {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .today-hero .big {
+    font-family: var(--serif);
+    font-size: 64px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -2px;
+    line-height: 0.95;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .today-hero .big .unit {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 24px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .today-hero .sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+  .underline-hand {
+    display: inline-block;
+    background-image: linear-gradient(to right, var(--accent) 0%, var(--accent) 100%);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 100% 2px;
+    padding-bottom: 1px;
+  }
+
+  /* Stamps for stats */
+  .stamps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 14px 0 22px;
+  }
+  .stamp-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: var(--shadow-stamp);
+  }
+  .stamp-chip .v {
+    font-family: var(--serif);
+    font-size: 17px;
+    color: var(--ink);
+    line-height: 1;
+    font-weight: 500;
+  }
+  .stamp-chip .l {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    font-weight: 600;
+  }
+  .stamp-chip.rose .v { color: var(--rose); }
+  .stamp-chip.olive .v { color: var(--olive); }
+  .stamp-chip svg { width: 14px; height: 14px; }
+  .stamp-chip.rose svg { color: var(--rose); }
+
+  /* Section title — chapter heading */
+  .chapter {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 18px;
+    color: var(--ink);
+    margin: 18px 0 10px;
+    letter-spacing: -0.2px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .chapter::before {
+    content: '§';
+    color: var(--accent);
+    font-size: 16px;
+  }
+  .chapter .roman {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    margin-left: auto;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* Entries — journal style */
+  .entry {
+    display: grid;
+    grid-template-columns: 50px 1fr;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--border);
+    align-items: start;
+    cursor: pointer;
+    transition: background 160ms ease;
+  }
+  .entry:hover { background: var(--surface); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+  .entry .clock-col {
+    text-align: right;
+  }
+  .entry .h {
+    font-family: var(--serif);
+    font-size: 19px;
+    color: var(--accent);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.2px;
+  }
+  .entry .h .m {
+    color: var(--muted);
+    font-style: italic;
+  }
+  .entry .h-lbl {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-top: 3px;
+    font-weight: 600;
+  }
+  .entry .body .co {
+    font-family: var(--serif);
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: -0.1px;
+  }
+  .entry .body .pr {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    margin-top: 1px;
+    font-weight: 500;
+  }
+  .entry .body .desc {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+    line-height: 1.45;
+  }
+  .entry .body .note {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .entry .body .meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+  }
+  .seal {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 8px;
+    border-radius: 9px;
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .seal.int { color: var(--muted); border-color: var(--border); background: transparent; }
+
+  /* Day done stamp (rubber stamp diagonal) */
+  .day-stamp {
+    margin: 16px 0;
+    text-align: center;
+    position: relative;
+    padding: 14px 0;
+  }
+  .day-stamp .text {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--olive);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    display: inline-block;
+    padding: 8px 22px;
+    border: 3px solid var(--olive);
+    border-radius: 6px;
+    transform: rotate(-3deg);
+    box-shadow: 0 2px 0 rgba(107,122,58,0.15);
+    opacity: 0.9;
+  }
+  [data-theme="dark"] .day-stamp .text { border-color: var(--olive); color: var(--olive); }
+
+  /* Timer */
+  .timer-page {
+    padding: 14px 0 22px;
+  }
+  .timer-quote {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 22px;
+    line-height: 1.45;
+  }
+  .timer-quote::before { content: '“'; color: var(--accent); margin-right: 2px; }
+  .timer-quote::after { content: '”'; color: var(--accent); margin-left: 2px; }
+  .timer-clock {
+    text-align: center;
+    padding: 16px 0;
+  }
+  .timer-clock .big {
+    font-family: var(--serif);
+    font-size: 76px;
+    font-weight: 400;
+    color: var(--ink);
+    letter-spacing: -3px;
+    line-height: 1;
+  }
+  .timer-clock .lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2.4px;
+    margin-top: 8px;
+    font-weight: 600;
+  }
+  .timer-task {
+    margin: 22px 0;
+    text-align: center;
+  }
+  .timer-task .co {
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: -0.3px;
+  }
+  .timer-task .pr {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.8px;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .timer-task .desc {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-top: 12px;
+    padding: 0 12px;
+    line-height: 1.5;
+  }
+
+  .timer-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 14px;
+  }
+  .btn {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 11px 22px;
+    border-radius: 22px;
+    cursor: pointer;
+    transition: all 160ms ease;
+    border: 1px solid transparent;
+    box-shadow: var(--shadow-stamp);
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(176,71,39,0.30); }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--ink-soft);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--border-strong); color: var(--ink); }
+
+  /* History — weekly spread */
+  .week-spread {
+    margin: 12px 0 18px;
+  }
+  .week-num {
+    font-family: var(--serif);
+    font-size: 38px;
+    color: var(--ink);
+    letter-spacing: -1.2px;
+    line-height: 1;
+    font-weight: 500;
+  }
+  .week-num-sub {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--muted);
+    font-size: 22px;
+    margin-left: 4px;
+  }
+  .week-meta {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .days-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 16px;
+  }
+  .day-line {
+    display: grid;
+    grid-template-columns: 60px 1fr 60px;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .day-line .d {
+    font-family: var(--serif);
+    font-size: 14px;
+    color: var(--ink);
+    letter-spacing: -0.1px;
+  }
+  .day-line .d .dow {
+    font-style: italic;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .day-line .bar {
+    height: 4px;
+    background: var(--surface);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .day-line .bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .day-line .bar-fill.goal { background: var(--olive); }
+  .day-line .h {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink);
+    text-align: right;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+  }
+  .day-line.today .d { color: var(--accent); }
+  .day-line.today .h { color: var(--accent); }
+
+  .week-total {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-stamp);
+  }
+  .week-total .v {
+    font-family: var(--serif);
+    font-size: 32px;
+    color: var(--ink);
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .week-total .l {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.8px;
+    font-weight: 600;
+  }
+
+  .insight-card {
+    margin-top: 18px;
+    padding: 16px 18px;
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-stamp);
+  }
+  .insight-card .body {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--accent-ink);
+    line-height: 1.45;
+    letter-spacing: -0.1px;
+  }
+  .insight-card .by {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    margin-top: 8px;
+    font-weight: 600;
+  }
+
+  /* XP */
+  .lvl-card {
+    text-align: center;
+    margin: 8px 0 18px;
+    padding: 22px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-stamp);
+    position: relative;
+    overflow: hidden;
+  }
+  .lvl-card .lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: 600;
+  }
+  .lvl-card .num {
+    font-family: var(--serif);
+    font-size: 96px;
+    color: var(--ink);
+    letter-spacing: -4px;
+    line-height: 0.9;
+    margin: 6px 0 2px;
+    font-weight: 500;
+  }
+  .lvl-card .sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .xp-bar {
+    margin: 14px 6px 6px;
+    height: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--rose));
+    width: 71%;
+    border-radius: 999px;
+  }
+  .xp-meta {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 6px;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  /* Achievements — collector stamps */
+  .ach-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .ach {
+    text-align: center;
+    padding: 14px 6px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-stamp);
+    transition: transform 180ms ease;
+  }
+  .ach:hover { transform: translateY(-2px); }
+  .ach.locked { opacity: 0.42; filter: saturate(0.4); }
+  .ach .stamp-ring {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 8px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-stamp);
+  }
+  .ach.rose .stamp-ring { background: var(--rose-soft); color: var(--rose); border-color: var(--rose); }
+  .ach.olive .stamp-ring { background: var(--olive-soft); color: var(--olive); border-color: var(--olive); }
+  .ach.gold .stamp-ring { background: rgba(184,133,39,0.10); color: var(--gold); border-color: var(--gold); }
+  .ach .stamp-ring svg { width: 18px; height: 18px; }
+  .ach .name {
+    font-family: var(--serif);
+    font-size: 13px;
+    color: var(--ink);
+    letter-spacing: -0.1px;
+    line-height: 1.2;
+  }
+  .ach .xp-tag {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--accent);
+    margin-top: 4px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+  }
+
+  /* Save flash — wax seal */
+  .flash-trigger {
+    margin: 16px auto 0;
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    border-radius: 22px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .flash-trigger:hover { color: var(--accent); border-color: var(--accent); }
+  .flash {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(60,40,20,0.30);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    pointer-events: none;
+  }
+  [data-theme="dark"] .flash { background: rgba(0,0,0,0.55); }
+  .flash.on { display: flex; animation: flashFade 2.1s ease-out forwards; }
+  .wax-seal {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, var(--accent), var(--accent-ink) 70%);
+    box-shadow:
+      0 8px 24px rgba(106,40,16,0.40),
+      inset -8px -10px 18px rgba(0,0,0,0.30),
+      inset 6px 8px 12px rgba(255,255,255,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: var(--accent-soft);
+    transform: rotate(-8deg) scale(0.6);
+    opacity: 0;
+    animation: sealStamp 2.1s cubic-bezier(.22,1,.36,1) forwards;
+    position: relative;
+  }
+  .wax-seal::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 1.5px dashed rgba(255,235,222,0.30);
+    border-radius: 50%;
+  }
+  .wax-seal .seal-text {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: -0.4px;
+    text-align: center;
+  }
+  .wax-seal .seal-sub {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    margin-top: 4px;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+  @keyframes flashFade {
+    0% { opacity: 0; }
+    14%, 86% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes sealStamp {
+    0% { opacity: 0; transform: rotate(-8deg) scale(2.0); }
+    22% { opacity: 1; transform: rotate(-8deg) scale(0.94); }
+    35% { transform: rotate(-8deg) scale(1.02); }
+    50%, 86% { transform: rotate(-8deg) scale(1); opacity: 1; }
+    100% { opacity: 0; transform: rotate(-8deg) scale(0.98); }
+  }
+
+  .footer-notes {
+    width: 100%;
+    max-width: 1100px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+    margin-top: 8px;
+  }
+  .footer-notes strong { color: var(--ink); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="page-header">
+    <div class="brand">
+      <h1>TimeTracker</h1>
+      <span class="sub">Direction C · Journal</span>
+    </div>
+    <div class="direction-nav">
+      <a href="editorial-watch.html" class="dir-btn">A · Watch Dial</a>
+      <a href="performance-sport.html" class="dir-btn">B · Performance</a>
+      <a href="warm-journal.html" class="dir-btn active">C · Journal</a>
+    </div>
+    <div class="controls">
+      <button class="toggle-btn active" id="theme-light">Light</button>
+      <button class="toggle-btn" id="theme-dark">Dark</button>
+    </div>
+  </div>
+
+  <div class="stage">
+
+    <div class="sidebar">
+
+      <div class="app-header">
+        <div class="header-top">
+          <div class="header-left">
+            <span class="date">Tuesday, May 19</span>
+            <span class="time">10:24</span>
+          </div>
+          <div class="header-right">
+            <span class="live-badge"><span class="dot"></span>Tracking</span>
+            <span class="live-time">02:14:23</span>
+          </div>
+        </div>
+        <div class="tabs">
+          <button class="tab active" data-tab="today">Today</button>
+          <button class="tab" data-tab="timer">Timer</button>
+          <button class="tab" data-tab="history">History</button>
+          <button class="tab" data-tab="xp">Progress</button>
+        </div>
+      </div>
+
+      <div class="content">
+
+        <!-- TODAY -->
+        <section data-tab="today" class="active">
+          <div class="marginalia">
+            "Say no to requests that don't fit this week's top goal."
+          </div>
+
+          <div class="today-hero">
+            <div class="pre">Today, so far —</div>
+            <div class="big">
+              <span class="underline-hand">5:30</span>
+              <span class="unit">hours</span>
+            </div>
+            <div class="sub">two and a half hours from a full day.</div>
+          </div>
+
+          <div class="stamps">
+            <span class="stamp-chip rose">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 3-2 5-2 7 0 1 .4 1.7 1 2.3-.6.4-1 1-1 2 0 1.4 1.1 2.5 2.5 2.5 1.7 0 3-1.4 3-3.1 0-1.6-1-2.8-2-4 0 0 4 1.7 4 6.3a6.5 6.5 0 1 1-13 0c0-3 2.5-4.5 3.5-6.7C8.6 6.4 9 4.3 12 2z"/></svg>
+              <span class="v">12</span><span class="l">streak</span>
+            </span>
+            <span class="stamp-chip olive">
+              <span class="v">68%</span><span class="l">billable</span>
+            </span>
+            <span class="stamp-chip">
+              <span class="v">+453</span><span class="l">xp today</span>
+            </span>
+          </div>
+
+          <div class="chapter">
+            Entries
+            <span class="roman">— I —</span>
+          </div>
+
+          <div class="entry">
+            <div class="clock-col">
+              <div class="h">1<span class="m">:30</span></div>
+              <div class="h-lbl">hrs</div>
+            </div>
+            <div class="body">
+              <div class="co">Bravida AB</div>
+              <div class="pr">Webbutveckling · 183</div>
+              <div class="desc">GEO audit follow-ups — schema fixes for /sv/press/</div>
+              <div class="meta"><span class="seal">Billable</span></div>
+            </div>
+          </div>
+
+          <div class="entry">
+            <div class="clock-col">
+              <div class="h">1<span class="m">:00</span></div>
+              <div class="h-lbl">hrs</div>
+            </div>
+            <div class="body">
+              <div class="co">Bravida AB</div>
+              <div class="pr">Webbutveckling · 183</div>
+              <div class="desc">Sitemap regeneration after schema rollout</div>
+              <div class="meta"><span class="seal">Billable</span></div>
+            </div>
+          </div>
+
+          <div class="entry">
+            <div class="clock-col">
+              <div class="h">2<span class="m">:00</span></div>
+              <div class="h-lbl">hrs</div>
+            </div>
+            <div class="body">
+              <div class="co">Homemaid</div>
+              <div class="pr">Booking platform · 222</div>
+              <div class="desc">Timeslot bug — investigate Sara's wrong-time booking</div>
+              <div class="note">noticed a second case for Jennifer — flagging it tomorrow.</div>
+              <div class="meta"><span class="seal">Billable</span></div>
+            </div>
+          </div>
+
+          <div class="entry">
+            <div class="clock-col">
+              <div class="h">1<span class="m">:00</span></div>
+              <div class="h-lbl">hrs</div>
+            </div>
+            <div class="body">
+              <div class="co">DevCore</div>
+              <div class="pr">Internal · admin</div>
+              <div class="desc">Weekly retro + planning prep</div>
+              <div class="meta"><span class="seal int">Internal</span></div>
+            </div>
+          </div>
+
+          <button class="flash-trigger" id="flashBtn">Preview save flash</button>
+        </section>
+
+        <!-- TIMER -->
+        <section data-tab="timer">
+          <div class="marginalia">"Focus is a verb — keep doing it."</div>
+
+          <div class="timer-page">
+            <div class="timer-clock">
+              <div class="big">02:14:23</div>
+              <div class="lbl">Session · started 08:10</div>
+            </div>
+
+            <div class="timer-task">
+              <div class="co">Bravida AB</div>
+              <div class="pr">Webbutveckling · 183</div>
+              <div class="desc">GEO audit follow-ups — schema fixes for /sv/press/. Schema swap on author/publisher, dual-H1 detection.</div>
+            </div>
+
+            <div class="timer-buttons">
+              <button class="btn btn-secondary">Switch task</button>
+              <button class="btn btn-primary">Pause</button>
+            </div>
+          </div>
+
+          <div class="chapter">
+            Session Stats
+            <span class="roman">— II —</span>
+          </div>
+
+          <div class="stamps">
+            <span class="stamp-chip"><span class="v">+178</span><span class="l">session xp</span></span>
+            <span class="stamp-chip olive"><span class="v">5:30</span><span class="l">today</span></span>
+            <span class="stamp-chip rose"><span class="v">12d</span><span class="l">streak</span></span>
+          </div>
+        </section>
+
+        <!-- HISTORY -->
+        <section data-tab="history">
+          <div class="marginalia">"Looking back is how you steer forward."</div>
+
+          <div class="week-spread">
+            <div>
+              <span class="week-num">Week 20</span>
+              <span class="week-num-sub">of 52</span>
+            </div>
+            <div class="week-meta">May 13 — May 19, 2026</div>
+          </div>
+
+          <div class="days-list">
+            <div class="day-line">
+              <div class="d">Mon<br><span class="dow">13</span></div>
+              <div class="bar"><div class="bar-fill goal" style="width: 100%"></div></div>
+              <div class="h">8:00</div>
+            </div>
+            <div class="day-line">
+              <div class="d">Tue<br><span class="dow">14</span></div>
+              <div class="bar"><div class="bar-fill" style="width: 97%"></div></div>
+              <div class="h">7:45</div>
+            </div>
+            <div class="day-line">
+              <div class="d">Wed<br><span class="dow">15</span></div>
+              <div class="bar"><div class="bar-fill goal" style="width: 100%"></div></div>
+              <div class="h">8:15</div>
+            </div>
+            <div class="day-line">
+              <div class="d">Thu<br><span class="dow">16</span></div>
+              <div class="bar"><div class="bar-fill" style="width: 81%"></div></div>
+              <div class="h">6:30</div>
+            </div>
+            <div class="day-line today">
+              <div class="d">Fri<br><span class="dow">19</span></div>
+              <div class="bar"><div class="bar-fill" style="width: 69%"></div></div>
+              <div class="h">5:30</div>
+            </div>
+          </div>
+
+          <div class="week-total">
+            <div>
+              <div class="v">36:00</div>
+              <div class="l">Week total</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="v">4 / 5</div>
+              <div class="l">Goals met</div>
+            </div>
+          </div>
+
+          <div class="insight-card">
+            <div class="body">"Bravida carried this week — your strongest streak of focused work yet."</div>
+            <div class="by">— Coach note · Friday, May 19</div>
+          </div>
+        </section>
+
+        <!-- XP -->
+        <section data-tab="xp">
+          <div class="marginalia">"Quietly, level by level."</div>
+
+          <div class="lvl-card">
+            <div class="lbl">Level</div>
+            <div class="num">12</div>
+            <div class="sub">2,840 of 4,000 XP</div>
+            <div class="xp-bar"><div class="xp-bar-fill"></div></div>
+            <div class="xp-meta">
+              <span>71%</span>
+              <span>1,160 to lvl 13</span>
+            </div>
+          </div>
+
+          <div class="chapter">
+            Collected
+            <span class="roman">12 / 50</span>
+          </div>
+
+          <div class="ach-grid">
+            <div class="ach">
+              <div class="stamp-ring">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="name">First Log</div>
+              <div class="xp-tag">+50 XP</div>
+            </div>
+            <div class="ach rose">
+              <div class="stamp-ring">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 3-2 5-2 7 0 1 .4 1.7 1 2.3-.6.4-1 1-1 2 0 1.4 1.1 2.5 2.5 2.5 1.7 0 3-1.4 3-3.1 0-1.6-1-2.8-2-4 0 0 4 1.7 4 6.3a6.5 6.5 0 1 1-13 0c0-3 2.5-4.5 3.5-6.7C8.6 6.4 9 4.3 12 2z"/></svg>
+              </div>
+              <div class="name">Week Streak</div>
+              <div class="xp-tag">+200 XP</div>
+            </div>
+            <div class="ach olive">
+              <div class="stamp-ring">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="name">Day Done</div>
+              <div class="xp-tag">+100 XP</div>
+            </div>
+            <div class="ach gold">
+              <div class="stamp-ring">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="15" y2="11"/><circle cx="12" cy="14" r="8"/></svg>
+              </div>
+              <div class="name">Marathon</div>
+              <div class="xp-tag">+250 XP</div>
+            </div>
+            <div class="ach">
+              <div class="stamp-ring">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 10 17 15 18 22 12 18.5 6 22 7 15 2 10 9 9"/></svg>
+              </div>
+              <div class="name">Perfect Week</div>
+              <div class="xp-tag">+400 XP</div>
+            </div>
+            <div class="ach rose">
+              <div class="stamp-ring">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+              </div>
+              <div class="name">Punctual</div>
+              <div class="xp-tag">+150 XP</div>
+            </div>
+            <div class="ach locked">
+              <div class="stamp-ring">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="name">—</div>
+              <div class="xp-tag">—</div>
+            </div>
+            <div class="ach locked">
+              <div class="stamp-ring">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="name">—</div>
+              <div class="xp-tag">—</div>
+            </div>
+            <div class="ach locked">
+              <div class="stamp-ring">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="name">—</div>
+              <div class="xp-tag">—</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="flash" id="flash">
+        <div class="wax-seal">
+          <span class="seal-text">Locked in.</span>
+          <span class="seal-sub">+1:30 · +22 XP</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="footer-notes">
+    <strong>Journal</strong> · Lined paper background · Serif headings · Italic margin notes · Wax-seal save · Stamped achievements · Slow and considered
+  </div>
+
+</div>
+
+<script>
+  const html = document.documentElement;
+  const btnLight = document.getElementById('theme-light');
+  const btnDark = document.getElementById('theme-dark');
+  const stored = localStorage.getItem('tt-theme') || 'light';
+  function setTheme(t) {
+    html.setAttribute('data-theme', t);
+    btnLight.classList.toggle('active', t === 'light');
+    btnDark.classList.toggle('active', t === 'dark');
+    localStorage.setItem('tt-theme', t);
+  }
+  setTheme(stored);
+  btnLight.addEventListener('click', () => setTheme('light'));
+  btnDark.addEventListener('click', () => setTheme('dark'));
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+      document.querySelectorAll('.content section').forEach(s => s.classList.toggle('active', s.dataset.tab === target));
+    });
+  });
+
+  const flash = document.getElementById('flash');
+  document.getElementById('flashBtn').addEventListener('click', () => {
+    flash.classList.remove('on');
+    void flash.offsetWidth;
+    flash.classList.add('on');
+    setTimeout(() => flash.classList.remove('on'), 2100);
+  });
+</script>
+
+</body>
+</html>

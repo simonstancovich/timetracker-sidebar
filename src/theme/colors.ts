@@ -31,6 +31,9 @@ export const colors = {
     violet200: "#e89472", // dark accent text (terracotta)
     violet400: "#c96442", // light accent text (terracotta)
     violet500: "#f4d4c3", // dark accent-on-accent-bg text
+    // Deep terracotta — text color for text sitting on a tinted accent bg in
+    // light mode (paired with violet500 in dark, which is the cream above).
+    accentInk: "#7c3817",
     // "pink" slot is now dusty rose — warm but different hue than terracotta,
     // so the two don't melt into each other.
     pink400: "#e88fa1", // dark rose
@@ -38,6 +41,8 @@ export const colors = {
     pinkVivid: "#c94369",
     green400: "#6fd4a0", // dark green
     green500: "#16a34a", // light green
+    error: "#ef4444", // tailwind red-500, both modes
+    warning: "#f59e0b", // tailwind amber-500, both modes
   },
 
   background: {
@@ -64,6 +69,8 @@ export const colors = {
     pinkPaperDark: "rgba(232,143,161,0.22)",
     greenLight: "#f0fdf4",
     greenDark: "rgba(111,212,160,0.07)",
+    warningLight: "rgba(245,158,11,0.08)",
+    warningDark: "rgba(245,158,11,0.08)",
   },
 
   border: {
@@ -74,11 +81,19 @@ export const colors = {
     strongDark: "rgba(255,255,255,0.18)",
     greenLight: "#bbf7d0",
     greenDark: "rgba(111,212,160,0.25)",
+    pinkLight: "#e0bcc6",
+    pinkDark: "rgba(232,143,161,0.25)",
+    warningLight: "rgba(245,158,11,0.3)",
+    warningDark: "rgba(245,158,11,0.3)",
+    // Mirrors brand.violet400 / violet200 — kept in the border namespace so
+    // accent-colored borders (focus/active states) can be sourced semantically.
+    accentLight: "#c96442",
+    accentDark: "#e89472",
   },
 
   chart: {
-    light: ["#7c3aed", "#0891b2", "#be185d", "#0d9488"] as readonly string[],
-    dark: ["#9b8cff", "#e89aae", "#6fd4a0", "#6ec0e8"] as readonly string[],
+    light: ["#c96442", "#a33553", "#b88527", "#6f8f5f"] as readonly string[],
+    dark: ["#e89472", "#e88fa1", "#e8c060", "#9bbf85"] as readonly string[],
   },
 } as const;
 
@@ -93,10 +108,13 @@ type TypoName =
   | "faint"
   | "accent"
   | "accentStrong"
+  | "accentInk"
   | "pink"
   | "pinkVivid"
   | "green"
-  | "onAccent";
+  | "onAccent"
+  | "error"
+  | "warning";
 
 const TYPOGRAPHY_MAP: Record<
   TypoName,
@@ -108,10 +126,13 @@ const TYPOGRAPHY_MAP: Record<
   faint: { light: "inkFaint", dark: "gray700" },
   accent: { light: "violet400", dark: "violet200" },
   accentStrong: { light: "violet400", dark: "violet500" },
+  accentInk: { light: "accentInk", dark: "violet500" },
   pink: { light: "pink500", dark: "pink400" },
   pinkVivid: { light: "pinkVivid", dark: "pinkVivid" },
   green: { light: "green500", dark: "green400" },
   onAccent: { light: "white", dark: "white" },
+  error: { light: "error", dark: "error" },
+  warning: { light: "warning", dark: "warning" },
 };
 
 type BgName =
@@ -123,7 +144,8 @@ type BgName =
   | "accentMuted"
   | "pink"
   | "pinkPaper"
-  | "green";
+  | "green"
+  | "warning";
 
 const BACKGROUND_MAP: Record<
   BgName,
@@ -138,9 +160,10 @@ const BACKGROUND_MAP: Record<
   pink: { light: "pinkLight", dark: "pinkDark" },
   pinkPaper: { light: "pinkPaperLight", dark: "pinkPaperDark" },
   green: { light: "greenLight", dark: "greenDark" },
+  warning: { light: "warningLight", dark: "warningDark" },
 };
 
-type BorderName = "soft" | "strong" | "green";
+type BorderName = "soft" | "strong" | "green" | "pink" | "accent" | "warning";
 
 const BORDER_MAP: Record<
   BorderName,
@@ -149,6 +172,9 @@ const BORDER_MAP: Record<
   soft: { light: "softLight", dark: "softDark" },
   strong: { light: "strongLight", dark: "strongDark" },
   green: { light: "greenLight", dark: "greenDark" },
+  pink: { light: "pinkLight", dark: "pinkDark" },
+  accent: { light: "accentLight", dark: "accentDark" },
+  warning: { light: "warningLight", dark: "warningDark" },
 };
 
 export function pickColor(

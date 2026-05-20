@@ -12,6 +12,7 @@ export type ButtonSize = keyof typeof s.size
 interface Props extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'style'> {
   variant?: ButtonVariant
   size?: ButtonSize
+  grow?: boolean
   type?: 'button' | 'submit' | 'reset'
   children: ReactNode
 }
@@ -19,12 +20,19 @@ interface Props extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type' | '
 export function Button({
   variant = 'primary',
   size = 'md',
+  grow = false,
   type = 'button',
   className,
   children,
   ...rest
 }: Props) {
-  const classes = cx(s.root, s.variant[variant], s.size[size], className)
+  const classes = cx(
+    s.root,
+    s.variant[variant],
+    s.size[size],
+    grow && s.grow,
+    className,
+  )
   return (
     <button type={type} className={classes} {...rest}>
       {children}
