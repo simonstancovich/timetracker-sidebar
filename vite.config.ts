@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react(), vanillaExtractPlugin()],
   base: './',
   build: {
-    outDir: 'dist',
+    outDir: 'dist-renderer',
   },
   server: {
     port: 5180,

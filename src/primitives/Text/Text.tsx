@@ -19,6 +19,8 @@ interface Props {
   transform?: TextTransform
   tracking?: TextTracking
   italic?: boolean
+  // Preserve "\n" line breaks in the content.
+  preLine?: boolean
   // Single-line ellipsis when overflowing.
   truncate?: boolean
   // `true` renders as an inline <span> (e.g. for inline labels inside a flex
@@ -37,6 +39,7 @@ export function Text({
   transform,
   tracking,
   italic = false,
+  preLine = false,
   truncate = false,
   inline = false,
   className,
@@ -52,6 +55,7 @@ export function Text({
     transform && s.transform[transform],
     tracking && s.tracking[tracking],
     italic && s.italic,
+    preLine && s.preLine,
     truncate && s.truncate,
     className,
   )

@@ -8,6 +8,7 @@
 import { type Lang, t, tOpt } from './i18n'
 
 export type IntroStep = {
+  key: string
   target: string | null
   title: string
   body: string
@@ -31,6 +32,13 @@ const INTRO_STEP_DEFS: IntroStepDef[] = [
   { key: 'pickClient',     target: 'timer-company' },
   { key: 'pickProject',    target: 'timer-project' },
   { key: 'describe',       target: 'timer-description', needsManualNext: true },
+  { key: 'internalNotes',  target: 'timer-note',         needsManualNext: true, readOnly: true },
+  { key: 'invoiceable',    target: 'timer-invoiceable',  needsManualNext: true },
+  { key: 'revealRunning',  target: 'timer-done' },
+  { key: 'liveActions',    target: 'timer-switch',       needsManualNext: true, readOnly: true },
+  { key: 'sideQuest',      target: 'timer-sidequest',    needsManualNext: true, readOnly: true },
+  { key: 'liveControls',   target: 'timer-controls',     needsManualNext: true, readOnly: true },
+  { key: 'liveStats',      target: 'timer-stats',        needsManualNext: true, readOnly: true },
   { key: 'openToday',      target: 'tab-today' },
   { key: 'todayStats',     target: 'today-stats',       needsManualNext: true, readOnly: true },
   { key: 'todayEntries',   target: 'today-entries',     needsManualNext: true, readOnly: true },
@@ -39,6 +47,10 @@ const INTRO_STEP_DEFS: IntroStepDef[] = [
   { key: 'openXp',         target: 'tab-xp' },
   { key: 'xpLevel',        target: 'xp-level',          needsManualNext: true, readOnly: true },
   { key: 'xpAchievements', target: 'xp-achievements',   needsManualNext: true, readOnly: true },
+  { key: 'themeSkin',      target: 'footer-theme',       needsManualNext: true },
+  { key: 'pinIt',          target: 'footer-pin',         needsManualNext: true, readOnly: true },
+  { key: 'speakSwedish',   target: 'footer-lang',        needsManualNext: true, readOnly: true },
+  { key: 'replayTour',     target: 'footer-help',        needsManualNext: true, readOnly: true },
   { key: 'done',           target: null },
 ]
 
@@ -46,6 +58,7 @@ export function buildIntroSteps(lang: Lang): IntroStep[] {
   return INTRO_STEP_DEFS.map((def) => {
     const ns = `intro.${def.key}`
     return {
+      key: def.key,
       target: def.target,
       title: t(`${ns}.title`, lang),
       body: t(`${ns}.body`, lang),

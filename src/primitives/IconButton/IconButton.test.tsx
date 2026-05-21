@@ -52,4 +52,26 @@ describe('<IconButton />', () => {
     render(<IconButton aria-label="Min" className="extra">▼</IconButton>)
     expect(screen.getByRole('button').className).toContain('extra')
   })
+
+  it('supports the content-sized ring variant', () => {
+    render(
+      <IconButton aria-label="Hours" variant="ring" size="fit">
+        x
+      </IconButton>,
+    )
+    const btn = screen.getByRole('button')
+    expect(btn.className).toContain(s.variant.ring)
+    expect(btn.className).toContain(s.size.fit)
+  })
+
+  it('renders a badge slot in the corner when provided', () => {
+    const { container } = render(
+      <IconButton aria-label="Hours" badge={<i data-testid="dot" />}>
+        x
+      </IconButton>,
+    )
+    const badgeEl = container.querySelector(`span.${s.badge}`)
+    expect(badgeEl).toBeInTheDocument()
+    expect(screen.getByTestId('dot')).toBeInTheDocument()
+  })
 })

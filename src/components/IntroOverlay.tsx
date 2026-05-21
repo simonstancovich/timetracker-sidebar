@@ -1,23 +1,13 @@
-import { useEffect, useLayoutEffect, useState, type CSSProperties, type SyntheticEvent } from 'react'
+import { useEffect, useLayoutEffect, useState, type SyntheticEvent } from 'react'
 import { useModal } from '../lib/useModal'
 import type { IntroStep } from '../lib/introSteps'
+import { chapterRoman } from '../lib/roman'
+import { vars, type Mode } from '../theme'
+import { Button, DisplayText, MonoText, Overlay, Stack, Text } from '../primitives'
+import { Spotlight } from './Spotlight'
+import { TourTooltip } from './TourTooltip'
 
 export type { IntroStep }
-
-type Theme = {
-  bg: string
-  s1: string
-  s2: string
-  b1: string
-  t1: string
-  t2: string
-  t3: string
-  ac: string
-  btn: string
-  bsh: string
-}
-
-const WIGGLE_EMOJIS = ['⏱️', '⏰', '🕰️', '⌛']
 
 function getEffectiveRect(el: HTMLElement): DOMRect {
   const base = el.getBoundingClientRect()
@@ -36,15 +26,67 @@ function getEffectiveRect(el: HTMLElement): DOMRect {
   return new DOMRect(left, top, right - left, bottom - top)
 }
 
+// Animated watch-dial mark — sweeping ring + ticking hand, tick marks.
+function IntroDial({ done }: { done: boolean }) {
+  const ringColor = done ? vars.typography.green : vars.typography.accent
+  return (
+    <svg width={108} height={108} viewBox="0 0 64 64" aria-hidden>
+      <circle cx="32" cy="32" r="29" fill="none" stroke={vars.border.soft} strokeWidth={2.5} />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a, i) => (
+        <line
+          key={a}
+          x1="32"
+          y1="3.5"
+          x2="32"
+          y2={i % 2 === 0 ? 7 : 5.5}
+          stroke={i % 2 === 0 ? vars.typography.tertiary : vars.typography.faint}
+          strokeWidth={i % 2 === 0 ? 1.4 : 1}
+          strokeLinecap="round"
+          transform={`rotate(${a} 32 32)`}
+          opacity={0.7}
+        />
+      ))}
+      <circle
+        className="intro-dial-sweep"
+        cx="32"
+        cy="32"
+        r="29"
+        fill="none"
+        stroke={ringColor}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeDasharray={2 * Math.PI * 29}
+        strokeDashoffset={2 * Math.PI * 29}
+        transform="rotate(-90 32 32)"
+      />
+      {done ? (
+        <polyline
+          points="22 33 29 40 43 25"
+          fill="none"
+          stroke={vars.typography.green}
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <g className="intro-dial-hand">
+          <line x1="32" y1="32" x2="32" y2="14" stroke={vars.typography.accent} strokeWidth={2.5} strokeLinecap="round" />
+          <circle cx="32" cy="32" r="3" fill={vars.typography.accent} />
+        </g>
+      )}
+    </svg>
+  )
+}
+
 export function IntroOverlay({
-  M,
+  mode,
   step,
   steps,
   onAdvance,
   onSkip,
   canAdvance,
 }: {
-  M: Theme
+  mode: Mode
   step: number
   steps: IntroStep[]
   onAdvance: () => void
@@ -57,14 +99,15 @@ export function IntroOverlay({
   const isFullScreen = !current.target
   const modalRef = useModal<HTMLDivElement>({ enabled: true, onClose: onSkip })
 
-  const [emojiIdx, setEmojiIdx] = useState(0)
-  useEffect(() => {
-    if (!isFullScreen) return
-    const id = window.setInterval(() => setEmojiIdx((i) => (i + 1) % WIGGLE_EMOJIS.length), 1600)
-    return () => clearInterval(id)
-  }, [isFullScreen])
+  // Content steps exclude the welcome (0) and done (last) full-screens.
+  const contentTotal = steps.length - 2
+  const contentIndex = step // step 1..contentTotal map to chapters I..N
 
   const [rect, setRect] = useState<DOMRect | null>(null)
+  const [tipH, setTipH] = useState(0)
+  useLayoutEffect(() => {
+    if (modalRef.current) setTipH(modalRef.current.offsetHeight)
+  }, [rect, step, current.title, current.body, current.hint, modalRef])
   useLayoutEffect(() => {
     if (!current.target) {
       setRect(null)
@@ -78,106 +121,97 @@ export function IntroOverlay({
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     const update = () => setRect(getEffectiveRect(el))
     update()
-    const t1 = window.setTimeout(update, 250)
-    const t2 = window.setTimeout(update, 550)
-    const poll = window.setInterval(update, 200)
-    const onResize = () => update()
-    window.addEventListener('resize', onResize)
+    // Track the target via observers instead of polling: ResizeObserver for
+    // size changes, capture-phase scroll for movement in any ancestor, plus a
+    // single settle after the smooth scroll animation finishes.
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    const settle = window.setTimeout(update, 450)
     return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
-      clearInterval(poll)
-      window.removeEventListener('resize', onResize)
+      observer.disconnect()
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+      clearTimeout(settle)
     }
   }, [current.target, step])
 
   if (isFullScreen) {
     return (
-      <div
+      <Overlay
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="intro-fullscreen-title"
+        aria-label={current.title}
         tabIndex={-1}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 500,
-          background: `linear-gradient(180deg, ${M.bg} 0%, ${M.s2} 100%)`,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '28px 22px',
-          textAlign: 'center',
-          gap: 14,
-          overflow: 'auto',
-        }}
+        zIndex="introHighlight"
+        tone={mode === 'dark' ? 'none' : 'screen'}
+        className={mode === 'dark' ? 'app-dark-glow' : undefined}
       >
-        <div style={{ fontSize: 72, lineHeight: 1 }}>
-          <span className="intro-emoji" key={emojiIdx}>
-            {isLast ? '🎉' : WIGGLE_EMOJIS[emojiIdx]}
-          </span>
-        </div>
+        <Stack className="intro-in" align="center" paddingBottom="xl">
+          <IntroDial done={isLast} />
+        </Stack>
 
-        <h1 id="intro-fullscreen-title" className="intro-in" style={{ margin: 0, fontSize: 22, color: M.t1, fontWeight: 800, lineHeight: 1.25, maxWidth: 320 }}>
-          {current.title}
-        </h1>
+        <Stack className="intro-in intro-d1" align="center" paddingBottom="sm">
+          <MonoText
+            size="xs"
+            weight="bold"
+            tracking="display"
+            transform="uppercase"
+            color={isLast ? 'green' : 'accent'}
+          >
+            {isLast ? '✦ Ready' : 'Welcome'}
+          </MonoText>
+        </Stack>
 
-        <p className="intro-in" style={{ margin: '4px 0 12px', fontSize: 13, color: M.t2, maxWidth: 320, lineHeight: 1.5, whiteSpace: 'pre-line', animationDelay: '120ms' }}>
-          {current.body}
-        </p>
-
-        <button
-          onClick={onAdvance}
-          className="intro-in"
-          style={{
-            padding: '12px 22px',
-            borderRadius: 12,
-            background: M.btn,
-            color: '#fff',
-            border: 'none',
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: M.bsh,
-            animationDelay: '240ms',
-          }}
+        <DisplayText
+          className="intro-in intro-d2"
+          size="5xl"
+          align="center"
+          tracking="tightest"
+          maxWidth="prose"
         >
-          {current.nextLabel || "Let's go →"}
-        </button>
+          {current.title}
+        </DisplayText>
+
+        <Stack
+          className="intro-in intro-d3"
+          align="center"
+          paddingTop="md"
+          paddingBottom="xl"
+        >
+          <Text size="md" color="secondary" align="center" maxWidth="prose" preLine>
+            {current.body}
+          </Text>
+        </Stack>
+
+        <Button
+          onClick={onAdvance}
+          variant={isLast ? 'success' : 'primary'}
+          shape="pill"
+          mono
+          className="intro-in intro-d4"
+        >
+          {current.nextLabel || "Let's go"}
+        </Button>
 
         {isFirst && (
-          <button
-            onClick={onSkip}
-            className="intro-in"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: M.t3,
-              fontSize: 11,
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              animationDelay: '320ms',
-            }}
-          >
-            Skip intro
-          </button>
+          <Stack className="intro-in intro-d5" align="center" paddingTop="lg">
+            <Button variant="link" mono size="xs" onClick={onSkip}>
+              Skip the tour
+            </Button>
+          </Stack>
         )}
-      </div>
+      </Overlay>
     )
   }
 
   if (!rect) {
     return (
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 499,
-          background: 'rgba(0,0,0,0.6)',
-          pointerEvents: 'auto',
-        }}
+      <Overlay
+        tone="scrim"
+        zIndex="introMask"
         onClick={(e) => e.stopPropagation()}
       />
     )
@@ -191,118 +225,88 @@ export function IntroOverlay({
   const holeW = holeRight - holeLeft
   const holeH = holeBottom - holeTop
 
-  const tooltipMaxW = 260
+  const tooltipMaxW = 264
+  const tipHeight = tipH || 150
   const spaceBelow = window.innerHeight - holeBottom
   const spaceAbove = holeTop
-  const tooltipBelow = spaceBelow >= 140 || spaceBelow >= spaceAbove
-  const tooltipTop = tooltipBelow ? holeBottom + 10 : Math.max(10, holeTop - 10 - 140)
+  const tooltipBelow = spaceBelow >= 150 || spaceBelow >= spaceAbove
+  const preferredTop = tooltipBelow ? holeBottom + 12 : holeTop - 12 - tipHeight
+  // Clamp into the viewport so tall targets (e.g. the achievements grid) can't
+  // push the tooltip — and its Next button — off-screen.
+  const tooltipTop = Math.max(10, Math.min(preferredTop, window.innerHeight - tipHeight - 10))
   const tooltipLeft = Math.max(10, Math.min(holeLeft, window.innerWidth - tooltipMaxW - 10))
 
-  const maskBase: CSSProperties = {
-    position: 'fixed',
-    background: 'rgba(0,0,0,0.62)',
-    zIndex: 499,
-    pointerEvents: 'auto',
-  }
   const swallow = (e: SyntheticEvent) => e.stopPropagation()
 
   return (
     <>
-      <div style={{ ...maskBase, top: 0, left: 0, right: 0, height: holeTop }} onClick={swallow} onMouseDown={swallow} />
-      <div style={{ ...maskBase, top: holeTop, left: 0, width: holeLeft, height: holeH }} onClick={swallow} onMouseDown={swallow} />
-      <div style={{ ...maskBase, top: holeTop, left: holeRight, right: 0, height: holeH }} onClick={swallow} onMouseDown={swallow} />
-      <div style={{ ...maskBase, top: holeBottom, left: 0, right: 0, bottom: 0 }} onClick={swallow} onMouseDown={swallow} />
-
-      {current.readOnly && (
-        <div
-          style={{
-            position: 'fixed',
-            top: holeTop,
-            left: holeLeft,
-            width: holeW,
-            height: holeH,
-            background: 'transparent',
-            pointerEvents: 'auto',
-            zIndex: 499,
-            cursor: 'not-allowed',
-          }}
-          onClick={swallow}
-          onMouseDown={swallow}
-        />
-      )}
-
-      <div
-        style={{
-          position: 'fixed',
+      <Spotlight
+        hole={{
           top: holeTop,
           left: holeLeft,
+          right: holeRight,
+          bottom: holeBottom,
           width: holeW,
           height: holeH,
-          border: `2px solid ${M.ac}`,
-          borderRadius: 10,
-          boxShadow: `0 0 0 4px ${M.ac}33, 0 0 22px ${M.ac}66`,
-          pointerEvents: 'none',
-          zIndex: 500,
-          animation: 'introPulse 1.8s ease-in-out infinite',
         }}
+        readOnly={current.readOnly}
+        onDismiss={swallow}
       />
 
-      <div
+      <TourTooltip
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="intro-tooltip-title"
+        aria-label={current.title}
         tabIndex={-1}
-        className="intro-in"
-        style={{
-          position: 'fixed',
-          top: tooltipTop,
-          left: tooltipLeft,
-          maxWidth: tooltipMaxW,
-          background: M.s1,
-          border: `1px solid ${M.b1}`,
-          borderRadius: 12,
-          padding: '12px 14px',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
-          zIndex: 501,
-          color: M.t1,
-        }}
+        top={tooltipTop}
+        left={tooltipLeft}
+        maxWidth={tooltipMaxW}
       >
-        <div style={{ fontSize: 10, color: M.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
-          Step {step} of {steps.length - 2}
-        </div>
-        <div id="intro-tooltip-title" style={{ fontSize: 14, fontWeight: 700, color: M.t1, marginBottom: 4 }}>{current.title}</div>
-        <div style={{ fontSize: 12, color: M.t2, lineHeight: 1.45, marginBottom: current.hint ? 4 : 10 }}>{current.body}</div>
+        <Stack paddingBottom="xs">
+          <MonoText size="2xs" weight="bold" color="faint" transform="uppercase" tracking="loosest">
+            <MonoText size="2xs" weight="bold" color="accent" transform="uppercase" tracking="loosest">
+              § {chapterRoman(contentIndex)}
+            </MonoText>
+            {' · '}
+            {contentTotal}
+          </MonoText>
+        </Stack>
+        <Stack paddingBottom="xs">
+          <DisplayText size="3xl" italic tracking="tight">
+            {current.title}
+          </DisplayText>
+        </Stack>
+        <Stack paddingBottom={current.hint ? 'xs' : 'md'}>
+          <Text size="base" color="secondary">
+            {current.body}
+          </Text>
+        </Stack>
         {current.hint && (
-          <div style={{ fontSize: 11, color: M.t3, fontStyle: 'italic', marginBottom: 10 }}>{current.hint}</div>
+          <Stack paddingBottom="md">
+            <DisplayText size="md" italic color="tertiary" leading="relaxed">
+              {current.hint}
+            </DisplayText>
+          </Stack>
         )}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between' }}>
-          <button
-            onClick={onSkip}
-            style={{ background: 'none', border: 'none', color: M.t3, fontSize: 10, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-          >
-            Skip tour
-          </button>
+        <Stack direction="row" align="center" justify="spaceBetween" gap="xs">
+          <Button variant="link" mono size="xs" onClick={onSkip}>
+            Skip
+          </Button>
           {current.needsManualNext && (
-            <button
+            <Button
+              variant="primary"
+              shape="pill"
+              mono
+              size="xs"
               onClick={onAdvance}
               disabled={!canAdvance}
-              style={{
-                padding: '6px 12px',
-                background: canAdvance ? M.btn : M.s2,
-                color: canAdvance ? '#fff' : M.t3,
-                border: 'none',
-                borderRadius: 7,
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: canAdvance ? 'pointer' : 'not-allowed',
-              }}
             >
-              {current.nextLabel || 'Next →'}
-            </button>
+              {current.nextLabel || 'Next'}
+            </Button>
           )}
-        </div>
-      </div>
+        </Stack>
+      </TourTooltip>
     </>
   )
 }

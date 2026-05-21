@@ -41,4 +41,15 @@ describe('<MonoText />', () => {
     const { container } = render(<MonoText className="extra">x</MonoText>)
     expect((container.firstChild as HTMLElement).className).toContain('extra')
   })
+
+  it('applies an uppercase transform and wide tracking when requested', () => {
+    const { container } = render(
+      <MonoText transform="uppercase" tracking="loosest">
+        x
+      </MonoText>,
+    )
+    const el = container.firstChild as HTMLElement
+    expect(el.className).toContain(s.transform.uppercase)
+    expect(el.className).toContain(s.tracking.loosest)
+  })
 })

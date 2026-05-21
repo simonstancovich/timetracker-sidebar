@@ -720,6 +720,7 @@ export default function App() {
     setTPr("");
     setTD("");
     setTNote("");
+    setTimerFormOpen(true);
     setTab("today");
     setIntroStep(0);
     setShowIntro(true);
@@ -739,20 +740,31 @@ export default function App() {
       .catch(() => {});
   }, [showIntro, devcoreId, projectCache]);
 
+  const introIndex = useMemo(() => {
+    const m: Record<string, number> = {};
+    introSteps.forEach((s, i) => {
+      m[s.key] = i;
+    });
+    return m;
+  }, [introSteps]);
+
   useEffect(() => {
     if (!showIntro) return;
     // Any client / project works — not restricted to DevCore / Utbildning —
     // so the tour continues for tenants without those exact names.
-    if (introStep === 1 && tab === "timer") setIntroStep(2);
-    if (introStep === 2 && tRun) setIntroStep(3);
-    if (introStep === 3 && tCo) setIntroStep(4);
-    if (introStep === 4 && tPr) setIntroStep(5);
-    if (introStep === 6 && tab === "today") setIntroStep(7);
-    if (introStep === 9 && tab === "history") setIntroStep(10);
-    if (introStep === 11 && tab === "xp") setIntroStep(12);
-  }, [showIntro, introStep, tab, tCo, tPr, tRun]);
+    const at = (key: string) => introStep === introIndex[key];
+    if (at("openTimer") && tab === "timer") setIntroStep(introIndex.startClock);
+    if (at("startClock") && tRun) setIntroStep(introIndex.pickClient);
+    if (at("pickClient") && tCo) setIntroStep(introIndex.pickProject);
+    if (at("pickProject") && tPr) setIntroStep(introIndex.describe);
+    if (at("revealRunning") && !timerFormOpen) setIntroStep(introIndex.liveActions);
+    if (at("openToday") && tab === "today") setIntroStep(introIndex.todayStats);
+    if (at("openHistory") && tab === "history") setIntroStep(introIndex.historyScale);
+    if (at("openXp") && tab === "xp") setIntroStep(introIndex.xpLevel);
+  }, [showIntro, introStep, introIndex, tab, tCo, tPr, tRun, timerFormOpen]);
 
-  const introCanAdvance = introStep === 5 ? tD.trim().length > 0 : true;
+  const introCanAdvance =
+    introStep === introIndex.describe ? tD.trim().length > 0 : true;
 
   useEffect(() => {
     window.electronAPI.setBlurCollapseDisabled(showIntro || !authed || pinned);
@@ -2796,6 +2808,7 @@ export default function App() {
                 );
               })()}
               <textarea
+                data-tour="timer-note"
                 value={tNote}
                 onChange={(e) => setTNote(e.target.value)}
                 placeholder={t("timer.internalNotes")}
@@ -2816,6 +2829,7 @@ export default function App() {
               />
               <button
                 type="button"
+                data-tour="timer-invoiceable"
                 role="switch"
                 aria-checked={tInv}
                 aria-label={t("timer.invoiceable")}
@@ -2874,6 +2888,7 @@ export default function App() {
           {tRun && canStart && (
             <button
               type="button"
+              data-tour="timer-done"
               onClick={() => setTimerFormOpen(false)}
               style={{
                 alignSelf: "center",
@@ -2947,6 +2962,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
               <button
                 type="button"
+                data-tour="timer-switch"
                 onClick={() => setTimerFormOpen(true)}
                 style={{
                   padding: "6px 14px",
@@ -2968,6 +2984,7 @@ export default function App() {
               {tRun && !stashedTimer && (
                 <button
                   type="button"
+                  data-tour="timer-sidequest"
                   onClick={startSideQuest}
                   title={t("timer.sideQuestHint")}
                   style={{
@@ -2994,6 +3011,7 @@ export default function App() {
 
         {tRun && (
           <div
+            data-tour="timer-controls"
             style={{
               marginTop: "auto",
               display: "flex",
@@ -3121,6 +3139,7 @@ export default function App() {
 
         {tRun && (
           <div
+            data-tour="timer-stats"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr 1fr",
@@ -4125,7 +4144,6 @@ export default function App() {
           <ChapterHeading
             title={t("xp.achievements")}
             hint={`${unlocked.length} / ${ACHS.length}`}
-            M={M}
           />
         </div>
         <div
@@ -5344,6 +5362,7 @@ export default function App() {
           }}
         >
           <div
+            data-tour="footer-theme"
             style={{
               display: "flex",
               gap: 2,
@@ -5372,6 +5391,7 @@ export default function App() {
             ))}
           </div>
           <button
+            data-tour="footer-lang"
             onClick={() => setLang(lang === "en" ? "sv" : "en")}
             title={t("lang.switchTo")}
             style={{
@@ -5392,6 +5412,7 @@ export default function App() {
           </button>
           <button
             type="button"
+            data-tour="footer-pin"
             onClick={() => setPinned((v) => !v)}
             aria-pressed={pinned}
             title={pinned ? t("footer.unpinSidebar") : t("footer.pinSidebar")}
@@ -5413,6 +5434,7 @@ export default function App() {
             📌
           </button>
           <button
+            data-tour="footer-help"
             onClick={startIntroFresh}
             title={t("footer.showIntro")}
             style={{
@@ -5451,7 +5473,7 @@ export default function App() {
 
         {showIntro && (
           <IntroOverlay
-            M={M}
+            mode={mode}
             step={introStep}
             steps={introSteps}
             onAdvance={advanceIntro}

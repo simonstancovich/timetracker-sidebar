@@ -132,6 +132,7 @@
     "searchProject": "Search project…",
     "selectProject": "Select project…",
     "noMatches": "No matches",
+    "clear": "Clear",
     "loading": "Loading…",
     "loadingProjects": "Loading…",
     "searchDefault": "Search…",
@@ -283,71 +284,127 @@
   "intro": {
     "welcome": {
       "title": "Time tracking shouldn't feel like homework.",
-      "body": "Run the timer as you work. Log entries in seconds. Earn XP for showing up.\n\nLet's get you rolling in under a minute.",
-      "nextLabel": "Let's go →"
+      "body": "Run the clock while you work. Log entries in seconds. Collect XP for simply showing up.\n\nNinety seconds and you'll know the whole thing. Pinky promise.",
+      "nextLabel": "Show me"
     },
     "openTimer": {
-      "title": "Open the Timer tab",
-      "body": "This is where you live-track time. Tap it to continue."
+      "title": "Meet the Timer",
+      "body": "This is mission control — where the clock runs while you work. Give it a tap."
     },
     "startClock": {
-      "title": "Start the clock",
-      "body": "Hit Start — don't worry about the details yet. You fill them in while the timer runs."
+      "title": "Hit go",
+      "body": "Start the clock first, ask questions later. You fill in the who and what while it ticks."
     },
     "pickClient": {
-      "title": "Pick a client",
-      "body": "Tap the field, then type to filter. Try 'DevCore' for this first run.",
-      "hint": "Start typing — the list narrows as you go."
+      "title": "Who's it for?",
+      "body": "Tap the field and start typing to filter. Try 'DevCore' for this first lap.",
+      "hint": "The list narrows as you type — no scrolling 600 clients."
     },
     "pickProject": {
-      "title": "Pick a project",
-      "body": "Open the project menu and select 'Utbildning/Seminarium'."
+      "title": "On what?",
+      "body": "Open the menu and pick 'Utbildning/Seminarium'. (Learning to track time counts as training.)"
     },
     "describe": {
-      "title": "What are you doing?",
-      "body": "Type a short description. 'learning to track time!' works for now.",
-      "nextLabel": "Next →"
+      "title": "In your own words",
+      "body": "A short line is plenty. 'learning to track time!' will do nicely.",
+      "nextLabel": "Next"
+    },
+    "internalNotes": {
+      "title": "A note to self",
+      "body": "Need a reminder that's nobody's business but yours? Drop it here. It stays internal, off the invoice.",
+      "nextLabel": "Next"
+    },
+    "invoiceable": {
+      "title": "Bill it, or don't",
+      "body": "Flip this on when the work is billable to a client. Off means it's on the house.",
+      "hint": "Go on, give it a flick.",
+      "nextLabel": "Next"
+    },
+    "revealRunning": {
+      "title": "Now watch it run",
+      "body": "Tap Done and the form folds away to reveal your live session. Go ahead, we'll wait."
+    },
+    "liveActions": {
+      "title": "Switch task, mid-flight",
+      "body": "Picked the wrong client, or want to fix the description? Tap Switch task to reopen the form. Your clock keeps ticking the whole time.",
+      "nextLabel": "Next"
+    },
+    "sideQuest": {
+      "title": "What's a side quest?",
+      "body": "Picture it: you're deep in a task and a colleague drops by with a 'quick question.' Tap Side quest and three things happen: your main timer pauses, a fresh one starts for the interruption, and the second you stop that one, your original timer picks right back up. Nothing lost, nothing double-counted.",
+      "nextLabel": "Clever"
+    },
+    "liveControls": {
+      "title": "Pause, stop, scrap",
+      "body": "Pause to take a breather, Stop to log what you've got, or the X to throw it all away. No judgment.",
+      "nextLabel": "Next"
+    },
+    "liveStats": {
+      "title": "Your live scoreboard",
+      "body": "Session XP, hours today, and your streak. All ticking up while you work.",
+      "nextLabel": "Got it"
     },
     "openToday": {
-      "title": "Your day at a glance",
-      "body": "Tap Today. It's your dashboard — stats, progress, everything you logged."
+      "title": "Today, at a glance",
+      "body": "Tap Today — your home base. Hours, streak, and everything you've logged, all in one breath."
     },
     "todayStats": {
-      "title": "Today's numbers",
-      "body": "Hours logged today, your current streak, and this week's total. Streak resets if you skip a weekday.",
-      "nextLabel": "Got it →"
+      "title": "The numbers that matter",
+      "body": "Today's hours, your streak, and the week so far. Skip a weekday and the streak resets — no pressure.",
+      "nextLabel": "Got it"
     },
     "todayEntries": {
-      "title": "Entries live here",
-      "body": "Every entry you log shows up here grouped by client.\n\n▶ resumes a task · double-click to edit · ✕ deletes.",
-      "nextLabel": "Next →"
+      "title": "Everything lands here",
+      "body": "Each entry sits grouped under its client. Tap to resume a task, double-click to edit, or send one to the void with the delete button.",
+      "nextLabel": "Next"
     },
     "openHistory": {
-      "title": "See past weeks & months",
-      "body": "Tap History. Toggle weekly or monthly view — click any day to review or edit its entries."
+      "title": "Rewind",
+      "body": "Tap History to revisit past days, weeks and months — and fix anything you forgot."
     },
     "historyScale": {
-      "title": "Weekly or monthly",
-      "body": "Use the toggle to switch between week and month. Click a day's bar to drill into that day's entries.",
-      "nextLabel": "Got it →"
+      "title": "Zoom in, zoom out",
+      "body": "Flip between day, week and month up top. Tap any day to dive into its entries.",
+      "nextLabel": "Got it"
     },
     "openXp": {
-      "title": "Achievements & XP",
-      "body": "Tap XP. Every minute tracked earns XP."
+      "title": "Yes, there's XP",
+      "body": "Tap XP. Every tracked minute quietly earns you points. We don't make the rules."
     },
     "xpLevel": {
-      "title": "Level up",
-      "body": "Every 1000 XP gets you a new level. Higher levels unlock cooler titles — aim for Principal Dev.",
-      "nextLabel": "Next →"
+      "title": "Climb the ranks",
+      "body": "1,000 XP per level. Keep going and the titles get fancier — Principal Developer is the dream.",
+      "nextLabel": "Next"
     },
     "xpAchievements": {
-      "title": "Unlock achievements",
-      "body": "Hit milestones like first entry, 7-day streak, or 10h in a day to unlock these badges.",
-      "nextLabel": "Almost done →"
+      "title": "Gotta log 'em all",
+      "body": "First entry, a 7-day streak, a ten-hour marathon. Milestones quietly unlock as you go.",
+      "nextLabel": "Keep going"
+    },
+    "themeSkin": {
+      "title": "Light or dark?",
+      "body": "Your eyes, your rules. Tap to flip the whole app between day and night.",
+      "hint": "Go on, try it. We'll wait.",
+      "nextLabel": "Next"
+    },
+    "pinIt": {
+      "title": "Pin it open",
+      "body": "Normally the sidebar tucks away the moment you click elsewhere. The pin keeps it stubbornly in view.",
+      "nextLabel": "Next"
+    },
+    "speakSwedish": {
+      "title": "Svenska?",
+      "body": "One tap swaps every label between English and Swedish. Byt när du vill.",
+      "nextLabel": "Next"
+    },
+    "replayTour": {
+      "title": "Lost the thread?",
+      "body": "See that little question mark? It replays the whole tour, start to finish. No shame in a second lap.",
+      "nextLabel": "Almost there"
     },
     "done": {
-      "title": "You're all set! 🎉",
-      "body": "Your timer is running and you know where everything lives.\n\nShake the window to hide it, dock it as a top bar from the footer, or just keep working.\n\nHave fun!",
+      "title": "That's the whole tour.",
+      "body": "Your clock's already running and you know where everything lives.\n\nDock it as a top bar, or just get to work.\n\nGo make some hours count.",
       "nextLabel": "Start tracking"
     }
   },

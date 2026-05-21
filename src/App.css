@@ -175,7 +175,65 @@ span.skeleton { display: inline-block; vertical-align: middle; }
   to { opacity: 1; transform: translateY(0); }
 }
 .intro-emoji { animation: introWiggle 1.6s ease-in-out infinite; display: inline-block; }
+.intro-mask {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.62);
+  z-index: 499;
+  pointer-events: auto;
+}
+.intro-block {
+  position: fixed;
+  background: transparent;
+  z-index: 499;
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+.intro-ring {
+  position: fixed;
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 500;
+  animation: introPulse 1.8s ease-in-out infinite;
+}
 .intro-in { animation: introFadeUp 600ms ease-out both; }
+.intro-d1 { animation-delay: 80ms; }
+.intro-d2 { animation-delay: 120ms; }
+.intro-d3 { animation-delay: 200ms; }
+.intro-d4 { animation-delay: 300ms; }
+.intro-d5 { animation-delay: 380ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-in,
+  .intro-ring,
+  .intro-dial-sweep,
+  .intro-dial-hand {
+    animation: none;
+  }
+}
+
+/* Editorial onboarding — ticking dial hand + sweeping ring */
+@keyframes introDialSweep {
+  0% { stroke-dashoffset: 226; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes introHandTick {
+  0% { transform: rotate(0deg); }
+  12% { transform: rotate(30deg); }
+  24% { transform: rotate(60deg); }
+  36% { transform: rotate(90deg); }
+  48% { transform: rotate(120deg); }
+  60% { transform: rotate(150deg); }
+  72% { transform: rotate(180deg); }
+  84% { transform: rotate(210deg); }
+  100% { transform: rotate(240deg); }
+}
+.intro-dial-sweep { animation: introDialSweep 2.4s cubic-bezier(.22,1,.36,1) forwards; }
+.intro-dial-hand { transform-origin: 32px 32px; animation: introHandTick 6s steps(1) infinite; }
+@keyframes introDotPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.intro-dot { animation: introDotPop 300ms cubic-bezier(.34,1.56,.64,1) both; }
 @keyframes introPulse {
   0%, 100% { box-shadow: 0 0 0 4px rgba(232,148,114,0.22), 0 0 22px rgba(232,148,114,0.42); }
   50% { box-shadow: 0 0 0 7px rgba(232,148,114,0.12), 0 0 32px rgba(232,148,114,0.62); }
@@ -276,27 +334,6 @@ span.skeleton { display: inline-block; vertical-align: middle; }
 .save-flash-ring { animation: saveRingDraw 720ms 220ms cubic-bezier(.22,1,.36,1) both; }
 .save-flash-check { animation: saveCheckDraw 620ms 820ms cubic-bezier(.22,1,.36,1) both; }
 
-.ring-button {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: transform 150ms ease;
-}
-.ring-button:hover { transform: scale(1.04); }
-.ring-button:active { transform: scale(0.97); }
-.ring-status-dot {
-  position: absolute;
-  top: -2px;
-  right: 2px;
-  pointer-events: none;
-}
 
 .entry-card {
   box-shadow: var(--shadow-engrave);

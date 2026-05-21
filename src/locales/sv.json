@@ -132,6 +132,7 @@
     "searchProject": "Sök projekt…",
     "selectProject": "Välj projekt…",
     "noMatches": "Inga träffar",
+    "clear": "Rensa",
     "loading": "Laddar…",
     "loadingProjects": "Laddar…",
     "searchDefault": "Sök…",
@@ -283,71 +284,127 @@
   "intro": {
     "welcome": {
       "title": "Tidsrapportering ska inte kännas som läxa.",
-      "body": "Kör timern medan du jobbar. Logga poster på sekunder. Tjäna XP för att dyka upp.\n\nVi får igång dig på under en minut.",
-      "nextLabel": "Kör →"
+      "body": "Kör klockan medan du jobbar. Logga poster på sekunder. Samla XP för att bara dyka upp.\n\nNittio sekunder så kan du hela appen. Lillfingerlöfte.",
+      "nextLabel": "Visa mig"
     },
     "openTimer": {
-      "title": "Öppna Timer-fliken",
-      "body": "Det är här du spårar tid live. Tryck för att fortsätta."
+      "title": "Möt Timern",
+      "body": "Det här är kommandobryggan — där klockan går medan du jobbar. Ge den ett tryck."
     },
     "startClock": {
-      "title": "Starta klockan",
-      "body": "Tryck Start — bry dig inte om detaljerna än. Du fyller i medan timern går."
+      "title": "Tryck igång",
+      "body": "Starta klockan först, fråga sen. Du fyller i vem och vad medan den tickar."
     },
     "pickClient": {
-      "title": "Välj en kund",
-      "body": "Tryck på fältet, skriv sedan för att filtrera. Prova \"DevCore\" den här första gången.",
-      "hint": "Börja skriva — listan snävas in."
+      "title": "Vem är det för?",
+      "body": "Tryck på fältet och börja skriva för att filtrera. Prova \"DevCore\" det här första varvet.",
+      "hint": "Listan snävas in medan du skriver — inget bläddrande bland 600 kunder."
     },
     "pickProject": {
-      "title": "Välj ett projekt",
-      "body": "Öppna projektmenyn och välj \"Utbildning/Seminarium\"."
+      "title": "På vad?",
+      "body": "Öppna menyn och välj \"Utbildning/Seminarium\". (Att lära sig rapportera tid räknas som utbildning.)"
     },
     "describe": {
-      "title": "Vad gör du?",
-      "body": "Skriv en kort beskrivning. \"lär mig spåra tid!\" duger fint nu.",
-      "nextLabel": "Nästa →"
+      "title": "Med egna ord",
+      "body": "En kort rad räcker. \"lär mig spåra tid!\" duger utmärkt.",
+      "nextLabel": "Nästa"
+    },
+    "internalNotes": {
+      "title": "En notis till dig själv",
+      "body": "Behöver du en påminnelse som ingen annan behöver se? Skriv den här. Den stannar internt, utanför fakturan.",
+      "nextLabel": "Nästa"
+    },
+    "invoiceable": {
+      "title": "Fakturera, eller inte",
+      "body": "Slå på den när arbetet ska debiteras en kund. Av betyder att det bjuder vi på.",
+      "hint": "Kör, ge den ett klick.",
+      "nextLabel": "Nästa"
+    },
+    "revealRunning": {
+      "title": "Nu kör vi",
+      "body": "Tryck Klar så viks formuläret undan och din pågående session visas. Varsågod, vi väntar."
+    },
+    "liveActions": {
+      "title": "Byt uppgift i farten",
+      "body": "Valde du fel kund, eller vill fixa beskrivningen? Tryck Byt uppgift för att öppna formuläret igen. Klockan tickar på hela tiden.",
+      "nextLabel": "Nästa"
+    },
+    "sideQuest": {
+      "title": "Vad är ett sidouppdrag?",
+      "body": "Tänk dig: du är djupt inne i en uppgift och en kollega dyker upp med en \"snabb fråga\". Tryck Sidouppdrag så händer tre saker: din huvudtimer pausas, en ny startar för avbrottet, och i samma sekund du stoppar den fortsätter din ursprungliga timer. Inget förlorat, inget dubbelräknat.",
+      "nextLabel": "Smart"
+    },
+    "liveControls": {
+      "title": "Pausa, stoppa, släng",
+      "body": "Pausa för en andningspaus, Stoppa för att logga det du har, eller X för att kasta allt. Ingen dömer.",
+      "nextLabel": "Nästa"
+    },
+    "liveStats": {
+      "title": "Din liveställning",
+      "body": "Sessions-XP, timmar idag och din streak. Allt tickar uppåt medan du jobbar.",
+      "nextLabel": "Uppfattat"
     },
     "openToday": {
-      "title": "Din dag i överblick",
-      "body": "Tryck Idag. Det är din dashboard — statistik, framsteg, allt du loggat."
+      "title": "Idag, i överblick",
+      "body": "Tryck Idag — din hemmabas. Timmar, streak och allt du loggat i ett andetag."
     },
     "todayStats": {
-      "title": "Dagens siffror",
-      "body": "Loggade timmar idag, din nuvarande streak och veckans totalt. Streaken nollställs om du hoppar över en vardag.",
-      "nextLabel": "Förstått →"
+      "title": "Siffrorna som räknas",
+      "body": "Dagens timmar, din streak och veckan så här långt. Hoppa över en vardag så nollställs streaken — ingen press.",
+      "nextLabel": "Förstått"
     },
     "todayEntries": {
-      "title": "Här finns posterna",
-      "body": "Varje post du loggar dyker upp här grupperad per kund.\n\n▶ återupptar en uppgift · dubbelklick för att redigera · ✕ tar bort.",
-      "nextLabel": "Nästa →"
+      "title": "Allt landar här",
+      "body": "Varje post grupperas under sin kund. Tryck för att återuppta, dubbelklicka för att redigera, eller radera med papperskorgsknappen.",
+      "nextLabel": "Nästa"
     },
     "openHistory": {
-      "title": "Se tidigare veckor och månader",
-      "body": "Tryck Historik. Växla mellan vecko- och månadsvy — klicka på en dag för att granska eller redigera dess poster."
+      "title": "Spola tillbaka",
+      "body": "Tryck Historik för att återbesöka dagar, veckor och månader — och fixa det du glömde."
     },
     "historyScale": {
-      "title": "Vecko- eller månadsvy",
-      "body": "Använd växlaren för att byta mellan vecka och månad. Klicka på en dagsstapel för att gå in i den dagens poster.",
-      "nextLabel": "Förstått →"
+      "title": "Zooma in, zooma ut",
+      "body": "Växla mellan dag, vecka och månad högst upp. Tryck på en dag för att dyka in i dess poster.",
+      "nextLabel": "Förstått"
     },
     "openXp": {
-      "title": "Prestationer & XP",
-      "body": "Tryck XP. Varje spårad minut ger XP."
+      "title": "Japp, det finns XP",
+      "body": "Tryck XP. Varje spårad minut ger dig tyst poäng. Vi gör inte reglerna."
     },
     "xpLevel": {
-      "title": "Nivåhöjning",
-      "body": "Varje 1000 XP ger en ny nivå. Högre nivåer låser upp coolare titlar — sikta på Principal Dev.",
-      "nextLabel": "Nästa →"
+      "title": "Klättra i graderna",
+      "body": "1 000 XP per nivå. Fortsätt så blir titlarna finare — Principal Developer är drömmen.",
+      "nextLabel": "Nästa"
     },
     "xpAchievements": {
-      "title": "Lås upp prestationer",
-      "body": "Nå milstolpar som första posten, 7 dagars streak eller 10h på en dag för att låsa upp märkena.",
-      "nextLabel": "Nästan klart →"
+      "title": "Samla alla",
+      "body": "Första posten, en 7-dagars streak, ett tiotimmars maraton. Milstolpar låses upp tyst medan du kör.",
+      "nextLabel": "Fortsätt"
+    },
+    "themeSkin": {
+      "title": "Ljust eller mörkt?",
+      "body": "Dina ögon, dina regler. Tryck för att växla hela appen mellan dag och natt.",
+      "hint": "Kör, prova nu. Vi väntar.",
+      "nextLabel": "Nästa"
+    },
+    "pinIt": {
+      "title": "Nåla fast den",
+      "body": "Normalt fälls sidofältet undan så fort du klickar någon annanstans. Nålen håller det envist kvar.",
+      "nextLabel": "Nästa"
+    },
+    "speakSwedish": {
+      "title": "English?",
+      "body": "Ett tryck växlar varje etikett mellan svenska och engelska. Switch whenever you like.",
+      "nextLabel": "Nästa"
+    },
+    "replayTour": {
+      "title": "Tappat tråden?",
+      "body": "Ser du det lilla frågetecknet? Det spelar upp hela rundturen igen, från början. Ingen skam i ett andra varv.",
+      "nextLabel": "Nästan där"
     },
     "done": {
-      "title": "Allt klart! 🎉",
-      "body": "Din timer är igång och du vet var allt finns.\n\nDocka som topplist via sidfoten, eller fortsätt bara jobba.\n\nHa kul!",
+      "title": "Det var hela turen.",
+      "body": "Klockan går redan och du vet var allt finns.\n\nDocka som topplist, eller bara sätt igång.\n\nGå och gör timmar som räknas.",
       "nextLabel": "Börja spåra"
     }
   },

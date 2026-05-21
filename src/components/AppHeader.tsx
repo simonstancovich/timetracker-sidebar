@@ -1,17 +1,14 @@
 import { useTranslation } from "../lib/i18n";
-import { fmtHours } from "../lib/hours";
 import {
-  ActivityRing,
+  DisplayText,
   IconButton,
   MonoText,
   Stack,
-  StatusDot,
   TabButton,
   TabList,
-  Text,
 } from "../primitives";
-import type { StatusDotColor } from "../primitives";
 import { ChevronDownIcon } from "../icons/ChevronDownIcon";
+import { HoursRingButton } from "./HoursRingButton";
 
 export type HeaderTab = "today" | "timer" | "history" | "xp";
 
@@ -51,18 +48,6 @@ export function AppHeader({
 }: Props) {
   const { t } = useTranslation();
 
-  const statusTitle = tRun
-    ? t("status.timerRunning")
-    : tSec > 0
-      ? t("status.timerPaused")
-      : t("status.noTimer");
-  const statusDotColor: StatusDotColor = tRun
-    ? "pink"
-    : tSec > 0
-      ? "amber"
-      : "red";
-  const hoursColor = done ? "green" : todayH > 0 ? "primary" : "faint";
-
   return (
     <Stack
       background="page"
@@ -73,52 +58,24 @@ export function AppHeader({
     >
       <Stack direction="row" align="center" justify="spaceBetween" gap="sm">
         <Stack direction="column" gap="none" minWidth0>
-          <span
-            style={{
-              fontFamily: '"Instrument Serif","Georgia",serif',
-              fontStyle: "italic",
-              fontSize: 17,
-              lineHeight: 1.15,
-              letterSpacing: -0.1,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
+          <DisplayText size="2xl" italic truncate>
             {clockDate}
-          </span>
+          </DisplayText>
           <MonoText size="md" weight="medium">
             {clockTime}
           </MonoText>
         </Stack>
 
         <Stack direction="row" align="center" gap="sm" shrink={false}>
-          <button
-            type="button"
+          <HoursRingButton
+            tRun={tRun}
+            tSec={tSec}
+            todayH={todayH}
+            goalHours={goalHours}
+            done={done}
+            justHitGoal={justHitGoal}
             onClick={() => onTabChange("timer")}
-            title={statusTitle}
-            aria-label={statusTitle}
-            className={`ring-button${justHitGoal ? " goal-bloom" : ""}`}
-          >
-            <ActivityRing
-              progress={goalHours > 0 ? todayH / goalHours : 0}
-              done={done}
-              size={42}
-              stroke={2}
-            >
-              <MonoText size="xs" weight="medium" color={hoursColor}>
-                {fmtHours(todayH)}
-              </MonoText>
-            </ActivityRing>
-            <span className="ring-status-dot">
-              <StatusDot
-                color={statusDotColor}
-                glow={tRun}
-                pulse={tRun}
-                size="sm"
-              />
-            </span>
-          </button>
+          />
           <IconButton
             onClick={onMinimize}
             title={t("header.minimizeTopBar")}

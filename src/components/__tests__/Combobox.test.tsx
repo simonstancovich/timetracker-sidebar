@@ -65,10 +65,21 @@ describe('<Combobox />', () => {
     expect(screen.getByText('Inga träffar')).toBeInTheDocument()
   })
 
-  it('clears the selection via the ✕ button', async () => {
+  it('clears the selection via the clear button', async () => {
     const onChange = vi.fn()
     render(<Combobox value="2" items={items} onChange={onChange} />)
     await userEvent.click(screen.getByTitle('Clear'))
     expect(onChange).toHaveBeenCalledWith('')
+  })
+
+  it('reopening with ArrowDown highlights the first option (no off-by-one)', async () => {
+    const onChange = vi.fn()
+    render(<Combobox value="" items={items} onChange={onChange} />)
+    const input = screen.getByRole('combobox')
+    await userEvent.click(input) // opens on focus
+    await userEvent.keyboard('{Escape}') // collapses, stays focused
+    await userEvent.keyboard('{ArrowDown}') // reopens, lands on index 0
+    await userEvent.keyboard('{Enter}')
+    expect(onChange).toHaveBeenCalledWith('1')
   })
 })

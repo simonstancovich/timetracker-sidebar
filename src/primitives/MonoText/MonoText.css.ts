@@ -7,6 +7,7 @@ export const root = style({
 })
 
 export const size = styleVariants({
+  "2xs": { fontSize: fontSize["2xs"] },
   xs: { fontSize: fontSize.xs },
   sm: { fontSize: fontSize.sm },
   base: { fontSize: fontSize.base },
@@ -24,8 +25,20 @@ export const weight = styleVariants({
 
 export const color = styleVariants(vars.typography, (v) => ({ color: v }))
 
-export const tracking = styleVariants({
-  normal: { letterSpacing: letterSpacing.normal },
-  wide: { letterSpacing: letterSpacing.wide },
-  wider: { letterSpacing: letterSpacing.wider },
+export const tracking = styleVariants(letterSpacing, (v) => ({
+  letterSpacing: v,
+}))
+
+export const transform = styleVariants({
+  uppercase: { textTransform: "uppercase" },
+  lowercase: { textTransform: "lowercase" },
+  capitalize: { textTransform: "capitalize" },
 })
+
+export const align = styleVariants({
+  left: { textAlign: "left" },
+  center: { textAlign: "center" },
+  right: { textAlign: "right" },
+})
+
+export const tabular = style({ fontVariantNumeric: "tabular-nums" })

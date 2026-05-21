@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { buildIntroSteps } from './introSteps'
 
 describe('buildIntroSteps', () => {
-  it('returns 15 steps for both languages', () => {
-    expect(buildIntroSteps('en')).toHaveLength(15)
-    expect(buildIntroSteps('sv')).toHaveLength(15)
+  it('returns 26 steps for both languages', () => {
+    expect(buildIntroSteps('en')).toHaveLength(26)
+    expect(buildIntroSteps('sv')).toHaveLength(26)
   })
 
   it('first step has no target (welcome screen)', () => {
@@ -16,7 +16,7 @@ describe('buildIntroSteps', () => {
   it('last step has no target (done screen)', () => {
     const en = buildIntroSteps('en')
     expect(en[en.length - 1].target).toBeNull()
-    expect(en[en.length - 1].title).toBe("You're all set! 🎉")
+    expect(en[en.length - 1].title).toBe("That's the whole tour.")
   })
 
   it('translates titles into Swedish', () => {
@@ -40,7 +40,7 @@ describe('buildIntroSteps', () => {
   it('includes hint when present (pickClient step)', () => {
     const en = buildIntroSteps('en')
     const pick = en.find((s) => s.target === 'timer-company')!
-    expect(pick.hint).toBe('Start typing — the list narrows as you go.')
+    expect(pick.hint).toBe('The list narrows as you type — no scrolling 600 clients.')
   })
 
   it('attaches the correct target selector to each step', () => {
@@ -53,6 +53,13 @@ describe('buildIntroSteps', () => {
       'timer-company',
       'timer-project',
       'timer-description',
+      'timer-note',
+      'timer-invoiceable',
+      'timer-done',
+      'timer-switch',
+      'timer-sidequest',
+      'timer-controls',
+      'timer-stats',
       'tab-today',
       'today-stats',
       'today-entries',
@@ -61,6 +68,10 @@ describe('buildIntroSteps', () => {
       'tab-xp',
       'xp-level',
       'xp-achievements',
+      'footer-theme',
+      'footer-pin',
+      'footer-lang',
+      'footer-help',
       null,
     ])
   })

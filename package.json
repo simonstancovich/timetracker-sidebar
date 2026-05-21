@@ -41,6 +41,13 @@
   "build": {
     "appId": "se.devcore.timetracker",
     "productName": "DevCore TimeTracker",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "**/*",
+      "!dist"
+    ],
     "win": {
       "target": "nsis"
     }

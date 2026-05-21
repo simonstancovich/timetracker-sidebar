@@ -74,6 +74,11 @@ describe('<Text />', () => {
     expect(cls).toContain(s.italic)
   })
 
+  it('applies preLine to preserve newlines', () => {
+    const { container } = render(<Text preLine>a{'\n'}b</Text>)
+    expect((container.firstChild as HTMLElement).className).toContain(s.preLine)
+  })
+
   it('exposes the 2xs size variant', () => {
     const { container } = render(<Text size="2xs">x</Text>)
     expect((container.firstChild as HTMLElement).className).toContain(s.size['2xs'])

@@ -4,13 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { IntroOverlay } from '../IntroOverlay'
 import type { IntroStep } from '../../lib/introSteps'
 
-const M = {
-  bg: '#fff', s1: '#fff', s2: '#eee', b1: '#ccc',
-  t1: '#000', t2: '#333', t3: '#666',
-  ac: '#7c3aed', btn: '#7c3aed', bsh: '0 4px 14px rgba(0,0,0,0.2)',
-}
-
 const welcome: IntroStep = {
+  key: 'welcome',
   target: null,
   title: "Time tracking shouldn't feel like homework.",
   body: 'Run the timer.',
@@ -18,6 +13,7 @@ const welcome: IntroStep = {
 }
 
 const tooltip: IntroStep = {
+  key: 'openTimer',
   target: 'tab-timer',
   title: 'Open the Timer tab',
   body: 'Click here.',
@@ -27,6 +23,7 @@ const tooltip: IntroStep = {
 }
 
 const final: IntroStep = {
+  key: 'done',
   target: null,
   title: "You're all set! 🎉",
   body: 'Done.',
@@ -37,7 +34,7 @@ describe('<IntroOverlay /> — fullscreen step', () => {
   it('renders the welcome title, body, and next button', () => {
     render(
       <IntroOverlay
-        M={M}
+        mode="light"
         step={0}
         steps={[welcome, tooltip, final]}
         onAdvance={() => {}}
@@ -45,7 +42,7 @@ describe('<IntroOverlay /> — fullscreen step', () => {
         canAdvance={true}
       />,
     )
-    expect(screen.getByRole('heading', { name: welcome.title })).toBeInTheDocument()
+    expect(screen.getByText(welcome.title)).toBeInTheDocument()
     expect(screen.getByText(welcome.body)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: "Let's go →" })).toBeInTheDocument()
   })
@@ -53,7 +50,7 @@ describe('<IntroOverlay /> — fullscreen step', () => {
   it('shows the Skip intro link only on the first step', () => {
     render(
       <IntroOverlay
-        M={M}
+        mode="light"
         step={0}
         steps={[welcome, tooltip, final]}
         onAdvance={() => {}}
@@ -61,14 +58,14 @@ describe('<IntroOverlay /> — fullscreen step', () => {
         canAdvance={true}
       />,
     )
-    expect(screen.getByRole('button', { name: /skip intro/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /skip the tour/i })).toBeInTheDocument()
   })
 
   it('Next button calls onAdvance', async () => {
     const onAdvance = vi.fn()
     render(
       <IntroOverlay
-        M={M}
+        mode="light"
         step={0}
         steps={[welcome, tooltip, final]}
         onAdvance={onAdvance}
@@ -84,7 +81,7 @@ describe('<IntroOverlay /> — fullscreen step', () => {
     const onSkip = vi.fn()
     render(
       <IntroOverlay
-        M={M}
+        mode="light"
         step={0}
         steps={[welcome, tooltip, final]}
         onAdvance={() => {}}
@@ -92,7 +89,7 @@ describe('<IntroOverlay /> — fullscreen step', () => {
         canAdvance={true}
       />,
     )
-    await userEvent.click(screen.getByRole('button', { name: /skip intro/i }))
+    await userEvent.click(screen.getByRole('button', { name: /skip the tour/i }))
     expect(onSkip).toHaveBeenCalledOnce()
   })
 
@@ -100,7 +97,7 @@ describe('<IntroOverlay /> — fullscreen step', () => {
     const onSkip = vi.fn()
     render(
       <IntroOverlay
-        M={M}
+        mode="light"
         step={0}
         steps={[welcome, tooltip, final]}
         onAdvance={() => {}}
@@ -113,10 +110,10 @@ describe('<IntroOverlay /> — fullscreen step', () => {
     expect(onSkip).toHaveBeenCalledOnce()
   })
 
-  it('renders dialog role with aria-labelledby on the title', () => {
+  it('renders dialog role with the step title as its accessible name', () => {
     render(
       <IntroOverlay
-        M={M}
+        mode="light"
         step={0}
         steps={[welcome, tooltip, final]}
         onAdvance={() => {}}
@@ -126,7 +123,7 @@ describe('<IntroOverlay /> — fullscreen step', () => {
     )
     const dialog = screen.getByRole('dialog')
     expect(dialog).toHaveAttribute('aria-modal', 'true')
-    expect(dialog).toHaveAttribute('aria-labelledby', 'intro-fullscreen-title')
+    expect(dialog).toHaveAttribute('aria-label', welcome.title)
   })
 })
 
@@ -136,7 +133,7 @@ describe('<IntroOverlay /> — tooltip step (no rect)', () => {
   it('renders without crashing when target is missing from the DOM', () => {
     render(
       <IntroOverlay
-        M={M}
+        mode="light"
         step={1}
         steps={[welcome, tooltip, final]}
         onAdvance={() => {}}

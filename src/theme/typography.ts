@@ -16,6 +16,7 @@ export const fontSize = {
   "3xl": 18,
   "4xl": 22,
   display: 28,
+  "5xl": 32, // intro hero title
   timer: 44, // paused timer clock
   timerRunning: 50, // running timer clock
 } as const;

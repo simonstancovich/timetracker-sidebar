@@ -19,7 +19,18 @@ export {
   type TextTracking,
 } from './Text/Text'
 export { Heading, type HeadingLevel, type HeadingColor } from './Heading/Heading'
-export { Button, type ButtonVariant, type ButtonSize } from './Button/Button'
+export { Grid, type GridColumns, type GridGap, type GridPadding, type GridAlign } from './Grid/Grid'
+export {
+  DisplayText,
+  type DisplayTextSize,
+  type DisplayTextWeight,
+  type DisplayTextColor,
+  type DisplayTextAlign,
+  type DisplayTextTracking,
+  type DisplayTextMaxWidth,
+  type DisplayTextLeading,
+} from './DisplayText/DisplayText'
+export { Button, type ButtonVariant, type ButtonSize, type ButtonShape } from './Button/Button'
 export { IconTile, type IconTileSize } from './IconTile/IconTile'
 export { IconButton, type IconButtonVariant, type IconButtonSize } from './IconButton/IconButton'
 export {
@@ -28,12 +39,15 @@ export {
   type MonoTextWeight,
   type MonoTextColor,
   type MonoTextTracking,
+  type MonoTextTransform,
+  type MonoTextAlign,
 } from './MonoText/MonoText'
 export { MenuItem } from './MenuItem/MenuItem'
+export { Overlay, type OverlayZIndex, type OverlayTone } from './Overlay/Overlay'
 export { Pill, type PillHighlight } from './Pill/Pill'
 export { Popover } from './Popover/Popover'
 export { StatusDot, type StatusDotColor, type StatusDotSize } from './StatusDot/StatusDot'
-export { Skeleton, type SkeletonHeight, type SkeletonRadius } from './Skeleton/Skeleton'
+export { Skeleton, type SkeletonHeight, type SkeletonWidth, type SkeletonRadius } from './Skeleton/Skeleton'
 export { Spinner, type SpinnerSize, type SpinnerLayout } from './Spinner/Spinner'
 export { TabButton } from './TabButton/TabButton'
 export { TabList } from './TabList/TabList'

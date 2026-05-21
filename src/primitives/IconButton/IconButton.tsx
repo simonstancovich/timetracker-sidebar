@@ -13,6 +13,8 @@ interface Props extends Omit<
   variant?: IconButtonVariant;
   size?: IconButtonSize;
   type?: "button" | "submit" | "reset";
+  // Optional status indicator pinned to the top-right corner.
+  badge?: ReactNode;
   children: ReactNode;
 }
 
@@ -20,6 +22,7 @@ export function IconButton({
   variant = "soft",
   size = "sm",
   type = "button",
+  badge,
   className,
   children,
   ...rest
@@ -28,6 +31,7 @@ export function IconButton({
   return (
     <button type={type} className={classes} {...rest}>
       {children}
+      {badge && <span className={s.badge}>{badge}</span>}
     </button>
   );
 }

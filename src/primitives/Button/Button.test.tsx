@@ -53,4 +53,12 @@ describe('<Button />', () => {
     render(<Button grow>Go</Button>)
     expect(screen.getByRole('button', { name: 'Go' }).className).toContain(s.grow)
   })
+
+  it('applies the success variant, pill shape, and mono treatment', () => {
+    render(<Button variant="success" shape="pill" mono>Go</Button>)
+    const el = screen.getByRole('button', { name: 'Go' })
+    expect(el.className).toContain(s.variant.success)
+    expect(el.className).toContain(s.shape.pill)
+    expect(el.className).toContain(s.mono)
+  })
 })

@@ -3,6 +3,7 @@ import {
   vars,
   fontSize,
   fontWeight,
+  letterSpacing,
   radii,
   spacing,
   transitions,
@@ -26,6 +27,11 @@ export const root = style({
 export const variant = styleVariants({
   primary: {
     background: vars.typography.accent,
+    color: vars.typography.onAccent,
+    boxShadow: vars.shadow.brand,
+  },
+  success: {
+    background: vars.typography.green,
     color: vars.typography.onAccent,
     boxShadow: vars.shadow.brand,
   },
@@ -60,6 +66,18 @@ export const size = styleVariants({
     fontSize: fontSize.lg,
     borderRadius: radii.lg,
   },
+});
+
+export const shape = styleVariants({
+  default: {},
+  pill: { borderRadius: radii.pill },
+});
+
+// Editorial CTA label treatment: monospace, uppercase, wide tracking.
+export const mono = style({
+  fontFamily: vars.font.mono,
+  textTransform: "uppercase",
+  letterSpacing: letterSpacing.loosest,
 });
 
 // Lets the button grow inside a flex row (e.g. equal-share with sibling).

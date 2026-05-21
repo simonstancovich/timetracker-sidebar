@@ -27,6 +27,14 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signingIn, setSigningIn] = useState(false)
+  // Ticks so the "NOW" / "in N min" label and the upcoming list stay accurate
+  // between the 5-minute refetches.
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -113,7 +121,7 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
     )
   }
 
-  const upcoming = meetings.filter((m) => new Date(m.end.dateTime).getTime() > Date.now())
+  const upcoming = meetings.filter((m) => new Date(m.end.dateTime).getTime() > now)
   const next = upcoming[0]
   const rest = upcoming.slice(1, 4)
 
@@ -174,6 +182,7 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
       {next && (
         <NextMeetingCard
           meeting={next}
+          now={now}
           locale={locale}
           t={t}
           onStartForMeeting={onStartForMeeting}
@@ -187,15 +196,15 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
 
 interface NextMeetingCardProps {
   meeting: GraphMeeting
+  now: number
   locale: string
   t: Translate
   onStartForMeeting?: (title: string) => void
 }
 
-function NextMeetingCard({ meeting, locale, t, onStartForMeeting }: NextMeetingCardProps) {
+function NextMeetingCard({ meeting, now, locale, t, onStartForMeeting }: NextMeetingCardProps) {
   const startMs = Date.parse(meeting.start.dateTime)
   const endMs = Date.parse(meeting.end.dateTime)
-  const now = Date.now()
   const mins = Math.round((startMs - now) / 60000)
   const inProgress = mins <= 0 && endMs > now
   const soon = mins > 0 && mins <= 5

@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { useTranslation } from '../lib/i18n'
 import { IconButton, MenuItem, Popover, Stack, Text, TextInput } from '../primitives'
+import { XIcon } from '../icons/XIcon'
 
 interface Item { id: string; name: string }
 
@@ -37,7 +38,7 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
   const mouseActiveRef = useRef(false)
 
   useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
+    const onDocClick = (e: globalThis.MouseEvent) => {
       if (!rootRef.current) return
       if (!rootRef.current.contains(e.target as Node)) setOpen(false)
     }
@@ -77,20 +78,32 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setOpen(true)
       mouseActiveRef.current = false
-      setHighlight((h) => Math.max(0, Math.min(filtered.length - 1, h + 1)))
+      // Opening lands on index 0 (the open effect resets highlight); only a
+      // second press advances.
+      if (!open) setOpen(true)
+      else setHighlight((h) => Math.max(0, Math.min(filtered.length - 1, h + 1)))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       mouseActiveRef.current = false
-      setHighlight((h) => Math.max(0, h - 1))
+      if (!open) setOpen(true)
+      else setHighlight((h) => Math.max(0, h - 1))
+    } else if (e.key === 'Home' && open) {
+      e.preventDefault()
+      mouseActiveRef.current = false
+      setHighlight(0)
+    } else if (e.key === 'End' && open) {
+      e.preventDefault()
+      mouseActiveRef.current = false
+      setHighlight(Math.max(0, filtered.length - 1))
     } else if (e.key === 'Enter') {
       e.preventDefault()
       if (open && filtered[highlight]) pick(filtered[highlight].id)
       else setOpen(true)
     } else if (e.key === 'Escape') {
-      setOpen(false)
-      inputRef.current?.blur()
+      // Native two-stage: first collapse the list, then blur the input.
+      if (open) setOpen(false)
+      else inputRef.current?.blur()
     }
   }
 
@@ -175,10 +188,10 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
             variant="ghost"
             size="sm"
             onMouseDown={onClearMouseDown}
-            title="Clear"
-            aria-label="Clear"
+            title={t('form.clear')}
+            aria-label={t('form.clear')}
           >
-            ✕
+            <XIcon size={12} />
           </IconButton>
         </Stack>
       )}

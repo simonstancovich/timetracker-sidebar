@@ -4,7 +4,12 @@ import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { monthInsight } from '../lib/personality'
 import { useTranslation, type Lang } from '../lib/i18n'
 import type { MonthClosureCache } from '../lib/useMonthClosure'
-import { Button, MonoText, Skeleton, Stack, Text } from '../primitives'
+import { Button, DisplayText, Grid, MonoText, Skeleton, Stack, Text } from '../primitives'
+import { MonthDayCell } from './MonthDayCell'
+import { MonthStat } from './MonthStat'
+import { MonthSummaryStat } from './MonthSummaryStat'
+import { MonthGoalProgress } from './MonthGoalProgress'
+import { MonthHeadsUp } from './MonthHeadsUp'
 
 interface ConfirmOptions {
   title: string
@@ -33,6 +38,9 @@ type Theme = {
   bsh: string
   id: string
   co: readonly string[]
+  goalInk: string
+  partialInk: string
+  missedInk: string
 }
 
 interface Props {
@@ -340,266 +348,122 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
   const dayHeader = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const
 
   return (
-    <div style={{ padding: '14px 14px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <Stack gap="lg" paddingTop="md" paddingX="md" paddingBottom="xl">
       {/* Editorial month label */}
-      <div style={{
-        fontFamily: '"Instrument Serif","Georgia",serif',
-        fontStyle: 'italic',
-        fontSize: 22,
-        color: M.t1,
-        letterSpacing: -0.3,
-        lineHeight: 1.15,
-        textAlign: 'center',
-        paddingTop: 2,
-      }}>{monthLabelEditorial}</div>
+      <DisplayText size="4xl" align="center" italic tracking="tight">
+        {monthLabelEditorial}
+      </DisplayText>
 
       {/* Day-of-week header */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+      <Grid columns={7} gap="xs">
         {dayHeader.map((d, i) => (
-          <span
-            key={d}
-            style={{
-              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-              fontSize: 8,
-              fontWeight: 700,
-              letterSpacing: 1.4,
-              color: i >= 5 ? M.tf : M.t3,
-              textAlign: 'center',
-              lineHeight: 1,
-            }}
-          >{d}</span>
+          <Fragment key={d}>
+            <MonoText
+              size="2xs"
+              weight="bold"
+              tracking="loosest"
+              align="center"
+              color={i >= 5 ? 'faint' : 'tertiary'}
+            >
+              {d}
+            </MonoText>
+          </Fragment>
         ))}
-      </div>
+      </Grid>
 
       {/* Calendar grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-        {cells.map((cell) => {
-          if (!cell.date) return <div key={cell.key} />
-          const d = cell.date
-          const k = cell.key
-          const hours = hoursByDate[k] || 0
-          const holiday = holidays.get(k)
-          const isToday = dateKey(new Date()) === k
-          const isFuture = d > new Date()
-          const isWeekend = d.getDay() === 0 || d.getDay() === 6
-          const isWorkday = !isWeekend && !holiday
-
-          if (!loaded) {
-            return <div key={k} className="skeleton" style={{ aspectRatio: '1 / 1', borderRadius: 8 }} />
-          }
-
-          let bg = M.s1
-          let border = `1px solid ${M.b1}`
-          let numColor = M.t1
-          let hoursColor = M.t2
-          if (isToday) {
-            bg = `${M.ac}1a`
-            border = `1.5px solid ${M.ac}`
-            numColor = M.ac
-            hoursColor = M.ac
-          } else if (hours >= goal) {
-            const heatPct = Math.min(1, hours / (goal * 1.5))
-            const alphaHex = Math.round(50 + heatPct * 110).toString(16).padStart(2, '0')
-            bg = `${M.gn}${alphaHex}`
-            border = `1px solid ${M.gn}66`
-            numColor = M.id === 'dark' ? M.t1 : '#0f4d2a'
-            hoursColor = M.id === 'dark' ? M.t1 : '#0f4d2a'
-          } else if (!isFuture && hours > 0) {
-            bg = 'rgba(217, 119, 6, 0.12)'
-            border = '1px solid rgba(217, 119, 6, 0.45)'
-            numColor = M.t1
-            hoursColor = '#925706'
-          } else if (!isFuture && isWorkday) {
-            bg = 'rgba(239, 68, 68, 0.08)'
-            border = '1px solid rgba(239, 68, 68, 0.35)'
-            numColor = M.t1
-            hoursColor = '#b1170a'
-          } else if (!isWorkday) {
-            bg = 'transparent'
-            border = `1px dashed ${M.b1}`
-            numColor = M.tf
-          } else {
-            bg = 'transparent'
-            border = `1px solid ${M.b1}`
-            numColor = M.tf
-          }
-
-          return (
-            <button
-              key={k}
-              onClick={() => onPickDay(d)}
-              title={holiday ? `${d.getDate()} · ${holiday}${hours > 0 ? ` · ${fmtHours(hours)}` : ''}` : isWorkday ? `${d.getDate()} · ${fmtHours(hours)}` : `${d.getDate()}`}
-              style={{
-                aspectRatio: '1 / 1',
-                background: bg,
-                border,
-                borderRadius: 8,
-                padding: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1,
-                cursor: 'pointer',
-                position: 'relative',
-                transition: 'all 140ms ease',
-              }}
-            >
-              <span style={{
-                fontFamily: '"Instrument Serif","Georgia",serif',
-                fontSize: 18,
-                color: numColor,
-                lineHeight: 1,
-                fontVariantNumeric: 'tabular-nums',
-                letterSpacing: -0.4,
-              }}>{d.getDate()}</span>
-              {!isFuture && (hours > 0 || isWorkday) && (
-                <span style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                  fontSize: 9,
-                  color: hoursColor,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  fontVariantNumeric: 'tabular-nums',
-                  letterSpacing: 0.3,
-                }}>{hours > 0 ? fmtHours(hours) : '0:00'}</span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+      <Grid columns={7} gap="xs">
+        {cells.map((cell) => (
+          <Fragment key={cell.key}>
+            <MonthDayCell
+              date={cell.date}
+              dayKey={cell.key}
+              hours={cell.date ? hoursByDate[cell.key] || 0 : 0}
+              holiday={cell.date ? holidays.get(cell.key) : undefined}
+              goal={goal}
+              loaded={loaded}
+              M={M}
+              onPick={onPickDay}
+            />
+          </Fragment>
+        ))}
+      </Grid>
 
       {/* 3-stat row */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr',
-        gap: 8,
-        paddingTop: 14,
-        paddingBottom: 12,
-        borderTop: `1px solid ${M.b1}`,
-        borderBottom: `1px solid ${M.b1}`,
-        textAlign: 'center',
-      }}>
-        <div>
-          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontSize: 24, color: M.t1, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>{loaded ? fmtHours(monthTotal) : '—'}</div>
-          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 8, color: M.tf, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('month.thisMonth')}</div>
-        </div>
-        <div>
-          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontSize: 24, color: M.t1, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>
-            {loaded && avgPerWorkday > 0 ? avgPerWorkday.toFixed(1) : '—'}
-            {loaded && avgPerWorkday > 0 && <span style={{ fontStyle: 'italic', fontSize: 15, color: M.ac, marginLeft: 1 }}>h</span>}
-          </div>
-          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 8, color: M.tf, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.avgDay')}</div>
-        </div>
-        <div>
-          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontSize: 24, color: M.t1, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>
-            {loaded && monthTotal > 0 ? Math.round(billablePct) : '—'}
-            {loaded && monthTotal > 0 && <span style={{ fontStyle: 'italic', fontSize: 15, color: M.gn, marginLeft: 1 }}>%</span>}
-          </div>
-          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 8, color: M.tf, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.billable')}</div>
-        </div>
-      </div>
+      <Grid columns={3} gap="sm" paddingY="md" borderY align="center">
+        <MonthStat
+          value={loaded ? fmtHours(monthTotal) : '—'}
+          label={t('month.thisMonth')}
+        />
+        <MonthStat
+          value={loaded && avgPerWorkday > 0 ? avgPerWorkday.toFixed(1) : '—'}
+          unit={loaded && avgPerWorkday > 0 ? 'h' : undefined}
+          unitColor="accent"
+          label={t('week.avgDay')}
+        />
+        <MonthStat
+          value={loaded && monthTotal > 0 ? Math.round(billablePct) : '—'}
+          unit={loaded && monthTotal > 0 ? '%' : undefined}
+          unitColor="green"
+          label={t('week.billable')}
+        />
+      </Grid>
 
       {/* Earnings + goal-hit ratio subtitle */}
       {loaded && monthTotal > 0 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 18,
-          flexWrap: 'wrap',
-          fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-          fontSize: 10,
-          color: M.t3,
-          fontVariantNumeric: 'tabular-nums',
-          marginTop: -6,
-        }}>
+        <Stack direction="row" justify="center" align="baseline" wrap gap="lg">
           {workingDays.count > 0 && (
-            <span>
-              <span style={{ fontWeight: 700, color: workingDays.hit === workingDays.count ? M.gn : M.t1 }}>{workingDays.hit}/{workingDays.count}</span>
-              <span style={{ marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1.4, fontSize: 9, color: M.tf }}>at goal</span>
-            </span>
+            <MonthSummaryStat
+              value={`${workingDays.hit}/${workingDays.count}`}
+              valueColor={workingDays.hit === workingDays.count ? 'green' : 'primary'}
+              label="at goal"
+            />
           )}
           {earnings > 0 && (
-            <span>
-              <span style={{ fontWeight: 700, color: M.pk }}>{Math.round(earnings).toLocaleString('sv-SE')}</span>
-              <span style={{ marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1.4, fontSize: 9, color: M.tf }}>kr earned</span>
-            </span>
+            <MonthSummaryStat
+              value={Math.round(earnings).toLocaleString('sv-SE')}
+              valueColor="pink"
+              label="kr earned"
+            />
           )}
           {billable > 0 && (
-            <span>
-              <span style={{ fontWeight: 700, color: M.gn }}>{fmtHours(billable)}</span>
-              <span style={{ marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1.4, fontSize: 9, color: M.tf }}>billable</span>
-            </span>
+            <MonthSummaryStat value={fmtHours(billable)} valueColor="green" label="billable" />
           )}
           {nonBillable > 0 && (
-            <span>
-              <span style={{ fontWeight: 700, color: M.t2 }}>{fmtHours(nonBillable)}</span>
-              <span style={{ marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1.4, fontSize: 9, color: M.tf }}>internal</span>
-            </span>
+            <MonthSummaryStat value={fmtHours(nonBillable)} valueColor="secondary" label="internal" />
           )}
-        </div>
+        </Stack>
       )}
 
       {/* Monthly goal progress + delta + flex */}
       {loaded && expectedMonthHours > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 9, fontWeight: 600, color: M.t3, letterSpacing: 2.2, textTransform: 'uppercase' }}>{t('month.thisMonth')}</span>
-            <span style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 11, color: M.t2, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-              <span style={{ color: monthTotal >= expectedMonthHours ? M.gn : M.t1 }}>{fmtHours(monthTotal)}</span>
-              <span style={{ color: M.tf }}> / {fmtHours(expectedMonthHours)}</span>
-            </span>
-          </div>
-          <div style={{ height: 2, background: M.b1, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%',
-              width: `${Math.min(100, (monthTotal / expectedMonthHours) * 100)}%`,
-              background: monthTotal >= expectedMonthHours ? M.gn : M.ac,
-              transition: 'width 500ms cubic-bezier(.22,1,.36,1)',
-            }} />
-          </div>
-          {(monthDelta != null || workingDays.count > 0) && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-              <span style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontStyle: 'italic', fontSize: 13, color: M.t3, lineHeight: 1.3 }}>
-                {monthDelta == null ? '' :
-                  monthDelta === 0 ? t('month.sameAsLast') :
-                    monthDelta > 0 ? <>+{fmtHours(monthDelta)} {t('month.vsLast')}</> :
-                      <>{fmtHours(monthDelta)} {t('month.vsLast')}</>}
-              </span>
-              {workingDays.count > 0 && (
-                <span style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 10, color: M.tf, fontVariantNumeric: 'tabular-nums' }}>
-                  <span style={{ textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: 600 }}>{t('week.flex')} </span>
-                  <span style={{ color: flexBalance >= 0 ? M.gn : '#d97706', fontWeight: 700 }}>
-                    {flexBalance >= 0 ? '+' : ''}{fmtHours(flexBalance)}
-                  </span>
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+        <MonthGoalProgress
+          monthTotal={monthTotal}
+          expectedMonthHours={expectedMonthHours}
+          monthDelta={monthDelta}
+          flexBalance={flexBalance}
+          workingDaysCount={workingDays.count}
+        />
       )}
 
       {/* Heads up */}
       {loaded && (overtimeHours > 0 || weekendHours > 0 || longDayCount > 0) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 9, fontWeight: 600, color: '#d97706', letterSpacing: 2.2, textTransform: 'uppercase' }}>
-            {t('week.headsUp')}
-          </div>
-          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontStyle: 'italic', fontSize: 13, color: M.t2, lineHeight: 1.5 }}>
-            {overtimeHours > 0 && <div>· {fmtHours(overtimeHours)} {t('week.overtime', { goal: fmtHours(workingDays.count * goal) })}</div>}
-            {longDayCount > 0 && <div>· {t(longDayCount === 1 ? 'week.overTenDays' : 'week.overTenDaysPlural', { n: longDayCount })}</div>}
-            {weekendHours > 0 && <div>· {fmtHours(weekendHours)} {t('week.weekendHours')}</div>}
-          </div>
-        </div>
+        <MonthHeadsUp
+          overtimeHours={overtimeHours}
+          longDayCount={longDayCount}
+          weekendHours={weekendHours}
+          workingDaysCount={workingDays.count}
+          goal={goal}
+        />
       )}
 
       {/* Per client */}
       {!loaded ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div className="skeleton" style={{ height: 12, width: 80, borderRadius: 4 }} />
-          <div className="skeleton" style={{ height: 28, borderRadius: 6 }} />
-          <div className="skeleton" style={{ height: 28, borderRadius: 6 }} />
-        </div>
+        <Stack gap="xs">
+          <Skeleton height="xs" width="2xl" radius="xs" />
+          <Skeleton height="sm" radius="xs" />
+          <Skeleton height="sm" radius="xs" />
+        </Stack>
       ) : clientTotals.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           <div style={{
@@ -770,6 +634,6 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
           textTransform: 'uppercase',
         }}>{t('week.refreshing')}</div>
       )}
-    </div>
+    </Stack>
   )
 }

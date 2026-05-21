@@ -43,6 +43,11 @@ export const colors = {
     green500: "#16a34a", // light green
     error: "#ef4444", // tailwind red-500, both modes
     warning: "#f59e0b", // tailwind amber-500, both modes
+    // Deep "ink" colors for text sitting on the tinted month-heatmap cells
+    // (light mode); chosen for legibility on the pale green/amber/red fills.
+    forestInk: "#0f4d2a", // hit-goal text
+    amberInk: "#925706", // partial-day text
+    redInk: "#b1170a", // missed-workday text
   },
 
   background: {
@@ -233,6 +238,9 @@ export const light = {
   btn: colors.brand.violet400,
   bsh: shadows.brand,
   co: colors.chart.light,
+  goalInk: colors.typography.forestInk,
+  partialInk: colors.typography.amberInk,
+  missedInk: colors.typography.redInk,
 } as const;
 
 export const dark = {
@@ -262,6 +270,11 @@ export const dark = {
   btn: colors.brand.violet300,
   bsh: shadows.heavy,
   co: colors.chart.dark,
+  // Dark mode keeps the hit-goal number at primary ink (the green fill is
+  // already vivid); partial/missed inks stay the same warm/red as light.
+  goalInk: colors.typography.gray100,
+  partialInk: colors.typography.amberInk,
+  missedInk: colors.typography.redInk,
 } as const;
 
 export type Theme = typeof light | typeof dark;
