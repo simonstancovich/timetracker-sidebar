@@ -34,7 +34,7 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
       {maskPanels.map((pos, i) => (
         <div
           key={i}
-          className="intro-mask"
+          className="overlay-layer intro-mask"
           style={pos}
           onClick={onDismiss}
           onMouseDown={onDismiss}
@@ -43,7 +43,7 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
 
       {readOnly && (
         <div
-          className="intro-block"
+          className="overlay-layer intro-block"
           style={{ top, left, width, height }}
           onClick={onDismiss}
           onMouseDown={onDismiss}
@@ -51,7 +51,7 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
       )}
 
       <div
-        className="intro-ring"
+        className="overlay-layer intro-ring"
         style={{
           top,
           left,

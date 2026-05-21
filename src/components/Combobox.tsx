@@ -88,6 +88,17 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
       mouseActiveRef.current = false
       if (!open) setOpen(true)
       else setHighlight((h) => Math.max(0, h - 1))
+    } else if (e.key === 'Tab' && open && filtered.length > 0) {
+      // Tab walks the open list (Shift+Tab backwards); at either edge it closes
+      // and lets focus move on, so it's navigable but never a focus trap.
+      const atEdge = e.shiftKey ? highlight <= 0 : highlight >= filtered.length - 1
+      if (atEdge) {
+        setOpen(false)
+      } else {
+        e.preventDefault()
+        mouseActiveRef.current = false
+        setHighlight((h) => (e.shiftKey ? Math.max(0, h - 1) : h + 1))
+      }
     } else if (e.key === 'Home' && open) {
       e.preventDefault()
       mouseActiveRef.current = false

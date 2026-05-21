@@ -3,7 +3,10 @@ import { spacing, vars, zIndex as z } from "../../theme";
 
 export const root = style({
   position: "absolute",
-  inset: 0,
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
   display: "flex",
   flexDirection: "column",
   alignItems: "center",

@@ -11,7 +11,9 @@ body {
 
 button, input, select, textarea { font-family: inherit; }
 
-button:focus { outline: none; }
+/* Only suppress the outline for pointer focus; keyboard (:focus-visible) keeps
+   the accent ring from theme.css.ts regardless of stylesheet order. */
+button:focus:not(:focus-visible) { outline: none; }
 
 input, textarea, select {
   transition: border-color .15s, box-shadow .15s;
@@ -254,7 +256,9 @@ span.skeleton { display: inline-block; vertical-align: middle; }
   mix-blend-mode: overlay;
   z-index: 0;
 }
-.mode-root > * { position: relative; z-index: 1; }
+/* Lift content above the grain ::before. Skip full-screen overlays so they
+   keep their own position:absolute/fixed instead of being forced relative. */
+.mode-root > *:not(.overlay-layer) { position: relative; z-index: 1; }
 @keyframes floatUp {
   0% { opacity: 1; transform: translateY(0) scale(1); }
   70% { opacity: 1; transform: translateY(-52px) scale(1.06); }

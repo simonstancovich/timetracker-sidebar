@@ -72,6 +72,16 @@ describe('<Combobox />', () => {
     expect(onChange).toHaveBeenCalledWith('')
   })
 
+  it('Tab walks the open dropdown instead of leaving immediately', async () => {
+    const onChange = vi.fn()
+    render(<Combobox value="" items={items} onChange={onChange} />)
+    const input = screen.getByRole('combobox')
+    await userEvent.click(input) // opens, highlight at index 0 (DevCore)
+    await userEvent.tab() // stays in list, moves to index 1 (Acme Corp)
+    await userEvent.keyboard('{Enter}')
+    expect(onChange).toHaveBeenCalledWith('2')
+  })
+
   it('reopening with ArrowDown highlights the first option (no off-by-one)', async () => {
     const onChange = vi.fn()
     render(<Combobox value="" items={items} onChange={onChange} />)

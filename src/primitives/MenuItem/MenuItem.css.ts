@@ -15,5 +15,5 @@ export const root = style({
 
 export const highlighted = style({
   color: vars.typography.accentInk,
-  background: vars.background.accent,
+  background: vars.background.accentMuted,
 });

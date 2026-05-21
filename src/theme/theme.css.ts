@@ -184,7 +184,7 @@ globalStyle(
 
 globalStyle("input:focus, textarea:focus, select:focus", {
   borderColor: `${vars.border.accent} !important`,
-  boxShadow: `0 0 0 3px ${vars.background.accent} !important`,
+  boxShadow: `0 0 0 3px color-mix(in srgb, ${vars.border.accent} 35%, transparent) !important`,
 });
 
 globalStyle("input::placeholder, textarea::placeholder", {
