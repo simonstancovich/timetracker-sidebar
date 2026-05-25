@@ -1088,6 +1088,12 @@ export default function App() {
   const done = todayH >= GOAL;
   const gpct = Math.min((todayH / GOAL) * 100, 100);
 
+  // Live total for the displayed clock: saved hours + the unsaved running
+  // timer, so the Today clock ticks up while the timer runs. `done`/celebration
+  // above stay on saved hours so the confetti only fires on a real logged 8h.
+  const liveTodayH = todayH + (tSec > 0 ? tSec / 3600 : 0);
+  const liveDone = liveTodayH >= GOAL;
+
   // Save flash — auto-dismiss after 2.1s.
   useEffect(() => {
     if (!saveToast) return;
@@ -1131,13 +1137,22 @@ export default function App() {
     setJustHitGoal(true);
     setLastCelebratedDate(today);
     window.electronAPI.storeSet("lastCelebratedDate", today);
-    const bloomEnd = window.setTimeout(() => setJustHitGoal(false), 1700);
-    const toastEnd = window.setTimeout(() => setGoalCelebration(null), 4200);
-    return () => {
-      clearTimeout(bloomEnd);
-      clearTimeout(toastEnd);
-    };
   }, [done, authed, lastCelebratedDate, lang]);
+
+  // Auto-dismiss bloom + celebration toast in separate effects keyed on the
+  // flags, so the trigger above re-running (it sets lastCelebratedDate, a dep)
+  // can't cancel these timers mid-flight and strand them on forever.
+  useEffect(() => {
+    if (!justHitGoal) return;
+    const id = window.setTimeout(() => setJustHitGoal(false), 1700);
+    return () => clearTimeout(id);
+  }, [justHitGoal]);
+
+  useEffect(() => {
+    if (!goalCelebration) return;
+    const id = window.setTimeout(() => setGoalCelebration(null), 4200);
+    return () => clearTimeout(id);
+  }, [goalCelebration]);
 
   // Lazy load projects for a company
   const ensureProjects = async (cid: string) => {
@@ -1441,9 +1456,9 @@ export default function App() {
       onTabChange={setTab}
       tRun={tRun}
       tSec={tSec}
-      todayH={todayH}
+      todayH={liveTodayH}
       goalHours={GOAL}
-      done={done}
+      done={liveDone}
       justHitGoal={justHitGoal}
       clockDate={clockDate}
       clockTime={clockTime}
@@ -1674,7 +1689,7 @@ export default function App() {
                 fontFamily: '"Instrument Serif","Georgia",serif',
                 fontSize: 90,
                 fontWeight: 400,
-                color: done ? M.gn : M.t1,
+                color: liveDone ? M.gn : M.t1,
                 letterSpacing: -3,
                 lineHeight: 0.9,
                 display: "inline-block",
@@ -1682,7 +1697,7 @@ export default function App() {
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {fmtHours(todayH).split(":")[0]}
+              {fmtHours(liveTodayH).split(":")[0]}
               <span
                 aria-hidden
                 style={{
@@ -1712,12 +1727,12 @@ export default function App() {
                   }}
                 />
               </span>
-              {fmtHours(todayH).split(":")[1]}
+              {fmtHours(liveTodayH).split(":")[1]}
               <span
                 style={{
                   fontStyle: "italic",
                   fontSize: 40,
-                  color: done ? M.gn : M.ac,
+                  color: liveDone ? M.gn : M.ac,
                   marginLeft: 4,
                 }}
               >
@@ -1737,10 +1752,10 @@ export default function App() {
                 textDecoration: "none",
               }}
             >
-              {done
-                ? t("today.dayDoneSubtitle", { extra: fmtHours(todayH - GOAL) })
+              {liveDone
+                ? t("today.dayDoneSubtitle", { extra: fmtHours(liveTodayH - GOAL) })
                 : t("today.toGoSubtitle", {
-                    remaining: fmtHours(Math.max(0, GOAL - todayH)),
+                    remaining: fmtHours(Math.max(0, GOAL - liveTodayH)),
                   })}
             </div>
           </div>

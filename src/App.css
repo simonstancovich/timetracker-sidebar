@@ -130,9 +130,9 @@ span.skeleton { display: inline-block; vertical-align: middle; }
 .timer-dial-btn:active { transform: scale(0.94); transition-duration: 80ms; }
 .app-dark-glow {
   background:
-    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(126, 95, 255, 0.22) 0%, transparent 55%),
-    radial-gradient(ellipse 600px 900px at 0% 100%, rgba(180, 120, 220, 0.14) 0%, transparent 50%),
-    #0b0910;
+    radial-gradient(ellipse 700px 520px at 100% -4%, rgba(140, 104, 255, 0.24) 0%, transparent 56%),
+    radial-gradient(ellipse 620px 900px at 0% 108%, rgba(196, 120, 214, 0.15) 0%, transparent 52%),
+    linear-gradient(180deg, #120c1c 0%, #0b0910 44%, #08060e 100%);
 }
 .glassy {
   backdrop-filter: blur(18px) saturate(130%);

@@ -8,7 +8,7 @@ export const colors = {
   brand: {
     violet50: "#f9ece5",
     violet100: "#e5b098",
-    violet200: "#e89472", // dark-mode accent
+    violet200: "#ef9b78", // dark-mode accent
     violet300: "#d47f5a", // dark-mode button
     violet400: "#c96442", // light-mode accent / brand
     violet500: "#7c3817", // light-mode accent text
@@ -17,10 +17,10 @@ export const colors = {
 
   typography: {
     white: "#ffffff",
-    gray100: "#f5f3ff", // dark primary
-    gray300: "#c4bedb", // dark secondary
-    gray500: "#8b85a3", // dark tertiary
-    gray700: "#5a5470", // dark faint
+    gray100: "#faf8ff", // dark primary
+    gray300: "#d0c9e8", // dark secondary
+    gray500: "#968fb0", // dark tertiary
+    gray700: "#757090", // dark faint
     // Light stack: near-neutral with a barely-warm undertone. Stops the
     // "sandy" effect (warm chrome + warm accent = dune wash) by pulling
     // chrome off the warm axis while the accent stays warm.
@@ -28,7 +28,7 @@ export const colors = {
     inkMuted: "#73706c", // light tertiary
     inkSoft: "#484340", // light secondary
     ink: "#1e1a17", // light primary
-    violet200: "#e89472", // dark accent text (terracotta)
+    violet200: "#ef9b78", // dark accent text (terracotta)
     violet400: "#c96442", // light accent text (terracotta)
     violet500: "#f4d4c3", // dark accent-on-accent-bg text
     // Deep terracotta — text color for text sitting on a tinted accent bg in
@@ -36,10 +36,10 @@ export const colors = {
     accentInk: "#7c3817",
     // "pink" slot is now dusty rose — warm but different hue than terracotta,
     // so the two don't melt into each other.
-    pink400: "#e88fa1", // dark rose
+    pink400: "#ed93a6", // dark rose
     pink500: "#a33553", // light rose
     pinkVivid: "#c94369",
-    green400: "#6fd4a0", // dark green
+    green400: "#74dba6", // dark green
     green500: "#16a34a", // light green
     error: "#ef4444", // tailwind red-500, both modes
     warning: "#f59e0b", // tailwind amber-500, both modes
@@ -58,15 +58,15 @@ export const colors = {
     pageLight: "#fdfcfb",
     pageDark: "#0b0910",
     surfaceLight: "#f6f4f1",
-    surfaceDark: "rgba(255,255,255,0.04)",
+    surfaceDark: "rgba(255,255,255,0.045)",
     raisedLight: "#ebe8e3",
     raisedDark: "rgba(255,255,255,0.10)",
-    glassDark: "rgba(255,255,255,0.065)",
+    glassDark: "rgba(170,150,228,0.08)",
     // Accent tinted bgs stay terracotta.
     accentLight: "#f9ece5",
-    accentDark: "rgba(232,148,114,0.12)",
+    accentDark: "rgba(239,155,120,0.15)",
     accentMutedLight: "#e5b098",
-    accentMutedDark: "rgba(232,148,114,0.24)",
+    accentMutedDark: "rgba(239,155,120,0.24)",
     // "pink" bgs now dusty rose.
     pinkLight: "#fbe9ee",
     pinkDark: "rgba(232,143,161,0.10)",
@@ -81,9 +81,9 @@ export const colors = {
   border: {
     // Near-neutral dividers, barely-warm.
     softLight: "#e5e1db",
-    softDark: "rgba(255,255,255,0.10)",
+    softDark: "rgba(166,146,214,0.17)",
     strongLight: "#d0ccc4",
-    strongDark: "rgba(255,255,255,0.18)",
+    strongDark: "rgba(166,146,214,0.30)",
     greenLight: "#bbf7d0",
     greenDark: "rgba(111,212,160,0.25)",
     pinkLight: "#e0bcc6",
@@ -93,12 +93,12 @@ export const colors = {
     // Mirrors brand.violet400 / violet200 — kept in the border namespace so
     // accent-colored borders (focus/active states) can be sourced semantically.
     accentLight: "#c96442",
-    accentDark: "#e89472",
+    accentDark: "#ef9b78",
   },
 
   chart: {
     light: ["#c96442", "#a33553", "#b88527", "#6f8f5f"] as readonly string[],
-    dark: ["#e89472", "#e88fa1", "#e8c060", "#9bbf85"] as readonly string[],
+    dark: ["#ef9b78", "#ed93a6", "#e8c060", "#9bbf85"] as readonly string[],
   },
 } as const;
 
