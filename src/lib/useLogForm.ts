@@ -65,3 +65,5 @@ export function useLogForm() {
     hydrate,
   };
 }
+
+export type UseLogForm = ReturnType<typeof useLogForm>;

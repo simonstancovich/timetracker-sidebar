@@ -7,6 +7,7 @@ export * from "./ErrorBoundary";
 export * from "./HoursRingButton";
 export * from "./IntroOverlay";
 export * from "./LoginScreen";
+export * from "./LogView";
 export * from "./MeetingsWidget";
 export * from "./MonthDayCell";
 export * from "./MonthGoalProgress";
