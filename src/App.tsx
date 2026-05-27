@@ -68,6 +68,7 @@ import {
   achDescription,
 } from "./lib/i18n";
 import { useModal } from "./lib/useModal";
+import { useLogForm } from "./lib/useLogForm";
 import { buildIntroSteps } from "./lib/introSteps";
 import * as prim from "./primitives";
 
@@ -361,20 +362,21 @@ export default function App() {
     prevDisplayXp.current = current;
   }, [sessionXp, tRun, tSec]);
 
-  // Log form state
-  const [fCo, setFCo] = useState("");
-  const [fPr, setFPr] = useState("");
-  const [fH, setFH] = useState(1);
-  const [fD, setFD] = useState("");
-  const [fNote, setFNote] = useState("");
-  const [fInv, setFInv] = useState(true);
-  const [fHInput, setFHInput] = useState("1:00");
-  useEffect(() => {
-    setFHInput(fmtHours(fH));
-  }, [fH]);
+  // Log form state (cohesive hook)
+  const {
+    fCo, setFCo,
+    fPr, setFPr,
+    fH, setFH,
+    fD, setFD,
+    fNote, setFNote,
+    fInv, setFInv,
+    fHInput, setFHInput,
+    editingId, setEditingId,
+    editingDate, setEditingDate,
+    reset: resetLogForm,
+    hydrate: hydrateLogForm,
+  } = useLogForm();
   const [logFormLoaded, setLogFormLoaded] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingDate, setEditingDate] = useState<Date | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<{
     title: string;
@@ -477,16 +479,6 @@ export default function App() {
     }
   };
 
-  const resetLogForm = () => {
-    setEditingId(null);
-    setEditingDate(null);
-    setFCo("");
-    setFPr("");
-    setFH(1);
-    setFD("");
-    setFNote("");
-    setFInv(true);
-  };
 
   // Credit a logged session back to the to-do that started it (if any). Uses the
   // same billed (rounded-up-to-15-min) hours the entry is saved with, so the
@@ -674,21 +666,14 @@ export default function App() {
     setTNote("");
     setTInv(true);
     setPendingCancelTimer(false);
-    setFCo("");
-    setFPr("");
-    setFH(1);
+    resetLogForm();
     setFHInput("1:00");
-    setFD("");
-    setFNote("");
-    setFInv(true);
-    setEditingId(null);
-    setEditingDate(null);
     setDraftId(null);
     setSessionXp(0);
     setCurrentUser(null);
     setTimerLoaded(false);
     setLogFormLoaded(false);
-  }, [authed]);
+  }, [authed, resetLogForm, setFHInput]);
 
   // ─── Persisted: mode, xp, unlocked, streak, timer ──────────────────────
   useEffect(() => {
@@ -941,12 +926,7 @@ export default function App() {
     (async () => {
       const f = await window.electronAPI.storeGet("logForm");
       if (f && typeof f === "object") {
-        setFCo(f.fCo || "");
-        setFPr(f.fPr || "");
-        setFH(typeof f.fH === "number" ? f.fH : 1);
-        setFD(f.fD || "");
-        setFNote(f.fNote || "");
-        setFInv(typeof f.fInv === "boolean" ? f.fInv : true);
+        hydrateLogForm(f);
         if (f.fCo)
           loadProjects(f.fCo)
             .then((list) => setProjectCache((c) => ({ ...c, [f.fCo]: list })))
@@ -954,11 +934,18 @@ export default function App() {
       }
       setLogFormLoaded(true);
     })();
-  }, [authed]);
+  }, [authed, hydrateLogForm]);
 
   useEffect(() => {
     if (!authed || !logFormLoaded) return;
-    window.electronAPI.storeSet("logForm", { fCo, fPr, fH, fD, fNote, fInv });
+    window.electronAPI.storeSet("logForm", {
+      fCo: fCo,
+      fPr: fPr,
+      fH: fH,
+      fD: fD,
+      fNote: fNote,
+      fInv: fInv,
+    });
   }, [authed, logFormLoaded, fCo, fPr, fH, fD, fNote, fInv]);
 
   // ─── Load companies once authed ────────────────────────────────────────
