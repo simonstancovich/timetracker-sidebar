@@ -2,6 +2,7 @@ export * from "./AbsenceForm";
 export * from "./AppHeader";
 export * from "./ChapterHeading";
 export * from "./Combobox";
+export * from "./DayView";
 export * from "./ErrorBoundary";
 export * from "./HoursRingButton";
 export * from "./IntroOverlay";
