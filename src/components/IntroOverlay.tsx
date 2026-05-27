@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useState, type SyntheticEvent } from 'react'
+import { useLayoutEffect, useState, type SyntheticEvent } from 'react'
 import { useModal } from '../lib/useModal'
 import type { IntroStep } from '../lib/introSteps'
 import { chapterRoman } from '../lib/roman'
 import { vars, type Mode } from '../theme'
-import { Button, DisplayText, MonoText, Overlay, Stack, Text } from '../primitives'
+import * as prim from '../primitives'
 import { Spotlight } from './Spotlight'
 import { TourTooltip } from './TourTooltip'
 
@@ -139,7 +139,7 @@ export function IntroOverlay({
 
   if (isFullScreen) {
     return (
-      <Overlay
+      <prim.Overlay
         ref={modalRef}
         role="dialog"
         aria-modal="true"
@@ -149,12 +149,12 @@ export function IntroOverlay({
         tone={mode === 'dark' ? 'none' : 'screen'}
         className={mode === 'dark' ? 'app-dark-glow' : undefined}
       >
-        <Stack className="intro-in" align="center" paddingBottom="xl">
+        <prim.Stack className="intro-in" align="center" paddingBottom="xl">
           <IntroDial done={isLast} />
-        </Stack>
+        </prim.Stack>
 
-        <Stack className="intro-in intro-d1" align="center" paddingBottom="sm">
-          <MonoText
+        <prim.Stack className="intro-in intro-d1" align="center" paddingBottom="sm">
+          <prim.MonoText
             size="xs"
             weight="bold"
             tracking="display"
@@ -162,10 +162,10 @@ export function IntroOverlay({
             color={isLast ? 'green' : 'accent'}
           >
             {isLast ? '✦ Ready' : 'Welcome'}
-          </MonoText>
-        </Stack>
+          </prim.MonoText>
+        </prim.Stack>
 
-        <DisplayText
+        <prim.DisplayText
           className="intro-in intro-d2"
           size="5xl"
           align="center"
@@ -173,20 +173,20 @@ export function IntroOverlay({
           maxWidth="prose"
         >
           {current.title}
-        </DisplayText>
+        </prim.DisplayText>
 
-        <Stack
+        <prim.Stack
           className="intro-in intro-d3"
           align="center"
           paddingTop="md"
           paddingBottom="xl"
         >
-          <Text size="md" color="secondary" align="center" maxWidth="prose" preLine>
+          <prim.Text size="md" color="secondary" align="center" maxWidth="prose" preLine>
             {current.body}
-          </Text>
-        </Stack>
+          </prim.Text>
+        </prim.Stack>
 
-        <Button
+        <prim.Button
           onClick={onAdvance}
           variant={isLast ? 'success' : 'primary'}
           shape="pill"
@@ -194,22 +194,22 @@ export function IntroOverlay({
           className="intro-in intro-d4"
         >
           {current.nextLabel || "Let's go"}
-        </Button>
+        </prim.Button>
 
         {isFirst && (
-          <Stack className="intro-in intro-d5" align="center" paddingTop="lg">
-            <Button variant="link" mono size="xs" onClick={onSkip}>
+          <prim.Stack className="intro-in intro-d5" align="center" paddingTop="lg">
+            <prim.Button variant="link" mono size="xs" onClick={onSkip}>
               Skip the tour
-            </Button>
-          </Stack>
+            </prim.Button>
+          </prim.Stack>
         )}
-      </Overlay>
+      </prim.Overlay>
     )
   }
 
   if (!rect) {
     return (
-      <Overlay
+      <prim.Overlay
         tone="scrim"
         zIndex="introMask"
         onClick={(e) => e.stopPropagation()}
@@ -263,38 +263,38 @@ export function IntroOverlay({
         left={tooltipLeft}
         maxWidth={tooltipMaxW}
       >
-        <Stack paddingBottom="xs">
-          <MonoText size="2xs" weight="bold" color="faint" transform="uppercase" tracking="loosest">
-            <MonoText size="2xs" weight="bold" color="accent" transform="uppercase" tracking="loosest">
+        <prim.Stack paddingBottom="xs">
+          <prim.MonoText size="2xs" weight="bold" color="faint" transform="uppercase" tracking="loosest">
+            <prim.MonoText size="2xs" weight="bold" color="accent" transform="uppercase" tracking="loosest">
               § {chapterRoman(contentIndex)}
-            </MonoText>
+            </prim.MonoText>
             {' · '}
             {contentTotal}
-          </MonoText>
-        </Stack>
-        <Stack paddingBottom="xs">
-          <DisplayText size="3xl" italic tracking="tight">
+          </prim.MonoText>
+        </prim.Stack>
+        <prim.Stack paddingBottom="xs">
+          <prim.DisplayText size="3xl" italic tracking="tight">
             {current.title}
-          </DisplayText>
-        </Stack>
-        <Stack paddingBottom={current.hint ? 'xs' : 'md'}>
-          <Text size="base" color="secondary">
+          </prim.DisplayText>
+        </prim.Stack>
+        <prim.Stack paddingBottom={current.hint ? 'xs' : 'md'}>
+          <prim.Text size="base" color="secondary">
             {current.body}
-          </Text>
-        </Stack>
+          </prim.Text>
+        </prim.Stack>
         {current.hint && (
-          <Stack paddingBottom="md">
-            <DisplayText size="md" italic color="tertiary" leading="relaxed">
+          <prim.Stack paddingBottom="md">
+            <prim.DisplayText size="md" italic color="tertiary" leading="relaxed">
               {current.hint}
-            </DisplayText>
-          </Stack>
+            </prim.DisplayText>
+          </prim.Stack>
         )}
-        <Stack direction="row" align="center" justify="spaceBetween" gap="xs">
-          <Button variant="link" mono size="xs" onClick={onSkip}>
+        <prim.Stack direction="row" align="center" justify="spaceBetween" gap="xs">
+          <prim.Button variant="link" mono size="xs" onClick={onSkip}>
             Skip
-          </Button>
+          </prim.Button>
           {current.needsManualNext && (
-            <Button
+            <prim.Button
               variant="primary"
               shape="pill"
               mono
@@ -303,9 +303,9 @@ export function IntroOverlay({
               disabled={!canAdvance}
             >
               {current.nextLabel || 'Next'}
-            </Button>
+            </prim.Button>
           )}
-        </Stack>
+        </prim.Stack>
       </TourTooltip>
     </>
   )

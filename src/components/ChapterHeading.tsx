@@ -1,4 +1,4 @@
-import { DisplayText, MonoText, Stack } from "../primitives";
+import * as prim from "../primitives";
 
 interface Props {
   title: string;
@@ -7,23 +7,23 @@ interface Props {
 
 export function ChapterHeading({ title, hint }: Props) {
   return (
-    <Stack
+    <prim.Stack
       direction="row"
       justify="spaceBetween"
       align="baseline"
       gap="md"
       paddingBottom="xs"
     >
-      <Stack direction="row" align="baseline" gap="xs">
-        <DisplayText size="2xl" italic color="accent">
+      <prim.Stack direction="row" align="baseline" gap="xs">
+        <prim.DisplayText size="2xl" italic color="accent">
           §
-        </DisplayText>
-        <DisplayText size="2xl" italic>
+        </prim.DisplayText>
+        <prim.DisplayText size="2xl" italic>
           {title}
-        </DisplayText>
-      </Stack>
+        </prim.DisplayText>
+      </prim.Stack>
       {hint && (
-        <MonoText
+        <prim.MonoText
           size="xs"
           weight="semibold"
           color="faint"
@@ -31,8 +31,8 @@ export function ChapterHeading({ title, hint }: Props) {
           transform="uppercase"
         >
           — {hint} —
-        </MonoText>
+        </prim.MonoText>
       )}
-    </Stack>
+    </prim.Stack>
   );
 }

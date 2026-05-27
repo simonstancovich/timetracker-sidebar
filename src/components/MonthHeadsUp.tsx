@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { useTranslation } from "../lib/i18n";
 import { fmtHours } from "../lib/hours";
-import { DisplayText, MonoText, Stack } from "../primitives";
+import * as prim from "../primitives";
 
 interface Props {
   overtimeHours: number;
@@ -31,19 +31,19 @@ export function MonthHeadsUp({
   ].filter((n): n is string => n != null);
 
   return (
-    <Stack gap="xs">
-      <MonoText size="2xs" weight="semibold" color="warning" transform="uppercase" tracking="loosest">
+    <prim.Stack gap="xs">
+      <prim.MonoText size="2xs" weight="semibold" color="warning" transform="uppercase" tracking="loosest">
         {t("week.headsUp")}
-      </MonoText>
-      <Stack gap="none">
+      </prim.MonoText>
+      <prim.Stack gap="none">
         {notes.map((note) => (
           <Fragment key={note}>
-            <DisplayText size="md" italic color="secondary" leading="loose">
+            <prim.DisplayText size="md" italic color="secondary" leading="loose">
               {note}
-            </DisplayText>
+            </prim.DisplayText>
           </Fragment>
         ))}
-      </Stack>
-    </Stack>
+      </prim.Stack>
+    </prim.Stack>
   );
 }

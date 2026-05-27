@@ -26,9 +26,9 @@ export const root = style({
 
 export const variant = styleVariants({
   primary: {
-    background: vars.typography.accent,
+    background: vars.background.button,
     color: vars.typography.onAccent,
-    boxShadow: vars.shadow.brand,
+    boxShadow: vars.shadow.button,
   },
   success: {
     background: vars.typography.green,
@@ -38,6 +38,11 @@ export const variant = styleVariants({
   secondary: {
     background: vars.background.raised,
     color: vars.typography.secondary,
+    border: `1px solid ${vars.border.soft}`,
+  },
+  ghost: {
+    background: "transparent",
+    color: vars.typography.tertiary,
     border: `1px solid ${vars.border.soft}`,
   },
   link: {

@@ -367,6 +367,17 @@ ipcMain.handle("api-call", async (event, payload) => {
 
 ipcMain.handle("check-auth", async () => probeAuthenticated());
 
+// Connectivity probe: reachable if the server answered at all (any HTTP status),
+// regardless of auth. Used to clear the offline banner once we're back online.
+ipcMain.handle("ping", async () => {
+  const res = await apiRequest({
+    c: "time",
+    m: "load",
+    body: { date: formatLocalDate(new Date()) },
+  });
+  return { reachable: !res.timedOut && !res.networkError };
+});
+
 async function probeAuthenticated() {
   const res = await apiRequest({
     c: "time",
@@ -397,6 +408,72 @@ async function probeAuthenticated() {
     return false;
   }
 }
+
+// Raw form POST to a full URL in the shared session (login isn't a c/m call).
+function rawPost(url, body) {
+  return new Promise((resolve) => {
+    let settled = false;
+    let timeoutId;
+    const done = (r) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      resolve(r);
+    };
+    const req = net.request({
+      method: "POST",
+      url,
+      session: session.fromPartition("persist:timetracker"),
+      useSessionCookies: true,
+      redirect: "manual",
+    });
+    req.setHeader("Content-Type", "application/x-www-form-urlencoded");
+    req.setHeader("X-Requested-With", "XMLHttpRequest");
+    timeoutId = setTimeout(() => {
+      try {
+        req.abort();
+      } catch {}
+      done({ timedOut: true });
+    }, REQUEST_TIMEOUT_MS);
+    let text = "";
+    req.on("response", (res) => {
+      res.on("data", (chunk) => {
+        text += chunk.toString();
+      });
+      res.on("end", () =>
+        done({ status: res.statusCode, body: text.replace(/^﻿/, "") }),
+      );
+    });
+    req.on("error", (err) => done({ networkError: err.message }));
+    req.write(new URLSearchParams(body).toString());
+    req.end();
+  });
+}
+
+// In-app login: POST credentials to DevCore's login endpoint in the shared
+// session so the resulting ci_session cookie is reused by every api-call.
+ipcMain.handle("login", async (_e, creds) => {
+  const username = (creds && creds.username) || "";
+  const password = (creds && creds.password) || "";
+  if (!username || !password) return { success: false, error: "missing" };
+  const res = await rawPost(`${BASE_URL}/index.php/login/do_login/`, {
+    username,
+    password,
+  });
+  if (res.timedOut) return { success: false, error: "timeout" };
+  if (res.networkError) return { success: false, error: res.networkError };
+  try {
+    const json = JSON.parse(res.body);
+    if (json && json.success) {
+      mainWindow?.webContents.send("auth-success");
+      return { success: true };
+    }
+    return { success: false, error: "invalid_credentials" };
+  } catch {
+    log.warn(`[login] non-JSON ${res.status}: ${res.body.slice(0, 120)}`);
+    return { success: false, error: `http_${res.status}` };
+  }
+});
 
 ipcMain.handle("open-auth", () => {
   if (!authWindow) createAuthWindow();

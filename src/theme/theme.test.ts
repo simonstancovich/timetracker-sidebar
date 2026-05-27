@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  colors, pickColor, chartColors, alpha,
-  light, dark, themes,
+  colors, pickColor, chartColors, alpha, vars,
   fontFamily, fontSize, fontWeight, lineHeight, letterSpacing,
   spacing, widths, sizes, radii, shadows, zIndex, opacity, duration, easing, transitions,
 } from './index'
@@ -84,37 +83,12 @@ describe('chartColors / alpha helpers', () => {
   })
 })
 
-describe('back-compat theme records (light / dark / themes)', () => {
-  it('light and dark expose the same key set', () => {
-    expect(Object.keys(light).sort()).toEqual(Object.keys(dark).sort())
-  })
-
-  it('every theme field is non-empty', () => {
-    for (const t of [light, dark]) {
-      for (const [k, v] of Object.entries(t)) {
-        if (k === 'co') expect((v as readonly string[]).length).toBeGreaterThan(0)
-        else expect(v).toBeTruthy()
-      }
-    }
-  })
-
-  it('themes map looks up by id', () => {
-    expect(themes.light).toBe(light)
-    expect(themes.dark).toBe(dark)
-  })
-
-  it('id matches the lookup key', () => {
-    expect(light.id).toBe('light')
-    expect(dark.id).toBe('dark')
-  })
-
-  it('records are derived from the colors catalog (single source of truth)', () => {
-    expect(light.bg).toBe(colors.background.pageLight)
-    expect(light.t1).toBe(colors.typography.ink)
-    expect(dark.bg).toBe(colors.background.pageDark)
-    expect(dark.t1).toBe(colors.typography.gray100)
-    expect(light.bsh).toBe(shadows.brand)
-    expect(dark.bsh).toBe(shadows.heavy)
+describe('vars contract', () => {
+  it('exposes the extended tokens added for the M→vars unification', () => {
+    expect(vars.background.button).toMatch(/^var\(/)
+    expect(vars.shadow.button).toMatch(/^var\(/)
+    expect(vars.typography.goalInk).toMatch(/^var\(/)
+    expect(vars.typography.danger).toMatch(/^var\(/)
   })
 })
 

@@ -1,7 +1,6 @@
 import { useTranslation } from "../lib/i18n";
 import { fmtHours } from "../lib/hours";
-import { ActivityRing, IconButton, MonoText, StatusDot } from "../primitives";
-import type { StatusDotColor } from "../primitives";
+import * as prim from "../primitives";
 
 interface Props {
   tRun: boolean;
@@ -33,12 +32,12 @@ export function HoursRingButton({
         ? "status.timerPaused"
         : "status.noTimer",
   );
-  const statusDotColor: StatusDotColor =
+  const statusDotColor: prim.StatusDotColor =
     status === "running" ? "pink" : status === "paused" ? "amber" : "red";
   const hoursColor = done ? "green" : todayH > 0 ? "primary" : "faint";
 
   return (
-    <IconButton
+    <prim.IconButton
       variant="ring"
       size="fit"
       onClick={onClick}
@@ -46,7 +45,7 @@ export function HoursRingButton({
       aria-label={statusTitle}
       className={justHitGoal ? "goal-bloom" : undefined}
       badge={
-        <StatusDot
+        <prim.StatusDot
           color={statusDotColor}
           glow={status === "running"}
           pulse={status === "running"}
@@ -54,16 +53,16 @@ export function HoursRingButton({
         />
       }
     >
-      <ActivityRing
+      <prim.ActivityRing
         progress={goalHours > 0 ? todayH / goalHours : 0}
         done={done}
         size={42}
         stroke={2}
       >
-        <MonoText size="xs" weight="medium" color={hoursColor}>
+        <prim.MonoText size="xs" weight="medium" color={hoursColor}>
           {fmtHours(todayH)}
-        </MonoText>
-      </ActivityRing>
-    </IconButton>
+        </prim.MonoText>
+      </prim.ActivityRing>
+    </prim.IconButton>
   );
 }

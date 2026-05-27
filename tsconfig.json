@@ -15,7 +15,7 @@
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
 
-    "strictNullChecks": true,
+    "strict": true,
 
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest"]
   },

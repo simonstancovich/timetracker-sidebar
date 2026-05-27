@@ -1,3 +1,5 @@
+import { vars, chart } from '../theme'
+import * as prim from '../primitives'
 import { useEffect, useMemo, useState } from 'react'
 import { loadTimeEntries, TimeEntry } from '../api'
 import { mondayOf } from '../lib/date'
@@ -5,27 +7,9 @@ import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { weekInsight } from '../lib/personality'
 import { useTranslation, type Lang } from '../lib/i18n'
 import type { MonthClosureCache } from '../lib/useMonthClosure'
-
-type Theme = {
-  bg: string
-  s1: string
-  s2: string
-  b1: string
-  t1: string
-  t2: string
-  t3: string
-  tf: string
-  ac: string
-  ad: string
-  at: string
-  gn: string
-  pk: string
-  bsh: string
-  co: readonly string[]
-}
+import { MONO, SERIF } from '../lib/fonts'
 
 interface Props {
-  M: Theme
   goal: number
   referenceDate: Date
   onPickDay: (d: Date) => void
@@ -40,7 +24,7 @@ const fmtHours = (h: number) => {
   return `${hh}:${String(mm).padStart(2, '0')}`
 }
 
-export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName, monthClosure }: Props) {
+export function WeekView({ goal, referenceDate, onPickDay, onBackfillDay, firstName, monthClosure }: Props) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language as Lang
   const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
@@ -166,11 +150,6 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
     }
   }, [weekDates, monthClosure])
 
-  const weekClosed = useMemo(() => {
-    if (!monthClosure) return false
-    return weekDates.some((d) => monthClosure.isClosed(d.getFullYear(), d.getMonth()) === true)
-  }, [weekDates, monthClosure])
-
   const isFinished = weekDates[6] < new Date()
   const topClient = clientTotals[0]
   const insight = useMemo(() => weekInsight({
@@ -187,8 +166,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
     firstName,
     isFinished,
     lang,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [weekTotal, billable, prevWeekTotal, hit, workDays.length, bestDay?.hours, topClient?.hours, topClient?.name, firstName, isFinished, lang])
+  }), [weekTotal, weeklyGoal, billable, prevWeekTotal, hit, workDays.length, bestDay, locale, topClient, firstName, isFinished, lang])
 
   const weekdayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI'] as const
   const mondayToFriday = weekDates.slice(0, 5)
@@ -207,16 +185,16 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
           const isWorkday = isWorkingDay(d, holidays)
           // Hours color: today=accent · past hit goal=green · past under goal=amber · past missing workday=red · future/weekend=muted
           const hoursColor = isToday
-            ? M.ac
+            ? vars.typography.accent
             : isFuture
-              ? M.tf
+              ? vars.typography.faint
               : h >= goal
-                ? M.gn
+                ? vars.typography.green
                 : h > 0
                   ? '#d97706'
                   : isWorkday
                     ? '#ef4444'
-                    : M.tf
+                    : vars.typography.faint
           return (
             <button
               key={k}
@@ -225,8 +203,8 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
               title={holiday ? `${d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })} · ${holiday}` : d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}
               className="engrave-card"
               style={{
-                background: isToday ? `${M.ac}1a` : M.s1,
-                border: isToday ? `1.5px solid ${M.ac}` : `1px solid ${M.b1}`,
+                background: isToday ? `color-mix(in srgb, ${vars.typography.accent} 10%, transparent)` : vars.background.surface,
+                border: isToday ? `1.5px solid ${vars.typography.accent}` : `1px solid ${vars.border.soft}`,
                 borderRadius: 10,
                 padding: '12px 4px',
                 cursor: loaded ? 'pointer' : 'default',
@@ -240,17 +218,17 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
               }}
             >
               <span style={{
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 8,
                 fontWeight: 700,
                 letterSpacing: 1.6,
-                color: isToday ? M.ac : M.t3,
+                color: isToday ? vars.typography.accent : vars.typography.tertiary,
                 lineHeight: 1,
               }}>{weekdayLabels[idx]}</span>
               <span style={{
-                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontFamily: SERIF,
                 fontSize: 24,
-                color: isToday ? M.ac : M.t1,
+                color: isToday ? vars.typography.accent : vars.typography.primary,
                 lineHeight: 1,
                 fontVariantNumeric: 'tabular-nums',
                 letterSpacing: -0.4,
@@ -258,7 +236,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
                 {loaded ? d.getDate() : ' '}
               </span>
               <span style={{
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 9,
                 color: hoursColor,
                 fontWeight: 600,
@@ -278,31 +256,31 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
         gap: 8,
         paddingTop: 14,
         paddingBottom: 12,
-        borderTop: `1px solid ${M.b1}`,
-        borderBottom: `1px solid ${M.b1}`,
+        borderTop: `1px solid ${vars.border.soft}`,
+        borderBottom: `1px solid ${vars.border.soft}`,
         textAlign: 'center',
       }}>
         <div>
-          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontSize: 24, color: M.t1, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>{loaded ? fmtHours(weekTotal) : '—'}</div>
-          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 8, color: M.tf, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.total')}</div>
+          <div style={{ fontFamily: SERIF, fontSize: 24, color: vars.typography.primary, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>{loaded ? fmtHours(weekTotal) : '—'}</div>
+          <div style={{ fontFamily: MONO, fontSize: 8, color: vars.typography.faint, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.total')}</div>
         </div>
         <div>
-          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontSize: 24, color: M.t1, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>
+          <div style={{ fontFamily: SERIF, fontSize: 24, color: vars.typography.primary, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>
             {loaded && avgPerWorkday > 0 ? avgPerWorkday.toFixed(1) : '—'}
             {loaded && avgPerWorkday > 0 && (
-              <span style={{ fontStyle: 'italic', fontSize: 15, color: M.ac, marginLeft: 1 }}>h</span>
+              <span style={{ fontStyle: 'italic', fontSize: 15, color: vars.typography.accent, marginLeft: 1 }}>h</span>
             )}
           </div>
-          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 8, color: M.tf, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.avgDay')}</div>
+          <div style={{ fontFamily: MONO, fontSize: 8, color: vars.typography.faint, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.avgDay')}</div>
         </div>
         <div>
-          <div style={{ fontFamily: '"Instrument Serif","Georgia",serif', fontSize: 24, color: M.t1, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>
+          <div style={{ fontFamily: SERIF, fontSize: 24, color: vars.typography.primary, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4 }}>
             {loaded && weekTotal > 0 ? Math.round(billablePct) : '—'}
             {loaded && weekTotal > 0 && (
-              <span style={{ fontStyle: 'italic', fontSize: 15, color: M.gn, marginLeft: 1 }}>%</span>
+              <span style={{ fontStyle: 'italic', fontSize: 15, color: vars.typography.green, marginLeft: 1 }}>%</span>
             )}
           </div>
-          <div style={{ fontFamily: '"JetBrains Mono",ui-monospace,monospace', fontSize: 8, color: M.tf, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.billable')}</div>
+          <div style={{ fontFamily: MONO, fontSize: 8, color: vars.typography.faint, textTransform: 'uppercase', letterSpacing: 1.6, marginTop: 5, fontWeight: 600 }}>{t('week.billable')}</div>
         </div>
       </div>
 
@@ -311,38 +289,38 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <span style={{
-              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+              fontFamily: MONO,
               fontSize: 9,
               fontWeight: 600,
-              color: M.t3,
+              color: vars.typography.tertiary,
               letterSpacing: 2.2,
               textTransform: 'uppercase',
             }}>{t('week.weeklyGoal')}</span>
             <span style={{
-              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+              fontFamily: MONO,
               fontSize: 11,
-              color: M.t2,
+              color: vars.typography.secondary,
               fontWeight: 600,
               fontVariantNumeric: 'tabular-nums',
             }}>
-              <span style={{ color: weekTotal >= weeklyGoal ? M.gn : M.t1 }}>{fmtHours(weekTotal)}</span>
-              <span style={{ color: M.tf }}> / {fmtHours(weeklyGoal)}</span>
+              <span style={{ color: weekTotal >= weeklyGoal ? vars.typography.green : vars.typography.primary }}>{fmtHours(weekTotal)}</span>
+              <span style={{ color: vars.typography.faint }}> / {fmtHours(weeklyGoal)}</span>
             </span>
           </div>
-          <div style={{ height: 2, background: M.b1, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ height: 2, background: vars.border.soft, position: 'relative', overflow: 'hidden' }}>
             <div style={{
               height: '100%',
               width: `${goalPct}%`,
-              background: weekTotal >= weeklyGoal ? M.gn : M.ac,
+              background: weekTotal >= weeklyGoal ? vars.typography.green : vars.typography.accent,
               transition: 'width 500ms cubic-bezier(.22,1,.36,1)',
             }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
             <span style={{
-              fontFamily: '"Instrument Serif","Georgia",serif',
+              fontFamily: SERIF,
               fontStyle: 'italic',
               fontSize: 13,
-              color: M.t3,
+              color: vars.typography.tertiary,
               lineHeight: 1.3,
             }}>
               {weekDelta == null ? '' :
@@ -351,14 +329,14 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
                     <>{fmtHours(weekDelta)} {t('week.vsLastWeek')}</>}
             </span>
             <span style={{
-              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+              fontFamily: MONO,
               fontSize: 10,
-              color: M.tf,
+              color: vars.typography.faint,
               letterSpacing: 0.4,
               fontVariantNumeric: 'tabular-nums',
             }}>
               <span style={{ textTransform: 'uppercase', letterSpacing: 1.6, fontWeight: 600 }}>{t('week.flex')} </span>
-              <span style={{ color: flexBalance >= 0 ? M.gn : '#d97706', fontWeight: 700 }}>
+              <span style={{ color: flexBalance >= 0 ? vars.typography.green : '#d97706', fontWeight: 700 }}>
                 {flexBalance >= 0 ? '+' : ''}{fmtHours(flexBalance)}
               </span>
             </span>
@@ -370,7 +348,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
       {loaded && (overtimeHours > 0 || weekendHours > 0 || longDays.length > 0) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <div style={{
-            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontFamily: MONO,
             fontSize: 9,
             fontWeight: 600,
             color: '#d97706',
@@ -378,10 +356,10 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
             textTransform: 'uppercase',
           }}>{t('week.headsUp')}</div>
           <div style={{
-            fontFamily: '"Instrument Serif","Georgia",serif',
+            fontFamily: SERIF,
             fontStyle: 'italic',
             fontSize: 13,
-            color: M.t2,
+            color: vars.typography.secondary,
             lineHeight: 1.5,
           }}>
             {overtimeHours > 0 && <div>· {fmtHours(overtimeHours)} {t('week.overtime', { goal: fmtHours(weeklyGoal) })}</div>}
@@ -401,16 +379,16 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
       ) : clientTotals.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           <div style={{
-            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontFamily: MONO,
             fontSize: 9,
             fontWeight: 600,
-            color: M.t3,
+            color: vars.typography.tertiary,
             letterSpacing: 2.2,
             textTransform: 'uppercase',
             marginBottom: 10,
           }}>{t('week.perClient')}</div>
           {clientTotals.map((c, gi) => {
-            const stripe = M.co[gi % M.co.length]
+            const stripe = chart[gi % chart.length]
             return (
               <div key={c.name} style={{
                 display: 'flex',
@@ -430,7 +408,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
                   background: stripe,
                 }} />
                 <span style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontSize: 17,
                   color: stripe,
                   letterSpacing: -0.1,
@@ -441,9 +419,9 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
                   flex: 1,
                 }}>{c.name}</span>
                 <span style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 12,
-                  color: M.t2,
+                  color: vars.typography.secondary,
                   fontWeight: 600,
                   fontVariantNumeric: 'tabular-nums',
                 }}>{fmtHours(c.hours)}</span>
@@ -457,7 +435,7 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
       {loaded && missingDays.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{
-            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontFamily: MONO,
             fontSize: 9,
             fontWeight: 600,
             color: '#f59e0b',
@@ -474,11 +452,11 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
                 title={d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}
                 style={{
                   background: 'transparent',
-                  border: `1px solid ${M.b1}`,
-                  color: M.t2,
+                  border: `1px solid ${vars.border.soft}`,
+                  color: vars.typography.secondary,
                   borderRadius: 999,
                   padding: '5px 12px',
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 10,
                   cursor: 'pointer',
                   fontWeight: 600,
@@ -495,37 +473,32 @@ export function WeekView({ M, goal, referenceDate, onPickDay, onBackfillDay, fir
 
       {/* Insight card */}
       {loaded && insight && (
-        <div style={{
-          background: M.ad,
-          border: `1px solid ${M.b1}`,
-          borderRadius: 12,
-          padding: '14px 16px',
-        }}>
+        <prim.Card tone="tinted" radius="lg" pad="lg">
           <div style={{
-            fontFamily: '"Instrument Serif","Georgia",serif',
+            fontFamily: SERIF,
             fontStyle: 'italic',
             fontSize: 15,
-            color: M.at,
+            color: vars.typography.accentInk,
             lineHeight: 1.4,
             letterSpacing: -0.1,
           }}>&ldquo;{insight}&rdquo;</div>
           <div style={{
-            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontFamily: MONO,
             fontSize: 8,
-            color: M.t3,
+            color: vars.typography.tertiary,
             textTransform: 'uppercase',
             letterSpacing: 1.8,
             marginTop: 10,
             fontWeight: 600,
           }}>— {t('week.coachNote')} · {t('week.weeklyInsight')}</div>
-        </div>
+        </prim.Card>
       )}
 
       {loading && loaded && (
         <div style={{
-          fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+          fontFamily: MONO,
           fontSize: 9,
-          color: M.tf,
+          color: vars.typography.faint,
           textAlign: 'center',
           letterSpacing: 1.4,
           textTransform: 'uppercase',

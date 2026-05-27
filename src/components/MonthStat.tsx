@@ -1,26 +1,25 @@
 import type { ReactNode } from "react";
-import { DisplayText, MonoText, Stack } from "../primitives";
-import type { DisplayTextColor } from "../primitives";
+import * as prim from "../primitives";
 
 interface Props {
   value: ReactNode;
   unit?: string;
-  unitColor?: DisplayTextColor;
+  unitColor?: prim.DisplayTextColor;
   label: string;
 }
 
 export function MonthStat({ value, unit, unitColor = "accent", label }: Props) {
   return (
-    <Stack gap="xs" align="center">
-      <DisplayText size="4xl" align="center" tracking="tight" leading="none" tabular>
+    <prim.Stack gap="xs" align="center">
+      <prim.DisplayText size="4xl" align="center" tracking="tight" leading="none" tabular>
         {value}
         {unit && (
-          <DisplayText size="xl" italic color={unitColor}>
+          <prim.DisplayText size="xl" italic color={unitColor}>
             {unit}
-          </DisplayText>
+          </prim.DisplayText>
         )}
-      </DisplayText>
-      <MonoText
+      </prim.DisplayText>
+      <prim.MonoText
         size="2xs"
         weight="semibold"
         color="faint"
@@ -28,7 +27,7 @@ export function MonthStat({ value, unit, unitColor = "accent", label }: Props) {
         tracking="loosest"
       >
         {label}
-      </MonoText>
-    </Stack>
+      </prim.MonoText>
+    </prim.Stack>
   );
 }

@@ -1,10 +1,42 @@
 {
   "tab": {
     "today": "Idag",
+    "todo": "Att göra",
     "timer": "Timer",
     "log": "+ Logga",
     "history": "Historik",
     "xp": "XP"
+  },
+  "todo": {
+    "eyebrow": "Att göra",
+    "eyebrowHint": "{{open}} öppna · {{done}} klara",
+    "taskPlaceholder": "Vad behöver göras?",
+    "estimatePlaceholder": "Est (h)",
+    "estimateLabel": "Estimering (h)",
+    "plannedLabel": "Planerat",
+    "deadlineLabel": "Deadline",
+    "plannedOn": "Planerat {{date}}",
+    "add": "Lägg till",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "editing": "Redigerar",
+    "editHint": "Dubbelklicka för att redigera",
+    "empty": "Inget i listan. Lägg till en uppgift ovan för att börja.",
+    "start": "Starta",
+    "startTask": "Starta uppgift",
+    "running": "Pågår",
+    "delete": "Ta bort",
+    "markDone": "Markera klar",
+    "markUndone": "Återöppna",
+    "loggedOfEstimate": "{{logged}} av {{estimate}}",
+    "noEstimate": "ingen estimering",
+    "overdue": "Försenad",
+    "dueToday": "Klar idag",
+    "dueTomorrow": "Klar imorgon",
+    "dueInDays": "Klar om {{n}}d",
+    "todaySection": "På din tallrik",
+    "upcomingSection": "Kommande",
+    "noProject": "Välj kund + projekt för att logga direkt"
   },
   "header": {
     "todayHours": "Idag",
@@ -139,9 +171,48 @@
     "showingResults": "Visar {{n}} av {{total}} — börja skriva för att filtrera",
     "typeHoursHint": "Skriv 1:30 eller 1.5",
     "fillFirst": "Fyll i kund, projekt & uppgift först",
-    "saveFailed": "Sparning misslyckades: {{err}}",
-    "deleteFailed": "Borttagning misslyckades: {{err}}",
+    "saveFailed": "Kunde inte spara — {{err}}",
+    "deleteFailed": "Kunde inte ta bort — {{err}}",
     "back": "Tillbaka"
+  },
+  "error": {
+    "offlineBanner": "Ingen anslutning — ändringar kan inte sparas förrän du är online igen",
+    "api": {
+      "offline": "Kan inte nå servern. Kontrollera din anslutning och försök igen.",
+      "timeout": "Servern svarade inte i tid. Försök igen.",
+      "auth": "Din session har gått ut. Logga in igen.",
+      "server": "Servern stötte på ett problem. Försök igen om en stund.",
+      "notFound": "Kunde inte hitta det på servern.",
+      "unknown": "Något gick fel. Försök igen."
+    },
+    "loadClients": "Kunde inte ladda kunder.",
+    "loadProjects": "Kunde inte ladda projekt."
+  },
+  "offline": {
+    "queued": "Sparat offline — synkas när du är uppkopplad igen",
+    "banner": "Offline — {{n}} sparade lokalt, synkas när du är uppkopplad igen",
+    "syncing": "Synkar {{n}} sparade offline…",
+    "syncFailed": "Kunde inte synka en post — den kastades",
+    "pendingBadge": "Offline",
+    "failedBadge": "Misslyckades",
+    "failedBanner": "{{n}} kunde inte sparas — kontrollera och försök igen",
+    "retry": "Försök igen"
+  },
+  "absence": {
+    "button": "Anmäl frånvaro",
+    "title": "Anmäl frånvaro",
+    "type": "Typ av frånvaro",
+    "from": "Från",
+    "to": "Till",
+    "note": "Uppgift *",
+    "notePlaceholder": "t.ex. semester, sjuk, föräldraledig…",
+    "preview": "{{days}} arbetsdagar · {{hours}} h",
+    "noDays": "Inga arbetsdagar i intervallet",
+    "submit": "Anmäl frånvaro",
+    "saving": "Anmäler…",
+    "cancel": "Avbryt",
+    "noClient": "Ingen Frånvaro-kund hittades",
+    "done": "Frånvaro anmäld för {{n}} dagar"
   },
   "entry": {
     "cancel": "Avbryt",
@@ -163,7 +234,13 @@
   },
   "login": {
     "pitch": "Logga in med ditt DevCore-konto för att börja spåra tid.",
-    "signIn": "Logga in"
+    "signIn": "Logga in",
+    "username": "Användarnamn",
+    "password": "Lösenord",
+    "signingIn": "Loggar in…",
+    "badCreds": "Fel användarnamn eller lösenord.",
+    "failed": "Kunde inte logga in. Försök igen.",
+    "browserFallback": "Problem att logga in? Använd webbläsaren"
   },
   "week": {
     "total": "Veckototal",

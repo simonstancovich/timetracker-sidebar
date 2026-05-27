@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from '../lib/i18n'
-import { Button, MonoText, Stack, Text } from '../primitives'
-import type {
-  StackBackground,
-  StackBorderColor,
-  TextColor,
-} from '../primitives'
+import * as prim from '../primitives'
 
 interface Props {
   onStartForMeeting?: (title: string) => void
@@ -81,7 +76,7 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
 
   if (!status.configured) {
     return (
-      <Stack
+      <prim.Stack
         background="surface"
         border="all"
         borderStyle="dashed"
@@ -89,35 +84,35 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
         paddingX="md"
         paddingY="sm"
       >
-        <Text size="sm" color="tertiary">{t('cal.notConfigured')}</Text>
-      </Stack>
+        <prim.Text size="sm" color="tertiary">{t('cal.notConfigured')}</prim.Text>
+      </prim.Stack>
     )
   }
 
   if (!status.signedIn) {
     return (
-      <Stack
+      <prim.Stack
         background="surface"
         border="all"
         borderRadius="lg"
         padding="md"
         gap="sm"
       >
-        <Text size="base" weight="bold" color="primary">
+        <prim.Text size="base" weight="bold" color="primary">
           {t('cal.connectYourCalendar')}
-        </Text>
-        <Text size="sm" color="tertiary">{t('cal.connectPitch')}</Text>
-        <Button
+        </prim.Text>
+        <prim.Text size="sm" color="tertiary">{t('cal.connectPitch')}</prim.Text>
+        <prim.Button
           variant="primary"
           size="sm"
           disabled={signingIn}
           onClick={onSignIn}
         >
           {signingIn ? t('cal.waitingSignIn') : t('cal.signInMs')}
-        </Button>
-        {signingIn && <Text size="xs" color="tertiary">{t('cal.browserOpens')}</Text>}
-        {error && <Text size="xs" color="error">{error}</Text>}
-      </Stack>
+        </prim.Button>
+        {signingIn && <prim.Text size="xs" color="tertiary">{t('cal.browserOpens')}</prim.Text>}
+        {error && <prim.Text size="xs" color="error">{error}</prim.Text>}
+      </prim.Stack>
     )
   }
 
@@ -129,7 +124,7 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
   const showEmpty = !loading && upcoming.length === 0
 
   const renderRestRow = (m: GraphMeeting) => (
-    <Stack
+    <prim.Stack
       key={m.id}
       direction="row"
       justify="spaceBetween"
@@ -137,25 +132,25 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
       gap="sm"
       paddingY="xs"
     >
-      <Text inline size="sm" color="secondary" truncate>
+      <prim.Text inline size="sm" color="secondary" truncate>
         {m.subject || t('cal.noSubject')}
-      </Text>
-      <MonoText size="sm" color="tertiary" weight="normal">
+      </prim.Text>
+      <prim.MonoText size="sm" color="tertiary" weight="normal">
         {fmtTime(m.start.dateTime, locale)}
-      </MonoText>
-    </Stack>
+      </prim.MonoText>
+    </prim.Stack>
   )
 
   return (
-    <Stack
+    <prim.Stack
       background="surface"
       border="all"
       borderRadius="lg"
       padding="md"
       gap="sm"
     >
-      <Stack direction="row" justify="spaceBetween" align="center">
-        <Text
+      <prim.Stack direction="row" justify="spaceBetween" align="center">
+        <prim.Text
           inline
           size="2xs"
           weight="bold"
@@ -164,20 +159,20 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
           transform="uppercase"
         >
           {t('cal.label')}
-        </Text>
-        <Button
+        </prim.Text>
+        <prim.Button
           variant="link"
           size="xs"
           onClick={onSignOut}
           title={t('cal.disconnect')}
         >
           {t('cal.disconnect')}
-        </Button>
-      </Stack>
+        </prim.Button>
+      </prim.Stack>
 
-      {error && <Text size="xs" color="error">{error}</Text>}
-      {showLoading && <Text size="sm" color="tertiary">{t('cal.loading')}</Text>}
-      {showEmpty && <Text size="sm" color="tertiary" italic>{t('cal.noMeetings')}</Text>}
+      {error && <prim.Text size="xs" color="error">{error}</prim.Text>}
+      {showLoading && <prim.Text size="sm" color="tertiary">{t('cal.loading')}</prim.Text>}
+      {showEmpty && <prim.Text size="sm" color="tertiary" italic>{t('cal.noMeetings')}</prim.Text>}
 
       {next && (
         <NextMeetingCard
@@ -189,8 +184,8 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
         />
       )}
 
-      {rest.length > 0 && <Stack gap="xs">{rest.map(renderRestRow)}</Stack>}
-    </Stack>
+      {rest.length > 0 && <prim.Stack gap="xs">{rest.map(renderRestRow)}</prim.Stack>}
+    </prim.Stack>
   )
 }
 
@@ -209,9 +204,9 @@ function NextMeetingCard({ meeting, now, locale, t, onStartForMeeting }: NextMee
   const inProgress = mins <= 0 && endMs > now
   const soon = mins > 0 && mins <= 5
 
-  const cardBackground: StackBackground = inProgress ? 'green' : soon ? 'pink' : 'page'
-  const cardBorderColor: StackBorderColor = inProgress ? 'green' : soon ? 'pink' : 'soft'
-  const labelColor: TextColor = inProgress ? 'green' : soon ? 'pink' : 'accent'
+  const cardBackground: prim.StackBackground = inProgress ? 'green' : soon ? 'pink' : 'page'
+  const cardBorderColor: prim.StackBorderColor = inProgress ? 'green' : soon ? 'pink' : 'soft'
+  const labelColor: prim.TextColor = inProgress ? 'green' : soon ? 'pink' : 'accent'
 
   const labelText = inProgress
     ? t('cal.now')
@@ -228,7 +223,7 @@ function NextMeetingCard({ meeting, now, locale, t, onStartForMeeting }: NextMee
   const onJoin = () => { if (joinUrl) window.open(joinUrl, '_blank', 'noopener,noreferrer') }
 
   return (
-    <Stack
+    <prim.Stack
       background={cardBackground}
       border="all"
       borderColor={cardBorderColor}
@@ -237,8 +232,8 @@ function NextMeetingCard({ meeting, now, locale, t, onStartForMeeting }: NextMee
       paddingY="sm"
       gap="xs"
     >
-      <Stack direction="row" justify="spaceBetween" align="center" gap="sm">
-        <Text
+      <prim.Stack direction="row" justify="spaceBetween" align="center" gap="sm">
+        <prim.Text
           inline
           size="2xs"
           weight="black"
@@ -247,29 +242,29 @@ function NextMeetingCard({ meeting, now, locale, t, onStartForMeeting }: NextMee
           transform="uppercase"
         >
           {labelText}
-        </Text>
-        <MonoText size="xs" color="tertiary" weight="normal">
+        </prim.Text>
+        <prim.MonoText size="xs" color="tertiary" weight="normal">
           {timeRange}
-        </MonoText>
-      </Stack>
-      <Text size="md" weight="bold" color="primary">{subject}</Text>
+        </prim.MonoText>
+      </prim.Stack>
+      <prim.Text size="md" weight="bold" color="primary">{subject}</prim.Text>
       {organizerName && (
-        <Text size="xs" color="tertiary">
+        <prim.Text size="xs" color="tertiary">
           {t('cal.withOrganizer', { name: organizerName })}
-        </Text>
+        </prim.Text>
       )}
       {onStartForMeeting && (
-        <Stack direction="row" gap="xs">
-          <Button variant="primary" size="xs" grow onClick={onStart}>
+        <prim.Stack direction="row" gap="xs">
+          <prim.Button variant="primary" size="xs" grow onClick={onStart}>
             {t('cal.startForThis')}
-          </Button>
+          </prim.Button>
           {joinUrl && (
-            <Button variant="secondary" size="xs" onClick={onJoin}>
+            <prim.Button variant="secondary" size="xs" onClick={onJoin}>
               {t('cal.join')}
-            </Button>
+            </prim.Button>
           )}
-        </Stack>
+        </prim.Stack>
       )}
-    </Stack>
+    </prim.Stack>
   )
 }

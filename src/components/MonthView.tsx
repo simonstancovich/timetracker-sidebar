@@ -4,12 +4,14 @@ import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { monthInsight } from '../lib/personality'
 import { useTranslation, type Lang } from '../lib/i18n'
 import type { MonthClosureCache } from '../lib/useMonthClosure'
-import { Button, DisplayText, Grid, MonoText, Skeleton, Stack, Text } from '../primitives'
+import * as prim from '../primitives'
 import { MonthDayCell } from './MonthDayCell'
-import { MonthStat } from './MonthStat'
-import { MonthSummaryStat } from './MonthSummaryStat'
+import { vars, chart } from '../theme'
 import { MonthGoalProgress } from './MonthGoalProgress'
 import { MonthHeadsUp } from './MonthHeadsUp'
+import { MonthStat } from './MonthStat'
+import { MonthSummaryStat } from './MonthSummaryStat'
+import { MONO, SERIF } from '../lib/fonts'
 
 interface ConfirmOptions {
   title: string
@@ -18,33 +20,7 @@ interface ConfirmOptions {
   onConfirm: () => void | Promise<void>
 }
 
-type Theme = {
-  bg: string
-  s1: string
-  s2: string
-  s3: string
-  b1: string
-  b2: string
-  t1: string
-  t2: string
-  t3: string
-  tf: string
-  ac: string
-  ad: string
-  at: string
-  gn: string
-  pk: string
-  btn: string
-  bsh: string
-  id: string
-  co: readonly string[]
-  goalInk: string
-  partialInk: string
-  missedInk: string
-}
-
 interface Props {
-  M: Theme
   goal: number
   referenceDate: Date
   onPickDay: (date: Date) => void
@@ -63,15 +39,13 @@ function isoWeekOf(d: Date): number {
   return Math.ceil((((+x - +yearStart) / 86400000) + 1) / 7)
 }
 
-const DAYS_SHORT = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön']
-
 const fmtHours = (h: number) => {
   const hh = Math.floor(h)
   const mm = Math.round((h - hh) * 60)
   return `${hh}:${String(mm).padStart(2, '0')}`
 }
 
-export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, firstName, confirm, notify, monthClosure }: Props) {
+export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, firstName, confirm, notify, monthClosure }: Props) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language as Lang
   const locale = lang === 'sv' ? 'sv-SE' : 'en-GB'
@@ -170,7 +144,7 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
           const ok = await endMonth(anchor)
           if (ok) {
             monthClosure?.setClosed(year, month, true)
-            notify?.(t('month.closeSuccess'), M.gn)
+            notify?.(t('month.closeSuccess'), vars.typography.green)
           } else {
             notify?.(t('month.closeError'), '#ef4444')
           }
@@ -252,16 +226,6 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
     }
     return b
   }, [entriesByDate])
-  const earnings = useMemo(() => {
-    let total = 0
-    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
-      for (const r of rows) {
-        if (r.invoice !== '1') continue
-        total += parseFloat(r.hour || '0') * parseFloat(r.hour_price || '0')
-      }
-    }
-    return total
-  }, [entriesByDate])
   const nonBillable = monthTotal - billable
   const billablePct = monthTotal > 0 ? (billable / monthTotal) * 100 : 0
 
@@ -275,18 +239,6 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
       }
     }
     return Object.values(m).sort((a, b) => b.hours - a.hours)
-  }, [entriesByDate])
-
-  const projectTotals = useMemo(() => {
-    const m: Record<string, { name: string; company: string; hours: number }> = {}
-    for (const rows of Object.values(entriesByDate) as TimeEntry[][]) {
-      for (const r of rows) {
-        const key = r._project_id
-        if (!m[key]) m[key] = { name: r.project, company: r.company, hours: 0 }
-        m[key].hours += parseFloat(r.hour || '0')
-      }
-    }
-    return Object.values(m).sort((a, b) => b.hours - a.hours).slice(0, 6)
   }, [entriesByDate])
 
   // Weekly rollup: group dates by ISO week
@@ -321,8 +273,7 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
     firstName,
     isFinished,
     lang,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [monthTotal, prevMonthTotal, workingDays.hit, workingDays.count, billable, bestWeek?.hours, topClient?.hours, firstName, isFinished, lang])
+  }), [monthTotal, prevMonthTotal, workingDays.hit, workingDays.count, billable, bestWeek, topClient, firstName, isFinished, lang, t])
 
   const monthDelta = prevMonthTotal != null ? monthTotal - prevMonthTotal : null
 
@@ -335,7 +286,7 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
       const deltaColor = monthDelta > 0 ? 'green' : 'warning'
       deltaContent = (
         <>
-          <Text inline weight="bold" color={deltaColor}>{prefix}{fmtHours(monthDelta)}</Text>
+          <prim.Text inline weight="bold" color={deltaColor}>{prefix}{fmtHours(monthDelta)}</prim.Text>
           {' '}{t('month.vsLast')}
         </>
       )
@@ -348,17 +299,17 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
   const dayHeader = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const
 
   return (
-    <Stack gap="lg" paddingTop="md" paddingX="md" paddingBottom="xl">
+    <prim.Stack gap="lg" paddingTop="md" paddingX="md" paddingBottom="xl">
       {/* Editorial month label */}
-      <DisplayText size="4xl" align="center" italic tracking="tight">
+      <prim.DisplayText size="4xl" align="center" italic tracking="tight">
         {monthLabelEditorial}
-      </DisplayText>
+      </prim.DisplayText>
 
       {/* Day-of-week header */}
-      <Grid columns={7} gap="xs">
+      <prim.Grid columns={7} gap="xs">
         {dayHeader.map((d, i) => (
           <Fragment key={d}>
-            <MonoText
+            <prim.MonoText
               size="2xs"
               weight="bold"
               tracking="loosest"
@@ -366,13 +317,13 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
               color={i >= 5 ? 'faint' : 'tertiary'}
             >
               {d}
-            </MonoText>
+            </prim.MonoText>
           </Fragment>
         ))}
-      </Grid>
+      </prim.Grid>
 
       {/* Calendar grid */}
-      <Grid columns={7} gap="xs">
+      <prim.Grid columns={7} gap="xs">
         {cells.map((cell) => (
           <Fragment key={cell.key}>
             <MonthDayCell
@@ -382,15 +333,14 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
               holiday={cell.date ? holidays.get(cell.key) : undefined}
               goal={goal}
               loaded={loaded}
-              M={M}
               onPick={onPickDay}
             />
           </Fragment>
         ))}
-      </Grid>
+      </prim.Grid>
 
       {/* 3-stat row */}
-      <Grid columns={3} gap="sm" paddingY="md" borderY align="center">
+      <prim.Grid columns={3} gap="sm" paddingY="md" borderY align="center">
         <MonthStat
           value={loaded ? fmtHours(monthTotal) : '—'}
           label={t('month.thisMonth')}
@@ -407,23 +357,16 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
           unitColor="green"
           label={t('week.billable')}
         />
-      </Grid>
+      </prim.Grid>
 
       {/* Earnings + goal-hit ratio subtitle */}
       {loaded && monthTotal > 0 && (
-        <Stack direction="row" justify="center" align="baseline" wrap gap="lg">
+        <prim.Stack direction="row" justify="center" align="baseline" wrap gap="lg">
           {workingDays.count > 0 && (
             <MonthSummaryStat
               value={`${workingDays.hit}/${workingDays.count}`}
               valueColor={workingDays.hit === workingDays.count ? 'green' : 'primary'}
               label="at goal"
-            />
-          )}
-          {earnings > 0 && (
-            <MonthSummaryStat
-              value={Math.round(earnings).toLocaleString('sv-SE')}
-              valueColor="pink"
-              label="kr earned"
             />
           )}
           {billable > 0 && (
@@ -432,7 +375,7 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
           {nonBillable > 0 && (
             <MonthSummaryStat value={fmtHours(nonBillable)} valueColor="secondary" label="internal" />
           )}
-        </Stack>
+        </prim.Stack>
       )}
 
       {/* Monthly goal progress + delta + flex */}
@@ -459,24 +402,24 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
 
       {/* Per client */}
       {!loaded ? (
-        <Stack gap="xs">
-          <Skeleton height="xs" width="2xl" radius="xs" />
-          <Skeleton height="sm" radius="xs" />
-          <Skeleton height="sm" radius="xs" />
-        </Stack>
+        <prim.Stack gap="xs">
+          <prim.Skeleton height="xs" width="2xl" radius="xs" />
+          <prim.Skeleton height="sm" radius="xs" />
+          <prim.Skeleton height="sm" radius="xs" />
+        </prim.Stack>
       ) : clientTotals.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           <div style={{
-            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontFamily: MONO,
             fontSize: 9,
             fontWeight: 600,
-            color: M.t3,
+            color: vars.typography.tertiary,
             letterSpacing: 2.2,
             textTransform: 'uppercase',
             marginBottom: 10,
           }}>{t('week.perClient')}</div>
           {clientTotals.map((c, gi) => {
-            const stripe = M.co[gi % M.co.length]
+            const stripe = chart[gi % chart.length]
             return (
               <div key={c.name} style={{
                 display: 'flex',
@@ -496,7 +439,7 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
                   background: stripe,
                 }} />
                 <span style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontSize: 17,
                   color: stripe,
                   letterSpacing: -0.1,
@@ -507,9 +450,9 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
                   flex: 1,
                 }}>{c.name}</span>
                 <span style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 12,
-                  color: M.t2,
+                  color: vars.typography.secondary,
                   fontWeight: 600,
                   fontVariantNumeric: 'tabular-nums',
                 }}>{fmtHours(c.hours)}</span>
@@ -523,7 +466,7 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
       {loaded && missingDays.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{
-            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontFamily: MONO,
             fontSize: 9,
             fontWeight: 600,
             color: '#d97706',
@@ -540,11 +483,11 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
                 title={d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}
                 style={{
                   background: 'transparent',
-                  border: `1px solid ${M.b1}`,
-                  color: M.t2,
+                  border: `1px solid ${vars.border.soft}`,
+                  color: vars.typography.secondary,
                   borderRadius: 999,
                   padding: '5px 12px',
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 10,
                   cursor: 'pointer',
                   fontWeight: 600,
@@ -557,9 +500,9 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
             ))}
             {missingDays.length > 8 && (
               <span style={{
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 10,
-                color: M.tf,
+                color: vars.typography.faint,
                 alignSelf: 'center',
                 letterSpacing: 1,
                 textTransform: 'uppercase',
@@ -572,30 +515,25 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
 
       {/* Insight card */}
       {loaded && insight && (
-        <div style={{
-          background: M.ad,
-          border: `1px solid ${M.b1}`,
-          borderRadius: 12,
-          padding: '14px 16px',
-        }}>
+        <prim.Card tone="tinted" radius="lg" pad="lg">
           <div style={{
-            fontFamily: '"Instrument Serif","Georgia",serif',
+            fontFamily: SERIF,
             fontStyle: 'italic',
             fontSize: 15,
-            color: M.at,
+            color: vars.typography.accentInk,
             lineHeight: 1.4,
             letterSpacing: -0.1,
           }}>&ldquo;{insight}&rdquo;</div>
           <div style={{
-            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontFamily: MONO,
             fontSize: 8,
-            color: M.t3,
+            color: vars.typography.tertiary,
             textTransform: 'uppercase',
             letterSpacing: 1.8,
             marginTop: 10,
             fontWeight: 600,
           }}>— {t('week.coachNote')} · {t('month.monthlyInsight')}</div>
-        </div>
+        </prim.Card>
       )}
 
       {/* Close-month action (subtle, only when closable) */}
@@ -608,10 +546,10 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
               padding: '8px 18px',
               borderRadius: 999,
               background: 'transparent',
-              border: `1px solid ${M.b1}`,
-              color: M.t2,
+              border: `1px solid ${vars.border.soft}`,
+              color: vars.typography.secondary,
               cursor: closing ? 'default' : 'pointer',
-              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+              fontFamily: MONO,
               fontSize: 10,
               fontWeight: 600,
               letterSpacing: 1.4,
@@ -626,14 +564,14 @@ export function MonthView({ M, goal, referenceDate, onPickDay, onBackfillDay, fi
 
       {loading && loaded && (
         <div style={{
-          fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+          fontFamily: MONO,
           fontSize: 9,
-          color: M.tf,
+          color: vars.typography.faint,
           textAlign: 'center',
           letterSpacing: 1.4,
           textTransform: 'uppercase',
         }}>{t('week.refreshing')}</div>
       )}
-    </Stack>
+    </prim.Stack>
   )
 }

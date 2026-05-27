@@ -9,7 +9,8 @@ import {
   type MouseEvent,
 } from 'react'
 import { useTranslation } from '../lib/i18n'
-import { IconButton, MenuItem, Popover, Stack, Text, TextInput } from '../primitives'
+import * as prim from '../primitives'
+
 import { XIcon } from '../icons/XIcon'
 
 interface Item { id: string; name: string }
@@ -65,8 +66,8 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
     if (!open) return
     const active = filtered[highlight]
     if (!active) return
-    document.getElementById(optionDomId(active.id))?.scrollIntoView?.({ block: 'nearest' })
-  }, [highlight, open, filtered])
+    document.getElementById(`${optionPrefix}-${active.id}`)?.scrollIntoView?.({ block: 'nearest' })
+  }, [highlight, open, filtered, optionPrefix])
 
   const pick = (id: string) => {
     onChange(id)
@@ -149,7 +150,7 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
     }
     const onHover = () => onHoverHighlight(i)
     return (
-      <MenuItem
+      <prim.MenuItem
         key={item.id}
         id={optionDomId(item.id)}
         highlighted={i === highlight}
@@ -157,7 +158,7 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
         onMouseEnter={onHover}
       >
         {item.name}
-      </MenuItem>
+      </prim.MenuItem>
     )
   }
 
@@ -169,8 +170,8 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
   })
 
   return (
-    <Stack ref={rootRef} position="relative" fullWidth>
-      <TextInput
+    <prim.Stack ref={rootRef} position="relative" fullWidth>
+      <prim.TextInput
         ref={inputRef}
         value={inputValue}
         onChange={handleChange}
@@ -188,14 +189,14 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
         aria-activedescendant={activeDescendant}
       />
       {value && (
-        <Stack
+        <prim.Stack
           position="absolute"
           top="none"
           right="sm"
           bottom="none"
           justify="center"
         >
-          <IconButton
+          <prim.IconButton
             variant="ghost"
             size="sm"
             onMouseDown={onClearMouseDown}
@@ -203,25 +204,25 @@ export function Combobox({ value, items, onChange, placeholder, maxResults = 40 
             aria-label={t('form.clear')}
           >
             <XIcon size={12} />
-          </IconButton>
-        </Stack>
+          </prim.IconButton>
+        </prim.Stack>
       )}
       {open && (
-        <Popover role="listbox" id={listboxId}>
+        <prim.Popover role="listbox" id={listboxId}>
           {showEmptyState ? (
-            <Stack paddingX="md" paddingY="sm">
-              <Text size="base" color="tertiary">{t('form.noMatches')}</Text>
-            </Stack>
+            <prim.Stack paddingX="md" paddingY="sm">
+              <prim.Text size="base" color="tertiary">{t('form.noMatches')}</prim.Text>
+            </prim.Stack>
           ) : (
             filtered.map(renderOption)
           )}
           {showResultsFooter && (
-            <Stack paddingX="md" paddingY="xs" border="top">
-              <Text size="sm" color="tertiary">{resultsFooterText}</Text>
-            </Stack>
+            <prim.Stack paddingX="md" paddingY="xs" border="top">
+              <prim.Text size="sm" color="tertiary">{resultsFooterText}</prim.Text>
+            </prim.Stack>
           )}
-        </Popover>
+        </prim.Popover>
       )}
-    </Stack>
+    </prim.Stack>
   )
 }

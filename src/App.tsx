@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { LoginScreen } from "./components/LoginScreen";
+import { vars, chart } from "./theme";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import * as ui from "./components";
 import { FlameIcon } from "./icons/FlameIcon";
-import { Combobox } from "./components/Combobox";
 import {
   Company,
   Project,
@@ -14,6 +21,16 @@ import {
   loadUsers,
   saveTimeEntry,
 } from "./api";
+import { classifyApiError, apiErrorKey } from "./lib/apiError";
+import {
+  PENDING_STORE_KEY,
+  FAILED_STORE_KEY,
+  LIVE_SESSION_ID,
+  entrySignature,
+  isPendingId,
+  makePendingEntry,
+  type PendingEntry,
+} from "./lib/pendingEntries";
 import { formatLocalDate, mondayOf } from "./lib/date";
 import {
   fmtClock,
@@ -53,27 +70,34 @@ import {
 import { useModal } from "./lib/useModal";
 import { buildIntroSteps } from "./lib/introSteps";
 import { smartDate } from "./lib/smartDate";
-import { ActivityRing, Spinner } from "./primitives";
+import * as prim from "./primitives";
+
 import { SunIcon } from "./icons/SunIcon";
 import { MoonIcon } from "./icons/MoonIcon";
 import { PauseIcon } from "./icons/PauseIcon";
-import { PlayIcon } from "./icons/PlayIcon";
 import { StopIcon } from "./icons/StopIcon";
 import { XIcon } from "./icons/XIcon";
 import { PlusIcon } from "./icons/PlusIcon";
 import { PencilIcon } from "./icons/PencilIcon";
-import { AppHeader } from "./components/AppHeader";
-import { PageEyebrow } from "./components/PageEyebrow";
-import { ChapterHeading } from "./components/ChapterHeading";
-import { IntroOverlay } from "./components/IntroOverlay";
-import { MeetingsWidget } from "./components/MeetingsWidget";
-import { MonthView } from "./components/MonthView";
-import { WeekView } from "./components/WeekView";
-import { useMonthClosure } from "./lib/useMonthClosure";
+
+import { MONO, SERIF } from "./lib/fonts";
+
+import { workingDaysInRange } from "./lib/absence";
+
 import {
-  light as L,
-  dark as D,
-  type Theme,
+  createTodo,
+  normalizeTodo,
+  taskKey,
+  todosInPlay,
+  todosUpcoming,
+  TODOS_STORE_KEY,
+  type Todo,
+  type TodoDraft,
+  type TodoFormState,
+} from "./lib/todos";
+import { useMonthClosure } from "./lib/useMonthClosure";
+import { useConnection } from "./lib/useConnection";
+import {
   lightTheme,
   darkTheme,
 } from "./theme";
@@ -87,8 +111,7 @@ export default function App() {
   const [mode, setMode] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
   const [pinned, setPinned] = useState(false);
-  const M: Theme = mode === "light" ? L : D;
-  const [tab, setTab] = useState<"today" | "timer" | "history" | "xp">("today");
+  const [tab, setTab] = useState<ui.HeaderTab>("today");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [historyScale, setHistoryScale] = useState<"day" | "week" | "month">(
     "week",
@@ -187,6 +210,12 @@ export default function App() {
     setModeTransition("in");
     setTimeout(() => setModeTransition("idle"), 200);
   };
+  // Latest refs so the one-time intro effect can call goSize / read size
+  // without re-running when they change.
+  const goSizeRef = useRef(goSize);
+  goSizeRef.current = goSize;
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
 
   const confirmSignOut = () => {
     if (window.confirm(t("footer.confirmSignOut"))) {
@@ -200,6 +229,10 @@ export default function App() {
   } | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [companiesError, setCompaniesError] = useState(false);
+  const [projectErrors, setProjectErrors] = useState<Record<string, boolean>>(
+    {},
+  );
   const [projectCache, setProjectCache] = useState<Record<string, Project[]>>(
     {},
   );
@@ -249,6 +282,22 @@ export default function App() {
   const [pendingAchs, setPendingAchs] = useState<Ach[]>([]);
   const [achStats, setAchStats] = useState<AchStats>(EMPTY_ACH_STATS);
   const [achStatsLoaded, setAchStatsLoaded] = useState(false);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [todosLoaded, setTodosLoaded] = useState(false);
+  const [activeTodoId, setActiveTodoId] = useState<string | null>(null);
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  // Hours already on the entry when the active to-do session began, so we only
+  // credit the new delta back to the to-do (continuing an entry resumes its time).
+  const activeTodoBaseHoursRef = useRef(0);
+  // To-do draft form, lifted here so it survives collapsing to top-bar mode.
+  const [todoDraft, setTodoDraft] = useState<TodoFormState>({
+    text: "",
+    estimate: "",
+    planned: "",
+    deadline: "",
+    co: "",
+    pr: "",
+  });
   const [lastCelebratedDate, setLastCelebratedDate] = useState<string>("");
   const [goalCelebration, setGoalCelebration] = useState<{
     title: string;
@@ -260,6 +309,22 @@ export default function App() {
   const [windowFocused, setWindowFocused] = useState(
     typeof document === "undefined" ? true : !document.hidden,
   );
+  const { online, setOnline } = useConnection();
+  // Simon mode — hidden dev gate. Triple-click the secret corner to toggle.
+  // Reveals features we keep deactivated for tester/demo builds. Persisted.
+  const [simonMode, setSimonMode] = useState(false);
+  const simonClicksRef = useRef(0);
+  const simonResetRef = useRef<number | null>(null);
+  // Offline save queue — entries that couldn't reach the API yet.
+  const [pendingQueue, setPendingQueue] = useState<PendingEntry[]>([]);
+  const [pendingLoaded, setPendingLoaded] = useState(false);
+  const [failedQueue, setFailedQueue] = useState<PendingEntry[]>([]);
+  const [failedLoaded, setFailedLoaded] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const pendingQueueRef = useRef<PendingEntry[]>([]);
+  const flushingRef = useRef(false);
+  const [absenceOpen, setAbsenceOpen] = useState(false);
+  const [absenceSaving, setAbsenceSaving] = useState(false);
   const [saveToast, setSaveToast] = useState<{
     cheer: string;
     hours: string;
@@ -269,6 +334,9 @@ export default function App() {
 
   // Timer state
   const [tSec, setTSec] = useState(0);
+  // Latest tSec for effects that need its value but must not re-run each tick.
+  const tSecRef = useRef(tSec);
+  tSecRef.current = tSec;
   const [tRun, setTRun] = useState(false);
   const [tCo, setTCo] = useState("");
   const [tPr, setTPr] = useState("");
@@ -345,6 +413,7 @@ export default function App() {
     setDraftId(null);
     draftIdRef.current = null;
     setTimerFormOpen(true);
+    setActiveTodoId(null);
   };
 
   const startSideQuest = () => {
@@ -421,6 +490,24 @@ export default function App() {
     setFInv(true);
   };
 
+  // Credit a logged session back to the to-do that started it (if any). Uses the
+  // same billed (rounded-up-to-15-min) hours the entry is saved with, so the
+  // to-do's logged total stays in sync with its entries. Only the delta since the
+  // session began counts, so continuing an entry isn't double-counted.
+  const accrueTodoHours = (todoId: string | null, totalHours: number) => {
+    if (!todoId) return;
+    const billed = roundUpToQuarter(totalHours);
+    const delta = +(billed - activeTodoBaseHoursRef.current).toFixed(2);
+    if (delta <= 0) return;
+    setTodos((ts) =>
+      ts.map((td) =>
+        td.id === todoId
+          ? { ...td, loggedH: +(td.loggedH + delta).toFixed(2) }
+          : td,
+      ),
+    );
+  };
+
   const stopAndLogCurrent = async () => {
     if (!tCo || !tPr || !tD.trim()) {
       addFloat(t("form.fillFirst"), "#ef4444");
@@ -437,6 +524,7 @@ export default function App() {
       new Date(),
       draftIdRef.current,
     );
+    accrueTodoHours(activeTodoId, h);
     resetTimer();
     setTab("today");
   };
@@ -451,9 +539,10 @@ export default function App() {
       note: string;
       invoice: boolean;
     },
+    opts?: { run?: boolean; todoId?: string | null; landingTab?: ui.HeaderTab },
   ) => {
     const applySwitch = async () => {
-      await ensureProjects(cid);
+      if (cid) await ensureProjects(cid);
       setTCo(cid);
       setTPr(prid);
       setTD(desc);
@@ -470,9 +559,13 @@ export default function App() {
         setTSec(0);
         setDraftId(null);
         draftIdRef.current = null;
-        setTRun(false);
+        setTRun(opts?.run ?? false);
       }
-      setTab("timer");
+      setActiveTodoId(opts?.todoId ?? null);
+      activeTodoBaseHoursRef.current = opts?.todoId
+        ? (continueFrom?.hours ?? 0)
+        : 0;
+      setTab(opts?.landingTab ?? "timer");
     };
 
     const canSaveCurrent = !!(tCo && tPr && tD.trim() && tSec > 0);
@@ -489,6 +582,7 @@ export default function App() {
           new Date(),
           draftIdRef.current,
         );
+        accrueTodoHours(activeTodoId, h);
       }
       await applySwitch();
     };
@@ -677,18 +771,18 @@ export default function App() {
 
   useEffect(() => {
     const r = document.documentElement.style;
-    r.setProperty("--rec-color", M.pk);
-    r.setProperty("--scrollbar-thumb", M.b1);
-    r.setProperty("--select-bg", M.bg);
-    r.setProperty("--select-fg", M.t1);
-  }, [M]);
+    r.setProperty("--rec-color", vars.typography.pink);
+    r.setProperty("--scrollbar-thumb", vars.border.soft);
+    r.setProperty("--select-bg", vars.background.page);
+    r.setProperty("--select-fg", vars.typography.primary);
+  }, []);
   useEffect(() => {
     if (!authed || introChecked) return;
     window.electronAPI.storeGet("intro_seen").then((seen) => {
       if (!seen) {
         setShowIntro(true);
         setIntroStep(0);
-        if (size !== "full") goSize("full");
+        if (sizeRef.current !== "full") goSizeRef.current("full");
       }
       setIntroChecked(true);
     });
@@ -792,36 +886,7 @@ export default function App() {
     return () => clearInterval(id);
   }, [currentUser, lang]);
 
-
-  const emptyMsg = useMemo(() => emptyTodayMessage(lang), [nowTick, lang]);
-
-  const tCoEmpty = !tCo;
-  const tPrEmpty = !tPr;
-  const tDEmpty = !tD.trim();
-  useEffect(() => {
-    if (!currentUser) return;
-    const first = currentUser.username.trim().split(/\s+/)[0] || "";
-    const compute = () =>
-      setTimerInsight(
-        getTimerInsight({
-          tRun,
-          tSec,
-          tCo,
-          tPr,
-          tD,
-          todayH,
-          goal: GOAL,
-          entriesToday: entries.length,
-          streak,
-          firstName: first,
-          lang,
-        }),
-      );
-    compute();
-    const id = window.setInterval(compute, 2 * 60 * 1000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tRun, tCoEmpty, tPrEmpty, tDEmpty, entries.length, currentUser, lang]);
+  const emptyMsg = useMemo(() => emptyTodayMessage(lang), [lang]);
 
   useEffect(() => {
     if (authed) window.electronAPI.storeSet("xp", xp);
@@ -865,9 +930,9 @@ export default function App() {
       tD,
       tNote,
       tInv,
-      tSec: tRun ? 0 : tSec,
+      tSec: tRun ? 0 : tSecRef.current,
       running: tRun,
-      startedAt: tRun ? Date.now() - tSec * 1000 : null,
+      startedAt: tRun ? Date.now() - tSecRef.current * 1000 : null,
       draftId,
     });
   }, [authed, timerLoaded, tCo, tPr, tD, tNote, tInv, tRun, draftId]);
@@ -899,12 +964,23 @@ export default function App() {
   }, [authed, logFormLoaded, fCo, fPr, fH, fD, fNote, fInv]);
 
   // ─── Load companies once authed ────────────────────────────────────────
+  const loadCompaniesNow = useCallback(() => {
+    setCompaniesError(false);
+    loadCompanies()
+      .then((list) => {
+        setCompanies(list);
+        setOnline(true);
+      })
+      .catch((err) => {
+        setCompaniesError(true);
+        const k = classifyApiError(err);
+        if (k === "offline" || k === "timeout") setOnline(false);
+      });
+  }, [setOnline]);
   useEffect(() => {
     if (!authed) return;
-    loadCompanies()
-      .then(setCompanies)
-      .catch(() => {});
-  }, [authed]);
+    loadCompaniesNow();
+  }, [authed, loadCompaniesNow]);
 
   // ─── Resolve current user (prefer cache; else infer from entries + user.load) ─
   useEffect(() => {
@@ -1049,32 +1125,118 @@ export default function App() {
   }, [tRun]);
 
   // ─── Derived ───────────────────────────────────────────────────────────
-  const todayI = useMemo(() => {
+  // Cheap; recompute each render so it's always the real current weekday.
+  const todayI = (() => {
     const now = new Date();
     const mon = mondayOf(now);
     return Math.max(0, Math.min(4, Math.floor((+now - +mon) / 86400000)));
-  }, [nowTick]);
-  const todayH = useMemo(
-    () => entries.reduce((s, e) => s + parseFloat(e.hour || "0"), 0),
-    [entries],
+  })();
+  // Single source of truth for what shows today: server rows plus any locally
+  // queued (pending) or quarantined (failed) entries for today, deduped by id.
+  // Survives restarts — queued entries are reloaded from the store.
+  const liveTodayEntries = useMemo(() => {
+    const todayISO = formatLocalDate(new Date());
+    const ids = new Set(entries.map((e) => e.id));
+    const extras = [...pendingQueue, ...failedQueue]
+      .filter((x) => x.entry.task_date === todayISO && !ids.has(x.entry.id))
+      .map((x) => x.entry);
+    return [...extras, ...entries];
+  }, [entries, pendingQueue, failedQueue]);
+  const failedIds = useMemo(
+    () => new Set(failedQueue.map((f) => f.entry.id)),
+    [failedQueue],
   );
+
+  // Committed total (saved + queued) — drives goal/celebration, never the
+  // unsaved running timer.
+  const todayH = useMemo(
+    () => liveTodayEntries.reduce((s, e) => s + parseFloat(e.hour || "0"), 0),
+    [liveTodayEntries],
+  );
+
+  // Volatile timer values for the ambient insight — read via ref so the message
+  // recomputes on the interval / language change rather than on every tick.
+  const insightInputRef = useRef({ tRun, tSec, tCo, tPr, tD, todayH, streak });
+  insightInputRef.current = { tRun, tSec, tCo, tPr, tD, todayH, streak };
+  useEffect(() => {
+    if (!currentUser) return;
+    const first = currentUser.username.trim().split(/\s+/)[0] || "";
+    const compute = () =>
+      setTimerInsight(
+        getTimerInsight({
+          ...insightInputRef.current,
+          goal: GOAL,
+          entriesToday: entries.length,
+          firstName: first,
+          lang,
+        }),
+      );
+    compute();
+    const id = window.setInterval(compute, 2 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [currentUser, lang, entries.length]);
+
+  // What the Today list renders: committed entries with the in-progress session
+  // folded in live — overriding the continued entry's hour, or added as a
+  // synthetic LIVE row. The hero and the list Total both derive from this, so
+  // they can't disagree.
+  const displayTodayEntries = useMemo(() => {
+    if (!(tSec > 0 && tCo && tPr && tD.trim())) return liveTodayEntries;
+    const liveHour = String(tSec / 3600);
+    const idx = liveTodayEntries.findIndex((r) => r.id === draftId);
+    if (idx >= 0) {
+      return liveTodayEntries.map((r, i) =>
+        i === idx ? { ...r, hour: liveHour } : r,
+      );
+    }
+    const co = companies.find((c) => c.id === tCo);
+    const pr = (projectCache[tCo] || []).find((p) => p.id === tPr);
+    const liveRow: TimeEntry = {
+      id: LIVE_SESSION_ID,
+      _user_id: "",
+      _project_id: tPr,
+      _company_id: tCo,
+      task_date: formatLocalDate(new Date()),
+      description: tD.trim(),
+      internal_description: tNote.trim(),
+      hour: liveHour,
+      invoice_hours: liveHour,
+      invoice: tInv ? "1" : "0",
+      no_flex: "0",
+      hour_price: pr?.hour_price || "0",
+      username: "",
+      company: co?.name || tCo,
+      project: pr?.name || "",
+      create_date: "",
+    };
+    return [liveRow, ...liveTodayEntries];
+  }, [
+    liveTodayEntries,
+    tSec,
+    tCo,
+    tPr,
+    tD,
+    tNote,
+    tInv,
+    draftId,
+    companies,
+    projectCache,
+  ]);
   const weekTotal = useMemo(() => weekH.reduce((s, h) => s + h, 0), [weekH]);
 
   const xpIntoLevel = xp % 1000;
-  const xpRemainingBucket = xpIntoLevel >= 950 ? 'near' : xpIntoLevel >= 750 ? 'late' : xpIntoLevel >= 400 ? 'mid' : xpIntoLevel > 0 ? 'fresh' : 'idle';
-  const streakHigh = streak >= 7;
-  const weekStrong = weekTotal >= 30;
+  // Volatile XP values read via ref so the coaching note recomputes hourly /
+  // on language change, not on every XP tick.
+  const xpCoachInputRef = useRef({ xp, xpIntoLevel, streak, weekTotal });
+  xpCoachInputRef.current = { xp, xpIntoLevel, streak, weekTotal };
   useEffect(() => {
     if (!currentUser) return;
     const first = currentUser.username.trim().split(/\s+/)[0] || "";
     const compute = () =>
       setXpCoach(
         xpCoachNote({
-          xp,
-          xpIntoLevel,
+          ...xpCoachInputRef.current,
           xpPerLevel: 1000,
-          streak,
-          weekTotal,
           firstName: first,
           lang,
         }),
@@ -1082,16 +1244,19 @@ export default function App() {
     compute();
     const id = window.setInterval(compute, 60 * 60 * 1000);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, lang, xpRemainingBucket, streakHigh, weekStrong]);
+  }, [currentUser, lang]);
 
   const done = todayH >= GOAL;
   const gpct = Math.min((todayH / GOAL) * 100, 100);
 
-  // Live total for the displayed clock: saved hours + the unsaved running
-  // timer, so the Today clock ticks up while the timer runs. `done`/celebration
-  // above stay on saved hours so the confetti only fires on a real logged 8h.
-  const liveTodayH = todayH + (tSec > 0 ? tSec / 3600 : 0);
+  // Live total for the displayed clock = sum of the rows actually shown on
+  // Today (incl. the in-progress session), so the hero and the list Total are
+  // identical. `done`/celebration above stay on committed hours so confetti
+  // only fires on a real logged 8h.
+  const liveTodayH = useMemo(
+    () => displayTodayEntries.reduce((s, e) => s + parseFloat(e.hour || "0"), 0),
+    [displayTodayEntries],
+  );
   const liveDone = liveTodayH >= GOAL;
 
   // Save flash — auto-dismiss after 2.1s.
@@ -1116,6 +1281,55 @@ export default function App() {
       document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
+
+  // Connection tracking lives in useConnection() above.
+
+  // Log stray errors / rejected promises (e.g. storage failures) for support.
+  // Intentionally no toast — background failures shouldn't alarm the user.
+  useEffect(() => {
+    const onErr = (e: ErrorEvent) =>
+      console.error("[window-error]", e.error || e.message);
+    const onRej = (e: PromiseRejectionEvent) =>
+      console.error("[unhandled-rejection]", e.reason);
+    window.addEventListener("error", onErr);
+    window.addEventListener("unhandledrejection", onRej);
+    return () => {
+      window.removeEventListener("error", onErr);
+      window.removeEventListener("unhandledrejection", onRej);
+    };
+  }, []);
+
+  useEffect(() => {
+    window.electronAPI.storeGet("simonMode").then((v) => setSimonMode(v === true));
+  }, []);
+
+  useEffect(() => {
+    window.electronAPI.storeGet(PENDING_STORE_KEY).then((v) => {
+      if (Array.isArray(v)) setPendingQueue(v as PendingEntry[]);
+      setPendingLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    pendingQueueRef.current = pendingQueue;
+    if (pendingLoaded) window.electronAPI.storeSet(PENDING_STORE_KEY, pendingQueue);
+  }, [pendingQueue, pendingLoaded]);
+
+  useEffect(() => {
+    window.electronAPI.storeGet(FAILED_STORE_KEY).then((v) => {
+      if (Array.isArray(v)) setFailedQueue(v as PendingEntry[]);
+      setFailedLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (failedLoaded) window.electronAPI.storeSet(FAILED_STORE_KEY, failedQueue);
+  }, [failedQueue, failedLoaded]);
+
+  // The To-do feature lives behind Simon mode; bounce off the tab when it's off.
+  useEffect(() => {
+    if (!simonMode && tab === "todo") setTab("today");
+  }, [simonMode, tab]);
 
   // Streak increment — pop animation when streak goes up after first hydration.
   useEffect(() => {
@@ -1157,16 +1371,322 @@ export default function App() {
   // Lazy load projects for a company
   const ensureProjects = async (cid: string) => {
     if (projectCache[cid]) return projectCache[cid];
-    const list = await loadProjects(cid);
-    setProjectCache((c) => ({ ...c, [cid]: list }));
-    return list;
+    try {
+      const list = await loadProjects(cid);
+      setProjectCache((c) => ({ ...c, [cid]: list }));
+      setProjectErrors((e) => (e[cid] ? { ...e, [cid]: false } : e));
+      return list;
+    } catch (err) {
+      setProjectErrors((e) => ({ ...e, [cid]: true }));
+      const k = classifyApiError(err);
+      if (k === "offline" || k === "timeout") setOnline(false);
+      return [];
+    }
   };
 
-  const addFloat = (txt: string, col: string) => {
-    const id = ++fid.current;
-    setFloats((f) => [...f, { id, txt, col }]);
-    setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1500);
+  // ─── To-do list (local, electron-store) ────────────────────────────────
+  useEffect(() => {
+    if (!authed) return;
+    let cancelled = false;
+    window.electronAPI.storeGet(TODOS_STORE_KEY).then((saved) => {
+      if (cancelled) return;
+      if (Array.isArray(saved))
+        setTodos((saved as Todo[]).map(normalizeTodo));
+      setTodosLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authed]);
+
+  useEffect(() => {
+    if (todosLoaded) window.electronAPI.storeSet(TODOS_STORE_KEY, todos);
+  }, [todos, todosLoaded]);
+
+  const resetTodoForm = () => {
+    setEditingTodoId(null);
+    setTodoDraft({
+      text: "",
+      estimate: "",
+      planned: "",
+      deadline: "",
+      co: "",
+      pr: "",
+    });
   };
+  const addTodo = (draft: TodoDraft) =>
+    setTodos((ts) => [createTodo(draft), ...ts]);
+  const updateTodo = (id: string, draft: TodoDraft) =>
+    setTodos((ts) =>
+      ts.map((td) =>
+        td.id === id
+          ? {
+              ...td,
+              text: draft.text,
+              estimateH: draft.estimateH,
+              plannedDate: draft.plannedDate,
+              deadline: draft.deadline,
+              companyId: draft.companyId,
+              companyName: draft.companyName,
+              projectId: draft.projectId,
+              projectName: draft.projectName,
+            }
+          : td,
+      ),
+    );
+  // Double-click a to-do to edit it: fill the form and jump to the To-do tab.
+  const editTodo = async (todo: Todo) => {
+    setEditingTodoId(todo.id);
+    setTodoDraft({
+      text: todo.text,
+      estimate: todo.estimateH > 0 ? String(todo.estimateH) : "",
+      planned: todo.plannedDate ?? "",
+      deadline: todo.deadline ?? "",
+      co: todo.companyId ?? "",
+      pr: todo.projectId ?? "",
+    });
+    if (todo.companyId) await ensureProjects(todo.companyId);
+    setTab("todo");
+  };
+  const toggleTodo = (id: string) =>
+    setTodos((ts) =>
+      ts.map((td) => (td.id === id ? { ...td, done: !td.done } : td)),
+    );
+  const deleteTodo = (id: string) =>
+    setTodos((ts) => ts.filter((td) => td.id !== id));
+
+  // The estimated to-do (if any) a tracked task belongs to, so logged entries
+  // and the running timer can show progress against its estimate.
+  const estimatedTodoFor = (cid: string, prid: string, desc: string) =>
+    todos.find(
+      (td) =>
+        td.estimateH > 0 &&
+        td.companyId === cid &&
+        td.projectId === prid &&
+        td.text === desc,
+    );
+
+  // Hours tracked against a to-do, derived from its actual time entries (the
+  // source of truth, in sync with the per-client totals). The running session
+  // counts live: a resumed entry uses the live clock, and a fresh session not
+  // yet saved is added on top so progress ticks up in real time.
+  const todoTrackedH = (td: Todo) => {
+    const belongs = (cid: string, prid: string, desc: string) =>
+      cid === td.companyId && prid === td.projectId && desc === td.text;
+    let sum = 0;
+    let countedRunning = false;
+    for (const e of entries) {
+      if (!belongs(e._company_id, e._project_id, e.description)) continue;
+      if (tRun && draftId === e.id) {
+        sum += tSec / 3600;
+        countedRunning = true;
+      } else {
+        sum += parseFloat(e.hour) || 0;
+      }
+    }
+    if (tRun && !countedRunning && draftId === null && belongs(tCo, tPr, tD)) {
+      sum += tSec / 3600;
+    }
+    return sum;
+  };
+
+  // Key of the task currently running (if any), so to-do rows can show a live
+  // "Running" state by matching their own task — independent of activeTodoId.
+  const activeTaskKey = tRun ? taskKey(tCo, tPr, tD) : null;
+
+  // Start a to-do in place: track that exact task immediately and stay on the
+  // current page (a live tracker appears on Today). A running timer is still
+  // saved/confirmed first via the guard. activeTodoId links logged time back.
+  // If today already has an entry for this task, continue it (resume its hours,
+  // keep it as the running entry) instead of starting a fresh, separate session.
+  // To-dos without a client + project fall back to the timer form to pick them.
+  const startTodo = (todo: Todo) => {
+    if (!todo.companyId || !todo.projectId) {
+      setTimerFormOpen(true);
+      switchTaskGuarded(
+        todo.companyId ?? "",
+        todo.projectId ?? "",
+        todo.text,
+        undefined,
+        { run: false, todoId: todo.id, landingTab: "timer" },
+      );
+      return;
+    }
+    const cid = todo.companyId;
+    const prid = todo.projectId;
+    const todayISO = formatLocalDate(new Date());
+    const match = entries.find(
+      (e) =>
+        e._company_id === cid &&
+        e._project_id === prid &&
+        e.description === todo.text &&
+        formatLocalDate(new Date(e.task_date)) === todayISO,
+    );
+    if (match) {
+      // Already the running entry — just surface the tracker, don't restart.
+      if (tRun && draftIdRef.current === match.id) {
+        setTab("today");
+        return;
+      }
+      switchTaskGuarded(
+        cid,
+        prid,
+        todo.text,
+        {
+          entryId: match.id,
+          hours: parseFloat(match.hour) || 0,
+          note: match.internal_description || "",
+          invoice: match.invoice === "1",
+        },
+        { todoId: todo.id, landingTab: "today" },
+      );
+      return;
+    }
+    switchTaskGuarded(cid, prid, todo.text, undefined, {
+      run: true,
+      todoId: todo.id,
+      landingTab: "today",
+    });
+  };
+
+  const addFloat = useCallback((txt: string, col: string) => {
+    const id = ++fid.current;
+    setFloats((f) => {
+      // Dedupe an identical message that's already showing; cap at 3 at once.
+      if (f.some((x) => x.txt === txt)) return f;
+      return [...f, { id, txt, col }].slice(-3);
+    });
+    setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1500);
+  }, []);
+
+  // Secret corner: 3 clicks within 1.5s toggles Simon mode.
+  const tapSimonCorner = () => {
+    simonClicksRef.current += 1;
+    if (simonResetRef.current) clearTimeout(simonResetRef.current);
+    simonResetRef.current = window.setTimeout(() => {
+      simonClicksRef.current = 0;
+    }, 1500);
+    if (simonClicksRef.current < 3) return;
+    simonClicksRef.current = 0;
+    setSimonMode((m) => {
+      const next = !m;
+      window.electronAPI.storeSet("simonMode", next);
+      addFloat(
+        next ? "Simon mode ON" : "Simon mode OFF",
+        next ? "#10b981" : "#ef4444",
+      );
+      return next;
+    });
+  };
+
+  // Turn a raw API error into a clear message + side effects (sign-out on auth
+  // expiry, flip the offline banner on network trouble). Returns the kind so
+  // callers can wrap the message (e.g. "Couldn't save — …"). `wrapKey` lets a
+  // caller prefix the human message with a contextual form key.
+  const handleApiError = (err: unknown, wrapKey?: string): string => {
+    const kind = classifyApiError(err);
+    if (kind === "auth") {
+      setAuthed(false);
+      return kind;
+    }
+    if (kind === "offline" || kind === "timeout") setOnline(false);
+    const human = t(apiErrorKey(kind));
+    addFloat(wrapKey ? t(wrapKey, { err: human }) : human, "#ef4444");
+    return kind;
+  };
+
+  // Push the offline queue to the API. Stops on the first network/auth error so
+  // we don't hammer. Before sending each item it checks the server for an
+  // identical entry that day and skips it (no duplicates after an ambiguous
+  // failure). Entries the server rejects outright are quarantined for review,
+  // never silently dropped. Refetches today afterwards to show synced rows.
+  const flushPending = useCallback(async () => {
+    if (flushingRef.current) return;
+    const queue = [...pendingQueueRef.current];
+    if (queue.length === 0) return;
+    flushingRef.current = true;
+    setSyncing(true);
+    let touched = false;
+    let stoppedOffline = false;
+    const drop = (id: string) =>
+      setPendingQueue((q) => q.filter((x) => x.localId !== id));
+    // Per-day signature cache so a re-send can't duplicate an entry the server
+    // already has. Loaded lazily; a load failure means we're offline → stop.
+    const daySigs = new Map<string, Set<string>>();
+    for (const item of queue) {
+      const dateISO = item.payload.task_date.slice(0, 10);
+      let sigs = daySigs.get(dateISO);
+      if (!sigs) {
+        try {
+          const rows = await loadTimeEntries(new Date(`${dateISO}T00:00:00`));
+          sigs = new Set(rows.map(entrySignature));
+          daySigs.set(dateISO, sigs);
+        } catch (err) {
+          const kind = classifyApiError(err);
+          if (kind === "auth") {
+            setAuthed(false);
+            break;
+          }
+          setOnline(false);
+          stoppedOffline = true;
+          break;
+        }
+      }
+      const sig = entrySignature(item.payload);
+      if (sigs.has(sig)) {
+        // Already on the server (or an identical earlier item synced) — done.
+        drop(item.localId);
+        touched = true;
+        continue;
+      }
+      try {
+        await saveTimeEntry(item.payload);
+        setOnline(true);
+        sigs.add(sig);
+        drop(item.localId);
+        touched = true;
+      } catch (err) {
+        const kind = classifyApiError(err);
+        if (kind === "auth") {
+          setAuthed(false);
+          break;
+        }
+        if (kind === "offline" || kind === "timeout") {
+          setOnline(false);
+          stoppedOffline = true;
+          break;
+        }
+        // Server rejected it — quarantine for review instead of losing it.
+        const reason = err instanceof Error ? err.message : "rejected";
+        setFailedQueue((f) => [...f, { ...item, error: reason }]);
+        drop(item.localId);
+        touched = true;
+      }
+    }
+    flushingRef.current = false;
+    setSyncing(false);
+    if (touched && !stoppedOffline) {
+      try {
+        const fresh = await loadTimeEntries(new Date());
+        setEntries(fresh);
+      } catch {
+        /* refresh is best-effort */
+      }
+    }
+  }, [setOnline]);
+
+  // Flush whenever we're online with a non-empty queue (reconnect or new item).
+  useEffect(() => {
+    if (online && pendingLoaded && pendingQueue.length > 0) void flushPending();
+  }, [online, pendingLoaded, pendingQueue.length, flushPending]);
+
+  // Retry periodically — covers a reachable network but unreachable server,
+  // where the OS "online" event never fires.
+  useEffect(() => {
+    if (!online || pendingQueue.length === 0) return;
+    const id = window.setInterval(() => void flushPending(), 30_000);
+    return () => clearInterval(id);
+  }, [online, pendingQueue.length, flushPending]);
 
   const saveNewEntry = async (
     cid: string,
@@ -1203,18 +1723,48 @@ export default function App() {
       entryDate,
       existingId,
     });
+    // Queue for later sync. Display is derived from the queue (liveTodayEntries
+    // / liveDayEntries), so no optimistic row insertion is needed.
+    const queueOffline = () => {
+      const item = makePendingEntry(payload);
+      setPendingQueue((q) => [...q, item]);
+      const savedISO = item.entry.task_date;
+      const todayISO2 = formatLocalDate(new Date());
+      setWeekH((w) => {
+        if (savedISO !== todayISO2) return w;
+        const n = [...w];
+        n[todayI] = +(n[todayI] + hours).toFixed(2);
+        return n;
+      });
+      addFloat(t("offline.queued"), "#f59e0b");
+    };
+
+    // Editing an existing entry needs the server (can't safely queue an edit).
+    if (!online) {
+      if (existingId) {
+        addFloat(t("error.api.offline"), "#ef4444");
+        return;
+      }
+      queueOffline();
+      return;
+    }
+
     let saved: { success: boolean; id?: string } | undefined;
     try {
       saved = await saveTimeEntry(payload);
-    } catch (err: any) {
-      if (err.message === "NOT_AUTHENTICATED") {
+      setOnline(true);
+    } catch (err) {
+      const kind = classifyApiError(err);
+      if (kind === "auth") {
         setAuthed(false);
         return;
       }
-      addFloat(
-        t("form.saveFailed", { err: err.message || "unknown" }),
-        "#ef4444",
-      );
+      if ((kind === "offline" || kind === "timeout") && !existingId) {
+        setOnline(false);
+        queueOffline();
+        return;
+      }
+      handleApiError(err, "form.saveFailed");
       return;
     }
 
@@ -1392,29 +1942,137 @@ export default function App() {
   });
 
   const delEntry = async (id: string) => {
+    // Queued / quarantined rows only live locally — drop from the queues.
+    if (isPendingId(id)) {
+      setPendingQueue((q) => q.filter((x) => x.localId !== id));
+      setFailedQueue((f) => f.filter((x) => x.localId !== id));
+      return;
+    }
     try {
       await deleteTimeEntry(id);
       setEntries((es) => es.filter((e) => e.id !== id));
-    } catch (err: any) {
-      addFloat(
-        t("form.deleteFailed", { err: err.message || "unknown" }),
-        "#ef4444",
-      );
+    } catch (err) {
+      handleApiError(err, "form.deleteFailed");
     }
+  };
+
+  // Move quarantined entries back into the sync queue to try again.
+  const retryFailed = () => {
+    if (failedQueue.length === 0) return;
+    const items = failedQueue.map(({ error: _e, ...rest }) => rest);
+    setFailedQueue([]);
+    setPendingQueue((q) => [...q, ...items]);
+  };
+
+  // The "Frånvaro" client (absence) — a normal client in the list.
+  const fravaroCompany = useMemo(
+    () => companies.find((c) => /fr[åa]nvaro/i.test(c.name)) || null,
+    [companies],
+  );
+
+  // DevCore is internal work — its entries are always non-billable.
+  const isInternalCompany = (companyId: string) =>
+    /devcore/i.test(companies.find((c) => c.id === companyId)?.name || "");
+
+  // Absence range bounds: past is capped at the start of the current month;
+  // the future is open.
+  const absenceMinFromISO = (() => {
+    const d = new Date();
+    d.setDate(1);
+    return formatLocalDate(d);
+  })();
+  const absenceTodayISO = formatLocalDate(new Date());
+
+  const openAbsence = async () => {
+    if (fravaroCompany) await ensureProjects(fravaroCompany.id);
+    setAbsenceOpen(true);
+  };
+
+  // Bulk-log 8h absence for each working day in the range, under the Frånvaro
+  // client + chosen project. Rides the offline queue like any other save.
+  const reportAbsence = async (
+    projectId: string,
+    fromISO: string,
+    toISO: string,
+    note: string,
+  ) => {
+    if (!currentUser || !fravaroCompany) return;
+    const project = (projectCache[fravaroCompany.id] || []).find(
+      (p) => p.id === projectId,
+    );
+    if (!project) return;
+    const days = workingDaysInRange(fromISO, toISO);
+    if (days.length === 0) {
+      addFloat(t("absence.noDays"), "#f59e0b");
+      return;
+    }
+    setAbsenceSaving(true);
+    const todayISOStr = formatLocalDate(new Date());
+    const queued: PendingEntry[] = [];
+    let count = 0;
+    let authFailed = false;
+    for (const dayISO of days) {
+      const payload = buildSavePayload({
+        company: fravaroCompany,
+        project,
+        hours: 8,
+        description: note.trim() || project.name,
+        internalNote: "",
+        invoice: false,
+        user: currentUser,
+        entryDate: new Date(`${dayISO}T00:00:00`),
+        existingId: null,
+      });
+      if (!online) {
+        queued.push(makePendingEntry(payload));
+        count++;
+        continue;
+      }
+      try {
+        await saveTimeEntry(payload);
+        setOnline(true);
+        count++;
+      } catch (err) {
+        const kind = classifyApiError(err);
+        if (kind === "auth") {
+          setAuthed(false);
+          authFailed = true;
+          break;
+        }
+        if (kind === "offline" || kind === "timeout") {
+          setOnline(false);
+          queued.push(makePendingEntry(payload));
+          count++;
+        }
+        // other errors: skip this day
+      }
+    }
+    if (queued.length) setPendingQueue((q) => [...q, ...queued]);
+    setAbsenceSaving(false);
+    if (authFailed) return;
+    setAbsenceOpen(false);
+    if (days.includes(todayISOStr) && online && queued.length === 0) {
+      try {
+        setEntries(await loadTimeEntries(new Date()));
+      } catch {
+        /* best-effort refresh */
+      }
+    }
+    if (count > 0) addFloat(t("absence.done", { n: count }), "#10b981");
   };
 
   // Group entries by company for Today view
   const groups = useMemo(() => {
     const g: Record<string, { cid: string; h: number; entries: TimeEntry[] }> =
       {};
-    entries.forEach((e) => {
+    displayTodayEntries.forEach((e) => {
       const key = e.company;
       if (!g[key]) g[key] = { cid: e._company_id, h: 0, entries: [] };
       g[key].h = +(g[key].h + parseFloat(e.hour || "0")).toFixed(2);
       g[key].entries.push(e);
     });
     return g;
-  }, [entries]);
+  }, [displayTodayEntries]);
 
   // Vanilla-extract theme class — applied to every top-level return so CSS
   // custom properties resolve correctly in both early-return branches and the
@@ -1422,13 +2080,19 @@ export default function App() {
   const themeClass = mode === "dark" ? darkTheme : lightTheme;
 
   const spinner = (
-    <Spinner layout="fill" label={t("form.loadingProjects")} className={themeClass} />
+    <prim.Spinner layout="fill" label={t("form.loadingProjects")} className={themeClass} />
   );
   if (authed === null) return spinner;
   if (!authed)
     return (
-      <div className={themeClass}>
-        <LoginScreen onLogin={() => window.electronAPI.openAuth()} />
+      <div
+        className={themeClass}
+        style={{ height: "100vh", background: vars.background.page, color: vars.typography.primary }}
+      >
+        <ui.LoginScreen
+          onAuthed={() => setAuthed(true)}
+          onOpenBrowser={() => window.electronAPI.openAuth()}
+        />
       </div>
     );
   if (!currentUser) return spinner;
@@ -1451,7 +2115,7 @@ export default function App() {
 
   // ─── Header ────────────────────────────────────────────────────────────
   const hdr = (
-    <AppHeader
+    <ui.AppHeader
       tab={tab}
       onTabChange={setTab}
       tRun={tRun}
@@ -1462,106 +2126,9 @@ export default function App() {
       justHitGoal={justHitGoal}
       clockDate={clockDate}
       clockTime={clockTime}
+      showTodo={simonMode}
       onMinimize={() => goSize("top")}
     />
-  );
-
-  // Progress bar is about today — nothing in the header navigates anymore.
-  const pbarDate = new Date();
-  const pbarHolidays = getHolidays(pbarDate.getFullYear());
-  const pbarDayOff = !isWorkingDay(pbarDate, pbarHolidays);
-  const pbarHolidayName = pbarHolidays.get(
-    `${pbarDate.getFullYear()}-${String(pbarDate.getMonth() + 1).padStart(2, "0")}-${String(pbarDate.getDate()).padStart(2, "0")}`,
-  );
-
-  const streakBadge =
-    streak > 0 ? (
-      <span
-        className={justBumpedStreak ? "streak-pop" : undefined}
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          color: M.pk,
-          fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 3,
-        }}
-      >
-        <FlameIcon size={12} />
-        {streak}d
-      </span>
-    ) : null;
-
-  const pbar = pbarDayOff ? (
-    <div
-      style={{
-        padding: "10px 14px 10px",
-        borderBottom: `1px solid ${M.s2}`,
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 10,
-      }}
-    >
-      <span style={{ fontSize: 11, color: M.t3 }}>
-        {t("today.hoursLogged", { hours: fmtHours(todayH) })}
-      </span>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        {streakBadge}
-        <span style={{ fontSize: 11, fontWeight: 700, color: M.t3 }}>
-          {pbarHolidayName
-            ? `🎉 ${pbarHolidayName}`
-            : `🌴 ${lang === "sv" ? "Ledig dag" : "Day off"}`}
-        </span>
-      </div>
-    </div>
-  ) : (
-    <div
-      style={{ padding: "10px 14px 10px", borderBottom: `1px solid ${M.s2}` }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 6,
-          gap: 10,
-        }}
-      >
-        <span style={{ fontSize: 11, color: M.t3 }}>
-          {t("today.hoursLogged", { hours: fmtHours(todayH) })}
-        </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {streakBadge}
-          <span
-            style={{ fontSize: 11, fontWeight: 700, color: done ? M.gn : M.t2 }}
-          >
-            {done
-              ? t("today.goalReached")
-              : t("today.toGo", { hours: fmtHours(GOAL - todayH) })}
-          </span>
-        </div>
-      </div>
-      <div
-        style={{
-          height: 5,
-          background: M.s2,
-          borderRadius: 3,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            height: "100%",
-            width: `${gpct}%`,
-            background: done ? M.gn : M.ac,
-            borderRadius: 3,
-            transition: "width .5s",
-          }}
-        />
-      </div>
-    </div>
   );
 
   // ─── Today view ────────────────────────────────────────────────────────
@@ -1577,32 +2144,6 @@ export default function App() {
             ? t("greet.evening")
             : t("greet.latenight");
     const todayDate = new Date();
-    const holidayMap = getHolidays(todayDate.getFullYear());
-    const holidayKey = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, "0")}-${String(todayDate.getDate()).padStart(2, "0")}`;
-    const holidayName = holidayMap.get(holidayKey);
-    const isDayOff = !isWorkingDay(todayDate, holidayMap);
-    const isSat = todayDate.getDay() === 6;
-    const emoji = isDayOff
-      ? holidayName
-        ? "🎉"
-        : isSat
-          ? "🌴"
-          : "🌴"
-      : hr >= 5 && hr < 12
-        ? "☀️"
-        : hr >= 12 && hr < 17
-          ? "🌤️"
-          : hr >= 17 && hr < 22
-            ? "🌆"
-            : "🌙";
-    const subtitle = isDayOff
-      ? holidayName
-        ? t("today.dayOffHoliday", { holiday: holidayName })
-        : t("today.dayOff")
-      : done
-        ? t("today.goalReachedLine")
-        : t("today.leftToHit", { hours: fmtHours(GOAL - todayH), goal: GOAL });
-
     // ISO week + 1-indexed weekday for the page eyebrow hint.
     const eyebrowDate = new Date(
       Date.UTC(
@@ -1619,13 +2160,13 @@ export default function App() {
     );
 
     // Today XP + billable % for the chip row.
-    const todayBillableH = entries.reduce(
+    const todayBillableH = liveTodayEntries.reduce(
       (s, e) => s + (e.invoice === "1" ? parseFloat(e.hour) : 0),
       0,
     );
     const todayBillablePct =
       todayH > 0 ? Math.round((todayBillableH / todayH) * 100) : 0;
-    const todayXp = entries.reduce(
+    const todayXp = liveTodayEntries.reduce(
       (s, e) => s + Math.round(10 + parseFloat(e.hour) * 8),
       0,
     );
@@ -1636,10 +2177,10 @@ export default function App() {
           <div style={{ padding: "16px 14px 4px" }}>
             <div
               style={{
-                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontFamily: SERIF,
                 fontStyle: "italic",
                 fontSize: 22,
-                color: M.t1,
+                color: vars.typography.primary,
                 letterSpacing: -0.3,
                 lineHeight: 1.15,
               }}
@@ -1649,10 +2190,10 @@ export default function App() {
             {greetingMsg && (
               <div
                 style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontStyle: "italic",
                   fontSize: 14,
-                  color: M.ac,
+                  color: vars.typography.accent,
                   marginTop: 6,
                   lineHeight: 1.4,
                   letterSpacing: -0.1,
@@ -1663,10 +2204,9 @@ export default function App() {
             )}
           </div>
         )}
-        <PageEyebrow
+        <prim.PageEyebrow
           title={t("page.today")}
           hint={t("today.eyebrowHint", { week: isoWeek, day: dayNum })}
-          M={M}
         />
         <div
           style={{
@@ -1686,10 +2226,10 @@ export default function App() {
             <div
               className={justHitGoal ? "goal-bloom" : undefined}
               style={{
-                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontFamily: SERIF,
                 fontSize: 90,
                 fontWeight: 400,
-                color: liveDone ? M.gn : M.t1,
+                color: liveDone ? vars.typography.green : vars.typography.primary,
                 letterSpacing: -3,
                 lineHeight: 0.9,
                 display: "inline-block",
@@ -1732,7 +2272,7 @@ export default function App() {
                 style={{
                   fontStyle: "italic",
                   fontSize: 40,
-                  color: liveDone ? M.gn : M.ac,
+                  color: liveDone ? vars.typography.green : vars.typography.accent,
                   marginLeft: 4,
                 }}
               >
@@ -1742,9 +2282,9 @@ export default function App() {
             <div
               style={{
                 marginTop: 16,
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 12,
-                color: M.t3,
+                color: vars.typography.tertiary,
                 lineHeight: 1.4,
                 textTransform: "uppercase",
                 letterSpacing: 2.4,
@@ -1769,141 +2309,58 @@ export default function App() {
             }}
           >
            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-            <div
-              className={`engrave-card${justBumpedStreak ? " streak-pop" : ""}`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 12px 6px 9px",
-                borderRadius: 999,
-                background: M.pb,
-                border: `1px solid ${M.pp}`,
-                color: M.pk,
-              }}
-            >
-              <FlameIcon size={11} />
-              <span
-                style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: M.pk,
-                  letterSpacing: 0.3,
-                }}
-              >
-                {streak}
-              </span>
-              <span
-                style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                  fontSize: 9,
-                  fontWeight: 600,
-                  color: M.t3,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.4,
-                }}
-              >
-                {t("today.stat.streak")}
-              </span>
-            </div>
-            <div
-              className="engrave-card"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 12px 6px 9px",
-                borderRadius: 999,
-                background: M.gb,
-                border: `1px solid ${M.gd}`,
-                color: M.gn,
-              }}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="11"
-                height="11"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              <span
-                style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: M.gn,
-                  letterSpacing: 0.3,
-                }}
-              >
-                {todayBillablePct}%
-              </span>
-              <span
-                style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                  fontSize: 9,
-                  fontWeight: 600,
-                  color: M.t3,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.4,
-                }}
-              >
-                {t("today.stat.billable")}
-              </span>
-            </div>
+            <ui.StatChip
+              tone="pink"
+              icon={<FlameIcon size={11} />}
+              value={streak}
+              label={t("today.stat.streak")}
+              popped={justBumpedStreak}
+            />
+            <ui.StatChip
+              tone="green"
+              icon={
+                <svg
+                  viewBox="0 0 24 24"
+                  width="11"
+                  height="11"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              }
+              value={`${todayBillablePct}%`}
+              label={t("today.stat.billable")}
+            />
            </div>
-            <div
-              className="engrave-card"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 12px 6px 11px",
-                borderRadius: 999,
-                background: `${M.ac}14`,
-                border: `1px solid ${M.ac}33`,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: M.ac,
-                  letterSpacing: 0.3,
-                }}
-              >
-                {todayXp}
-              </span>
-              <span
-                style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                  fontSize: 9,
-                  fontWeight: 600,
-                  color: M.t3,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.4,
-                }}
-              >
-                {t("today.stat.xpToday")}
-              </span>
-            </div>
+            <ui.StatChip tone="accent" value={todayXp} label={t("today.stat.xpToday")} />
           </div>
 
-          <MeetingsWidget
-            onStartForMeeting={(title) => {
-              setTD(title);
-              setTab("timer");
-            }}
-          />
+          {simonMode && (
+            <ui.MeetingsWidget
+              onStartForMeeting={(title) => {
+                setTD(title);
+                setTab("timer");
+              }}
+            />
+          )}
 
-          <div style={{ height: 1, background: M.s2 }} />
+          {simonMode && (
+            <ui.TodoCompactList
+              title={t("todo.todaySection")}
+              todos={todosInPlay(todos)}
+              activeTaskKey={activeTaskKey}
+              showPressure
+              onStart={startTodo}
+              onEdit={editTodo}
+            />
+          )}
+
+          <prim.Divider tone="raised" />
 
           <div
             data-tour="today-entries"
@@ -1926,10 +2383,10 @@ export default function App() {
                 >
                   <span
                     style={{
-                      fontFamily: '"Instrument Serif","Georgia",serif',
+                      fontFamily: SERIF,
                       fontSize: 17,
                       lineHeight: 1.1,
-                      color: M.co[gi % M.co.length],
+                      color: chart[gi % chart.length],
                       letterSpacing: -0.1,
                     }}
                   >
@@ -1939,8 +2396,8 @@ export default function App() {
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: M.t3,
-                      fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                      color: vars.typography.tertiary,
+                      fontFamily: MONO,
                     }}
                   >
                     {fmtHours(g.h)}
@@ -1951,6 +2408,7 @@ export default function App() {
                 >
                   {g.entries.map((e) => {
                     const isPending = pendingDeleteId === e.id;
+                    const isLive = e.id === LIVE_SESSION_ID;
                     return (
                       <div
                         key={e.id}
@@ -1958,18 +2416,20 @@ export default function App() {
                       >
                         <div
                           className="entry-card"
-                          onDoubleClick={() => editEntry(e)}
+                          onDoubleClick={() =>
+                            isLive ? setTab("timer") : editEntry(e)
+                          }
                           title={t("entry.doubleClickEdit")}
                           style={{
-                            background: M.s1,
-                            border: `1px solid ${isPending ? "#ef4444" : M.b1}`,
+                            background: vars.background.surface,
+                            border: `1px solid ${isPending ? "#ef4444" : vars.border.soft}`,
                             borderRadius: 11,
                             padding: "9px 11px",
                             borderBottomLeftRadius: isPending ? 0 : 11,
                             borderBottomRightRadius: isPending ? 0 : 11,
                             borderBottom: isPending
                               ? "none"
-                              : `1px solid ${M.b1}`,
+                              : `1px solid ${vars.border.soft}`,
                             cursor: "pointer",
                           }}
                         >
@@ -1986,7 +2446,7 @@ export default function App() {
                                 style={{
                                   fontSize: 10,
                                   fontWeight: 600,
-                                  color: M.t3,
+                                  color: vars.typography.tertiary,
                                   marginBottom: 2,
                                 }}
                               >
@@ -1995,7 +2455,7 @@ export default function App() {
                               <div
                                 style={{
                                   fontSize: 12,
-                                  color: M.t1,
+                                  color: vars.typography.primary,
                                   lineHeight: 1.4,
                                   wordBreak: "break-word",
                                 }}
@@ -2006,7 +2466,7 @@ export default function App() {
                                 <div
                                   style={{
                                     fontSize: 11,
-                                    color: M.t3,
+                                    color: vars.typography.tertiary,
                                     marginTop: 4,
                                     fontStyle: "italic",
                                   }}
@@ -2014,6 +2474,63 @@ export default function App() {
                                   {e.internal_description}
                                 </div>
                               )}
+                              {(() => {
+                                if (!simonMode) return null;
+                                const eTodo = estimatedTodoFor(
+                                  e._company_id,
+                                  e._project_id,
+                                  e.description,
+                                );
+                                if (!eTodo) return null;
+                                const loggedH = todoTrackedH(eTodo);
+                                const pct = Math.min(
+                                  100,
+                                  (loggedH / eTodo.estimateH) * 100,
+                                );
+                                const complete = loggedH >= eTodo.estimateH;
+                                return (
+                                  <div
+                                    style={{
+                                      marginTop: 6,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 7,
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        flex: 1,
+                                        maxWidth: 96,
+                                        height: 3,
+                                        borderRadius: 2,
+                                        background: vars.border.soft,
+                                        overflow: "hidden",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          height: "100%",
+                                          width: `${pct}%`,
+                                          background: complete ? vars.typography.green : vars.typography.accent,
+                                        }}
+                                      />
+                                    </div>
+                                    <span
+                                      style={{
+                                        fontFamily:
+                                          MONO,
+                                        fontSize: 9,
+                                        fontVariantNumeric: "tabular-nums",
+                                        color: complete ? vars.typography.green : vars.typography.tertiary,
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
+                                      {fmtHours(loggedH)} /{" "}
+                                      {fmtHours(eTodo.estimateH)}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div
                               style={{
@@ -2026,10 +2543,10 @@ export default function App() {
                             >
                               <span
                                 style={{
-                                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                                  fontFamily: MONO,
                                   fontSize: 12,
                                   fontWeight: 700,
-                                  color: M.ac,
+                                  color: vars.typography.accent,
                                 }}
                               >
                                 {fmtHours(parseFloat(e.hour))}
@@ -2052,15 +2569,80 @@ export default function App() {
                                   textTransform: "uppercase",
                                   background:
                                     e.invoice === "1"
-                                      ? `${M.ac}26`
+                                      ? `color-mix(in srgb, ${vars.typography.accent} 15%, transparent)`
                                       : "transparent",
-                                  color: e.invoice === "1" ? M.ac : M.tf,
-                                  border: `1px solid ${e.invoice === "1" ? `${M.ac}55` : M.b1}`,
+                                  color: e.invoice === "1" ? vars.typography.accent : vars.typography.faint,
+                                  border: `1px solid ${e.invoice === "1" ? `color-mix(in srgb, ${vars.typography.accent} 33%, transparent)` : vars.border.soft}`,
                                 }}
                               >
                                 {e.invoice === "1" ? "Billable" : "Internal"}
                               </span>
+                              {isPendingId(e.id) &&
+                                (failedIds.has(e.id) ? (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      height: 16,
+                                      padding: "0 6px",
+                                      borderRadius: 4,
+                                      fontSize: 9,
+                                      fontWeight: 700,
+                                      letterSpacing: 0.5,
+                                      textTransform: "uppercase",
+                                      background: "#ef444426",
+                                      color: "#ef4444",
+                                      border: `1px solid #ef444455`,
+                                    }}
+                                  >
+                                    {t("offline.failedBadge")}
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      height: 16,
+                                      padding: "0 6px",
+                                      borderRadius: 4,
+                                      fontSize: 9,
+                                      fontWeight: 700,
+                                      letterSpacing: 0.5,
+                                      textTransform: "uppercase",
+                                      background: "#f59e0b26",
+                                      color: mode === "dark" ? "#fbbf24" : "#b45309",
+                                      border: `1px solid #f59e0b55`,
+                                    }}
+                                  >
+                                    {t("offline.pendingBadge")}
+                                  </span>
+                                ))}
+                              {(isLive || (tRun && draftId === e.id)) && (
+                                <span
+                                  className={tRun ? "todo-live-dot" : undefined}
+                                  style={
+                                    {
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      height: 16,
+                                      padding: "0 6px",
+                                      borderRadius: 4,
+                                      fontSize: 9,
+                                      fontWeight: 700,
+                                      letterSpacing: 0.5,
+                                      textTransform: "uppercase",
+                                      background: tRun ? `color-mix(in srgb, ${vars.typography.pink} 15%, transparent)` : vars.background.raised,
+                                      color: tRun ? vars.typography.pink : vars.typography.tertiary,
+                                      border: `1px solid ${tRun ? `color-mix(in srgb, ${vars.typography.pink} 33%, transparent)` : vars.border.soft}`,
+                                      "--todo-live-ring": `color-mix(in srgb, ${vars.typography.pink} 40%, transparent)`,
+                                    } as CSSProperties
+                                  }
+                                >
+                                  {tRun ? t("timer.recording") : t("status.paused")}
+                                </span>
+                              )}
                               {(() => {
+                                if (isPendingId(e.id) || isLive) return null;
                                 const isActive = tRun && draftId === e.id;
                                 return (
                                   <button
@@ -2100,7 +2682,7 @@ export default function App() {
                                       width: 22,
                                       height: 22,
                                       borderRadius: "50%",
-                                      background: isActive ? M.pk : M.btn,
+                                      background: isActive ? vars.typography.pink : vars.background.button,
                                       border: "none",
                                       display: "flex",
                                       alignItems: "center",
@@ -2153,22 +2735,24 @@ export default function App() {
                                   </button>
                                 );
                               })()}
-                              <button
-                                onClick={() =>
-                                  setPendingDeleteId(isPending ? null : e.id)
-                                }
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  color: isPending ? "#ef4444" : M.t3,
-                                  fontSize: 12,
-                                  cursor: "pointer",
-                                  padding: "2px 4px",
-                                  fontWeight: isPending ? 700 : 400,
-                                }}
-                              >
-                                ✕
-                              </button>
+                              {!isLive && (
+                                <button
+                                  onClick={() =>
+                                    setPendingDeleteId(isPending ? null : e.id)
+                                  }
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    color: isPending ? "#ef4444" : vars.typography.tertiary,
+                                    fontSize: 12,
+                                    cursor: "pointer",
+                                    padding: "2px 4px",
+                                    fontWeight: isPending ? 700 : 400,
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2193,9 +2777,9 @@ export default function App() {
                               style={{
                                 flex: 1,
                                 padding: "10px 0",
-                                background: M.s2,
+                                background: vars.background.raised,
                                 border: "none",
-                                color: M.t2,
+                                color: vars.typography.secondary,
                                 fontSize: 12,
                                 fontWeight: 600,
                                 cursor: "pointer",
@@ -2262,10 +2846,10 @@ export default function App() {
                   lineHeight: 1.5,
                 }}
               >
-                <div style={{ color: M.t2, fontWeight: 600, marginBottom: 4 }}>
+                <div style={{ color: vars.typography.secondary, fontWeight: 600, marginBottom: 4 }}>
                   {emptyMsg}
                 </div>
-                <div style={{ color: M.tf, fontSize: 11 }}>
+                <div style={{ color: vars.typography.faint, fontSize: 11 }}>
                   {t("today.noEntriesHeader", {
                     date: new Date().toLocaleDateString(locale, {
                       weekday: "short",
@@ -2285,21 +2869,21 @@ export default function App() {
               alignItems: "center",
               gap: 8,
               paddingTop: 8,
-              borderTop: `1px solid ${M.s2}`,
+              borderTop: `1px solid ${vars.background.raised}`,
             }}
           >
-            <span style={{ fontSize: 12, color: M.t3 }}>
+            <span style={{ fontSize: 12, color: vars.typography.tertiary }}>
               {t("today.totalLabel")}
             </span>
             <span
               style={{
                 fontSize: 17,
                 fontWeight: 700,
-                color: done ? M.gn : M.ac,
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                color: liveDone ? vars.typography.green : vars.typography.accent,
+                fontFamily: MONO,
               }}
             >
-              {fmtHours(todayH)}
+              {fmtHours(liveTodayH)}
             </span>
           </div>
 
@@ -2324,10 +2908,10 @@ export default function App() {
                 padding: "9px 18px 9px 14px",
                 borderRadius: 999,
                 background: "transparent",
-                border: `1px solid ${M.b1}`,
-                color: M.t2,
+                border: `1px solid ${vars.border.soft}`,
+                color: vars.typography.secondary,
                 cursor: "pointer",
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 11,
                 fontWeight: 600,
                 letterSpacing: 1.4,
@@ -2369,6 +2953,8 @@ export default function App() {
         new Date(),
         draftId,
       );
+      accrueTodoHours(activeTodoId, h);
+      setActiveTodoId(null);
       if (stashedTimer) {
         // Side quest logged — pop the main timer back (paused).
         restoreStashedTimer();
@@ -2384,19 +2970,7 @@ export default function App() {
         ? t("page.timerPaused")
         : t("page.timerIdle");
     return (
-      <div
-        style={{
-          padding: "16px 14px 24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          minHeight: "100%",
-        }}
-      >
-        <div style={{ margin: "-16px -14px 4px" }}>
-          <PageEyebrow title={t("page.timer")} hint={timerHint} M={M} />
-        </div>
-
+      <ui.Page title={t("page.timer")} hint={timerHint} gap={10} minHeight="100%">
         {stashedTimer && (
           <button
             type="button"
@@ -2409,8 +2983,8 @@ export default function App() {
               gap: 10,
               padding: "9px 12px",
               borderRadius: 12,
-              background: M.ad,
-              border: `1px solid ${M.b1}`,
+              background: vars.background.accent,
+              border: `1px solid ${vars.border.soft}`,
               cursor: "pointer",
               textAlign: "left",
               width: "100%",
@@ -2426,10 +3000,10 @@ export default function App() {
             >
               <span
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 8,
                   fontWeight: 700,
-                  color: M.tf,
+                  color: vars.typography.faint,
                   textTransform: "uppercase",
                   letterSpacing: 1.6,
                   flexShrink: 0,
@@ -2439,10 +3013,10 @@ export default function App() {
               </span>
               <span
                 style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontStyle: "italic",
                   fontSize: 15,
-                  color: M.at,
+                  color: vars.typography.accentInk,
                   letterSpacing: -0.1,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
@@ -2463,10 +3037,10 @@ export default function App() {
             >
               <span
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 11,
                   fontWeight: 700,
-                  color: M.t2,
+                  color: vars.typography.secondary,
                   fontVariantNumeric: "tabular-nums",
                 }}
               >
@@ -2474,10 +3048,10 @@ export default function App() {
               </span>
               <span
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 8,
                   fontWeight: 700,
-                  color: M.ac,
+                  color: vars.typography.accent,
                   textTransform: "uppercase",
                   letterSpacing: 1.4,
                 }}
@@ -2493,7 +3067,7 @@ export default function App() {
           style={{ padding: "12px 0 6px" }}
         >
           <div className="timer-dial-content">
-          <ActivityRing
+          <prim.ActivityRing
             progress={GOAL > 0 ? todayH / GOAL : 0}
             done={done}
             size={210}
@@ -2503,10 +3077,10 @@ export default function App() {
             <div style={{ textAlign: "center", padding: "0 8px" }}>
               <div
                 style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontSize: 38,
                   fontWeight: 400,
-                  color: tRun ? M.t1 : M.t3,
+                  color: tRun ? vars.typography.primary : vars.typography.tertiary,
                   letterSpacing: -1.5,
                   lineHeight: 0.95,
                   fontVariantNumeric: "tabular-nums",
@@ -2516,9 +3090,9 @@ export default function App() {
               </div>
               <div
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 8,
-                  color: tRun ? M.pk : M.tf,
+                  color: tRun ? vars.typography.pink : vars.typography.faint,
                   fontWeight: 700,
                   letterSpacing: 2,
                   textTransform: "uppercase",
@@ -2534,7 +3108,7 @@ export default function App() {
                       width: 5,
                       height: 5,
                       borderRadius: "50%",
-                      background: M.pk,
+                      background: vars.typography.pink,
                       animation: "pulse 1.2s ease-in-out infinite",
                     }}
                   />
@@ -2546,7 +3120,7 @@ export default function App() {
                     : t("status.idle")}
               </div>
             </div>
-          </ActivityRing>
+          </prim.ActivityRing>
           </div>
           {tRun && (
             <div className="timer-dial-controls">
@@ -2557,9 +3131,9 @@ export default function App() {
                 title={t("timer.pause")}
                 className="timer-dial-btn"
                 style={{
-                  background: M.s1,
-                  border: `1px solid ${M.b1}`,
-                  color: M.t1,
+                  background: vars.background.surface,
+                  border: `1px solid ${vars.border.soft}`,
+                  color: vars.typography.primary,
                 }}
               >
                 <PauseIcon size={22} />
@@ -2571,9 +3145,9 @@ export default function App() {
                 title={t("timer.stopLog")}
                 className="timer-dial-btn"
                 style={{
-                  background: M.btn,
+                  background: vars.background.button,
                   color: "#fff",
-                  boxShadow: M.bsh,
+                  boxShadow: vars.shadow.button,
                 }}
               >
                 <StopIcon size={22} />
@@ -2589,10 +3163,10 @@ export default function App() {
               <div
                 style={{
                   textAlign: "center",
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontStyle: "italic",
                   fontSize: 15,
-                  color: M.t3,
+                  color: vars.typography.tertiary,
                   lineHeight: 1.3,
                   padding: "0 8px",
                 }}
@@ -2606,10 +3180,10 @@ export default function App() {
           <div
             style={{
               textAlign: "center",
-              fontFamily: '"Instrument Serif","Georgia",serif',
+              fontFamily: SERIF,
               fontStyle: "italic",
               fontSize: 13,
-              color: M.tf,
+              color: vars.typography.faint,
               padding: "0 18px",
               lineHeight: 1.4,
             }}
@@ -2617,7 +3191,6 @@ export default function App() {
             {timerInsight}
           </div>
         )}
-
 
         {(!tRun || !hasCtx || timerFormOpen) && (
         <div
@@ -2631,10 +3204,10 @@ export default function App() {
           {tRun && !canStart && (
             <div
               style={{
-                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontFamily: SERIF,
                 fontStyle: "italic",
                 fontSize: 14,
-                color: M.pk,
+                color: vars.typography.pink,
                 textAlign: "center",
                 padding: "4px 8px",
                 lineHeight: 1.4,
@@ -2657,9 +3230,9 @@ export default function App() {
                   style={{
                     height: 44,
                     background: "transparent",
-                    border: `1px solid ${M.b1}`,
+                    border: `1px solid ${vars.border.soft}`,
                     borderRadius: 999,
-                    color: M.t1,
+                    color: vars.typography.primary,
                     fontSize: 12,
                     fontWeight: 600,
                     letterSpacing: 1.4,
@@ -2673,7 +3246,7 @@ export default function App() {
                   onClick={() => void stopAndLogCurrent()}
                   style={{
                     height: 44,
-                    background: M.btn,
+                    background: vars.background.button,
                     border: "1px solid transparent",
                     borderRadius: 999,
                     color: "#fff",
@@ -2682,7 +3255,7 @@ export default function App() {
                     letterSpacing: 1.4,
                     textTransform: "uppercase",
                     cursor: "pointer",
-                    boxShadow: M.bsh,
+                    boxShadow: vars.shadow.button,
                   }}
                 >
                   {t("timer.stopLog")}
@@ -2695,7 +3268,7 @@ export default function App() {
                 style={{
                   width: "100%",
                   height: 44,
-                  background: M.btn,
+                  background: vars.background.button,
                   border: "1px solid transparent",
                   borderRadius: 999,
                   color: "#fff",
@@ -2704,7 +3277,7 @@ export default function App() {
                   letterSpacing: 1.4,
                   textTransform: "uppercase",
                   cursor: "pointer",
-                  boxShadow: M.bsh,
+                  boxShadow: vars.shadow.button,
                 }}
               >
                 {tSec > 0 ? t("timer.resume") : t("timer.start")}
@@ -2718,11 +3291,11 @@ export default function App() {
               margin: "20px 0 14px",
             }}
           >
-            <div style={{ flex: 1, height: 1, background: M.b1 }} />
+            <prim.Divider grow />
             <span
               style={{
                 fontSize: 10,
-                color: M.t2,
+                color: vars.typography.secondary,
                 fontWeight: 700,
                 letterSpacing: 1.4,
                 textTransform: "uppercase",
@@ -2731,36 +3304,49 @@ export default function App() {
             >
               {t("timer.whatWorking")}
             </span>
-            <div style={{ flex: 1, height: 1, background: M.b1 }} />
+            <prim.Divider grow />
           </div>
 
+          {companiesError && companies.length === 0 && (
+            <ui.RetryStrip
+              label={t("error.loadClients")}
+              onRetry={loadCompaniesNow}
+            />
+          )}
           <div data-tour="timer-company">
-            <Combobox
+            <ui.Combobox
               value={tCo}
               items={companies}
               placeholder={`${t("form.searchClient")} (${companies.length})`}
                 onChange={async (id) => {
                 setTCo(id);
                 setTPr("");
+                if (isInternalCompany(id)) setTInv(false);
                 if (id) await ensureProjects(id);
               }}
             />
           </div>
 
-          {tCo && (
-            <div data-tour="timer-project">
-              <Combobox
-                value={tPr}
-                items={prList}
-                placeholder={
-                  prList.length
-                    ? `${t("form.searchProject")} (${prList.length})`
-                    : t("form.loadingProjects")
-                }
-                    onChange={setTPr}
+          {tCo &&
+            (projectErrors[tCo] && prList.length === 0 ? (
+              <ui.RetryStrip
+                label={t("error.loadProjects")}
+                onRetry={() => void ensureProjects(tCo)}
               />
-            </div>
-          )}
+            ) : (
+              <div data-tour="timer-project">
+                <ui.Combobox
+                  value={tPr}
+                  items={prList}
+                  placeholder={
+                    prList.length
+                      ? `${t("form.searchProject")} (${prList.length})`
+                      : t("form.loadingProjects")
+                  }
+                  onChange={setTPr}
+                />
+              </div>
+            ))}
 
           {tCo && tPr && (
             <>
@@ -2773,9 +3359,9 @@ export default function App() {
                   padding: "8px 6px",
                   background: "transparent",
                   border: "none",
-                  borderBottom: `1px solid ${tD.trim() ? M.ac : M.b1}`,
+                  borderBottom: `1px solid ${tD.trim() ? vars.typography.accent : vars.border.soft}`,
                   borderRadius: 8,
-                  color: M.t1,
+                  color: vars.typography.primary,
                   fontSize: 14,
                   outline: "none",
                   width: "100%",
@@ -2803,9 +3389,9 @@ export default function App() {
                           padding: "4px 10px",
                           borderRadius: 999,
                           background: "transparent",
-                          border: `1px solid ${M.b1}`,
-                          color: M.t3,
-                          fontFamily: '"Instrument Serif","Georgia",serif',
+                          border: `1px solid ${vars.border.soft}`,
+                          color: vars.typography.tertiary,
+                          fontFamily: SERIF,
                           fontStyle: "italic",
                           fontSize: 12,
                           cursor: "pointer",
@@ -2832,9 +3418,9 @@ export default function App() {
                   padding: "8px 6px",
                   background: "transparent",
                   border: "none",
-                  borderBottom: `1px solid ${M.b1}`,
+                  borderBottom: `1px solid ${vars.border.soft}`,
                   borderRadius: 8,
-                  color: M.t1,
+                  color: vars.typography.primary,
                   fontSize: 13,
                   outline: "none",
                   width: "100%",
@@ -2866,7 +3452,7 @@ export default function App() {
                 <span
                   style={{
                     fontSize: 12,
-                    color: M.t2,
+                    color: vars.typography.secondary,
                     textTransform: "uppercase",
                     letterSpacing: 1.4,
                     fontWeight: 600,
@@ -2879,7 +3465,7 @@ export default function App() {
                     width: 28,
                     height: 16,
                     borderRadius: 999,
-                    background: tInv ? M.ac : M.b1,
+                    background: tInv ? vars.typography.accent : vars.border.soft,
                     display: "flex",
                     alignItems: "center",
                     padding: 2,
@@ -2913,16 +3499,16 @@ export default function App() {
                 gap: 8,
                 padding: "10px 22px",
                 borderRadius: 999,
-                background: M.btn,
+                background: vars.background.button,
                 border: "none",
                 color: "#fff",
                 cursor: "pointer",
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 11,
                 fontWeight: 700,
                 letterSpacing: 1.4,
                 textTransform: "uppercase",
-                boxShadow: M.bsh,
+                boxShadow: vars.shadow.button,
               }}
             >
               {t("timer.formDone")}
@@ -2935,9 +3521,9 @@ export default function App() {
           <div style={{ textAlign: "center", padding: "4px 14px" }}>
             <div
               style={{
-                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontFamily: SERIF,
                 fontSize: 24,
-                color: M.t1,
+                color: vars.typography.primary,
                 letterSpacing: -0.3,
                 lineHeight: 1.1,
               }}
@@ -2947,9 +3533,9 @@ export default function App() {
             {prObj?.name && (
               <div
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 10,
-                  color: M.tf,
+                  color: vars.typography.faint,
                   textTransform: "uppercase",
                   letterSpacing: 1.8,
                   fontWeight: 600,
@@ -2962,10 +3548,10 @@ export default function App() {
             {tD && (
               <div
                 style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontStyle: "italic",
                   fontSize: 15,
-                  color: M.t3,
+                  color: vars.typography.tertiary,
                   marginTop: 14,
                   padding: "0 6px",
                   lineHeight: 1.45,
@@ -2983,9 +3569,9 @@ export default function App() {
                   padding: "6px 14px",
                   borderRadius: 999,
                   background: "transparent",
-                  border: `1px solid ${M.b1}`,
-                  color: M.t3,
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  border: `1px solid ${vars.border.soft}`,
+                  color: vars.typography.tertiary,
+                  fontFamily: MONO,
                   fontSize: 9,
                   fontWeight: 600,
                   letterSpacing: 1.6,
@@ -3006,9 +3592,9 @@ export default function App() {
                     padding: "6px 14px",
                     borderRadius: 999,
                     background: "transparent",
-                    border: `1px solid ${M.ac}55`,
-                    color: M.ac,
-                    fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                    border: `1px solid color-mix(in srgb, ${vars.typography.accent} 33%, transparent)`,
+                    color: vars.typography.accent,
+                    fontFamily: MONO,
                     fontSize: 9,
                     fontWeight: 700,
                     letterSpacing: 1.6,
@@ -3045,8 +3631,8 @@ export default function App() {
                 height: 40,
                 borderRadius: "50%",
                 background: "transparent",
-                border: `1px solid ${M.b1}`,
-                color: M.t1,
+                border: `1px solid ${vars.border.soft}`,
+                color: vars.typography.primary,
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
@@ -3065,14 +3651,14 @@ export default function App() {
                 width: 40,
                 height: 40,
                 borderRadius: "50%",
-                background: M.btn,
+                background: vars.background.button,
                 border: "none",
                 color: "#fff",
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: M.bsh,
+                boxShadow: vars.shadow.button,
                 transition: "all .15s ease",
               }}
             >
@@ -3092,8 +3678,8 @@ export default function App() {
                   : "transparent",
                 border: pendingCancelTimer
                   ? "1px solid #ef4444"
-                  : `1px solid ${M.b1}`,
-                color: pendingCancelTimer ? "#ef4444" : M.t3,
+                  : `1px solid ${vars.border.soft}`,
+                color: pendingCancelTimer ? "#ef4444" : vars.typography.tertiary,
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
@@ -3120,9 +3706,9 @@ export default function App() {
               style={{
                 padding: "9px 18px",
                 background: "transparent",
-                border: `1px solid ${M.b1}`,
+                border: `1px solid ${vars.border.soft}`,
                 borderRadius: 999,
-                color: M.t2,
+                color: vars.typography.secondary,
                 fontSize: 11,
                 fontWeight: 600,
                 letterSpacing: 1.4,
@@ -3160,16 +3746,16 @@ export default function App() {
               gridTemplateColumns: "1fr 1fr 1fr",
               gap: 8,
               paddingTop: 18,
-              borderTop: `1px solid ${M.b1}`,
+              borderTop: `1px solid ${vars.border.soft}`,
               textAlign: "center",
             }}
           >
             <div>
               <div
                 style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontSize: 24,
-                  color: M.t1,
+                  color: vars.typography.primary,
                   lineHeight: 1,
                   letterSpacing: -0.4,
                 }}
@@ -3178,9 +3764,9 @@ export default function App() {
               </div>
               <div
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 8,
-                  color: M.tf,
+                  color: vars.typography.faint,
                   textTransform: "uppercase",
                   letterSpacing: 1.6,
                   fontWeight: 600,
@@ -3193,9 +3779,9 @@ export default function App() {
             <div>
               <div
                 style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontSize: 24,
-                  color: done ? M.gn : M.t1,
+                  color: done ? vars.typography.green : vars.typography.primary,
                   lineHeight: 1,
                   letterSpacing: -0.4,
                 }}
@@ -3204,9 +3790,9 @@ export default function App() {
               </div>
               <div
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 8,
-                  color: M.tf,
+                  color: vars.typography.faint,
                   textTransform: "uppercase",
                   letterSpacing: 1.6,
                   fontWeight: 600,
@@ -3219,9 +3805,9 @@ export default function App() {
             <div>
               <div
                 style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontSize: 24,
-                  color: M.pk,
+                  color: vars.typography.pink,
                   lineHeight: 1,
                   letterSpacing: -0.4,
                 }}
@@ -3231,9 +3817,9 @@ export default function App() {
               </div>
               <div
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 8,
-                  color: M.tf,
+                  color: vars.typography.faint,
                   textTransform: "uppercase",
                   letterSpacing: 1.6,
                   fontWeight: 600,
@@ -3270,8 +3856,8 @@ export default function App() {
                   : "transparent",
                 border: pendingCancelTimer
                   ? "1px solid #ef4444"
-                  : `1px solid ${M.b1}`,
-                color: pendingCancelTimer ? "#ef4444" : M.tf,
+                  : `1px solid ${vars.border.soft}`,
+                color: pendingCancelTimer ? "#ef4444" : vars.typography.faint,
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
@@ -3284,7 +3870,28 @@ export default function App() {
           </div>
         )}
 
-      </div>
+        <button
+          type="button"
+          onClick={openAbsence}
+          style={{
+            alignSelf: "center",
+            marginTop: 4,
+            padding: "8px 16px",
+            borderRadius: 999,
+            background: "transparent",
+            color: vars.typography.tertiary,
+            border: `1px solid ${vars.border.soft}`,
+            fontFamily: MONO,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: 1.4,
+            textTransform: "uppercase",
+            cursor: "pointer",
+          }}
+        >
+          {t("absence.button")}
+        </button>
+      </ui.Page>
     );
   })();
 
@@ -3358,9 +3965,9 @@ export default function App() {
             }}
             title={t("form.back")}
             style={{
-              background: M.s2,
-              border: `1px solid ${M.b1}`,
-              color: M.t2,
+              background: vars.background.raised,
+              border: `1px solid ${vars.border.soft}`,
+              color: vars.typography.secondary,
               borderRadius: 999,
               padding: "6px 12px",
               fontSize: 11,
@@ -3377,7 +3984,7 @@ export default function App() {
             style={{
               fontSize: 11,
               fontWeight: 700,
-              color: editingId ? M.at : M.t2,
+              color: editingId ? vars.typography.accentInk : vars.typography.secondary,
               letterSpacing: 0.5,
               textTransform: "uppercase",
               whiteSpace: "nowrap",
@@ -3404,7 +4011,7 @@ export default function App() {
             style={{
               fontSize: 9,
               fontWeight: 700,
-              color: M.t3,
+              color: vars.typography.tertiary,
               letterSpacing: 1.2,
               textTransform: "uppercase",
               marginBottom: 6,
@@ -3430,10 +4037,10 @@ export default function App() {
             style={{
               width: "100%",
               padding: "11px 12px",
-              background: M.s1,
-              border: `1px solid ${M.b1}`,
+              background: vars.background.surface,
+              border: `1px solid ${vars.border.soft}`,
               borderRadius: 10,
-              color: M.t1,
+              color: vars.typography.primary,
               fontSize: 13,
               outline: "none",
             }}
@@ -3446,7 +4053,7 @@ export default function App() {
               style={{
                 fontSize: 9,
                 fontWeight: 700,
-                color: M.t3,
+                color: vars.typography.tertiary,
                 letterSpacing: 1.2,
                 textTransform: "uppercase",
                 marginBottom: 4,
@@ -3454,7 +4061,7 @@ export default function App() {
             >
               {t("today.recent")}
             </div>
-            <div style={{ fontSize: 11, color: M.tf, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: vars.typography.faint, marginBottom: 8 }}>
               {t("today.opensTimer")}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -3462,8 +4069,8 @@ export default function App() {
                 <div
                   key={r.id}
                   style={{
-                    background: M.s1,
-                    border: `1px solid ${M.b1}`,
+                    background: vars.background.surface,
+                    border: `1px solid ${vars.border.soft}`,
                     borderRadius: 12,
                     padding: "10px 12px",
                     display: "flex",
@@ -3476,7 +4083,7 @@ export default function App() {
                       width: 8,
                       height: 8,
                       borderRadius: "50%",
-                      background: M.co[i % M.co.length],
+                      background: chart[i % chart.length],
                       flexShrink: 0,
                     }}
                   />
@@ -3485,7 +4092,7 @@ export default function App() {
                       style={{
                         fontSize: 13,
                         fontWeight: 700,
-                        color: M.t1,
+                        color: vars.typography.primary,
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -3493,7 +4100,7 @@ export default function App() {
                     >
                       {r.company}
                     </div>
-                    <div style={{ fontSize: 11, color: M.t3, marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: vars.typography.tertiary, marginTop: 2 }}>
                       {r.project}
                     </div>
                   </div>
@@ -3509,13 +4116,13 @@ export default function App() {
                       width: 34,
                       height: 34,
                       borderRadius: "50%",
-                      background: M.btn,
+                      background: vars.background.button,
                       border: "none",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       cursor: "pointer",
-                      boxShadow: M.bsh,
+                      boxShadow: vars.shadow.button,
                     }}
                   >
                     <svg
@@ -3541,11 +4148,11 @@ export default function App() {
         )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ flex: 1, height: 1, background: M.b1 }} />
+          <prim.Divider grow />
           <span
             style={{
               fontSize: 10,
-              color: M.t3,
+              color: vars.typography.tertiary,
               whiteSpace: "nowrap",
               textTransform: "uppercase",
               letterSpacing: 1,
@@ -3553,7 +4160,7 @@ export default function App() {
           >
             {t("today.orLogManually")}
           </span>
-          <div style={{ flex: 1, height: 1, background: M.b1 }} />
+          <prim.Divider grow />
         </div>
 
         <div>
@@ -3561,7 +4168,7 @@ export default function App() {
             style={{
               fontSize: 9,
               fontWeight: 700,
-              color: M.t3,
+              color: vars.typography.tertiary,
               letterSpacing: 1.2,
               textTransform: "uppercase",
               marginBottom: 6,
@@ -3569,13 +4176,20 @@ export default function App() {
           >
             {t("form.client")}
           </div>
-          <Combobox
+          {companiesError && companies.length === 0 && (
+            <ui.RetryStrip
+              label={t("error.loadClients")}
+              onRetry={loadCompaniesNow}
+            />
+          )}
+          <ui.Combobox
             value={fCo}
             items={companies}
             placeholder={`${t("form.searchClient")} (${companies.length})`}
             onChange={async (id) => {
               setFCo(id);
               setFPr("");
+              if (isInternalCompany(id)) setFInv(false);
               if (id) await ensureProjects(id);
             }}
           />
@@ -3587,7 +4201,7 @@ export default function App() {
               style={{
                 fontSize: 9,
                 fontWeight: 700,
-                color: M.t3,
+                color: vars.typography.tertiary,
                 letterSpacing: 1.2,
                 textTransform: "uppercase",
                 marginBottom: 6,
@@ -3595,16 +4209,23 @@ export default function App() {
             >
               {t("form.project")}
             </div>
-            <Combobox
-              value={fPr}
-              items={prList}
-              placeholder={
-                prList.length
-                  ? `${t("form.searchProject")} (${prList.length})`
-                  : t("form.loadingProjects")
-              }
+            {projectErrors[fCo] && prList.length === 0 ? (
+              <ui.RetryStrip
+                label={t("error.loadProjects")}
+                onRetry={() => void ensureProjects(fCo)}
+              />
+            ) : (
+              <ui.Combobox
+                value={fPr}
+                items={prList}
+                placeholder={
+                  prList.length
+                    ? `${t("form.searchProject")} (${prList.length})`
+                    : t("form.loadingProjects")
+                }
                 onChange={setFPr}
-            />
+              />
+            )}
           </div>
         )}
 
@@ -3613,7 +4234,7 @@ export default function App() {
             style={{
               fontSize: 9,
               fontWeight: 700,
-              color: M.t3,
+              color: vars.typography.tertiary,
               letterSpacing: 1.2,
               textTransform: "uppercase",
               marginBottom: 6,
@@ -3623,8 +4244,8 @@ export default function App() {
           </div>
           <div
             style={{
-              background: M.s1,
-              border: `1px solid ${M.b1}`,
+              background: vars.background.surface,
+              border: `1px solid ${vars.border.soft}`,
               borderRadius: 10,
               display: "flex",
               alignItems: "center",
@@ -3640,8 +4261,8 @@ export default function App() {
                 height: 46,
                 background: "transparent",
                 border: "none",
-                borderRight: `1px solid ${M.b1}`,
-                color: M.t3,
+                borderRight: `1px solid ${vars.border.soft}`,
+                color: vars.typography.tertiary,
                 fontSize: 20,
                 fontWeight: 200,
                 cursor: "pointer",
@@ -3670,10 +4291,10 @@ export default function App() {
               style={{
                 flex: 1,
                 textAlign: "center",
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 22,
                 fontWeight: 700,
-                color: M.t1,
+                color: vars.typography.primary,
                 letterSpacing: -1,
                 background: "transparent",
                 border: "none",
@@ -3689,8 +4310,8 @@ export default function App() {
                 height: 46,
                 background: "transparent",
                 border: "none",
-                borderLeft: `1px solid ${M.b1}`,
-                color: M.t3,
+                borderLeft: `1px solid ${vars.border.soft}`,
+                color: vars.typography.tertiary,
                 fontSize: 20,
                 fontWeight: 200,
                 cursor: "pointer",
@@ -3704,25 +4325,11 @@ export default function App() {
               textAlign: "center",
               marginTop: 4,
               fontSize: 11,
-              color: M.t3,
+              color: vars.typography.tertiary,
             }}
           >
             {t("form.typeHoursHint")}
           </div>
-          {prObj && parseFloat(prObj.hour_price) > 0 && (
-            <div
-              style={{
-                textAlign: "center",
-                marginTop: 4,
-                fontSize: 11,
-                color: M.t3,
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-              }}
-            >
-              {(fH * parseFloat(prObj.hour_price)).toFixed(0)} kr total ·{" "}
-              {parseFloat(prObj.hour_price)}kr/h
-            </div>
-          )}
         </div>
 
         <div>
@@ -3730,7 +4337,7 @@ export default function App() {
             style={{
               fontSize: 9,
               fontWeight: 700,
-              color: M.t3,
+              color: vars.typography.tertiary,
               letterSpacing: 1.2,
               textTransform: "uppercase",
               marginBottom: 6,
@@ -3746,10 +4353,10 @@ export default function App() {
             style={{
               width: "100%",
               padding: "11px 12px",
-              background: M.s1,
-              border: `1px solid ${M.b1}`,
+              background: vars.background.surface,
+              border: `1px solid ${vars.border.soft}`,
               borderRadius: 10,
-              color: M.t1,
+              color: vars.typography.primary,
               fontSize: 13,
               outline: "none",
               resize: "none",
@@ -3762,7 +4369,7 @@ export default function App() {
             style={{
               fontSize: 9,
               fontWeight: 700,
-              color: M.t3,
+              color: vars.typography.tertiary,
               letterSpacing: 1.2,
               textTransform: "uppercase",
               marginBottom: 6,
@@ -3771,7 +4378,7 @@ export default function App() {
             {lang === "sv" ? "Interna anteckningar" : "Internal notes"}{" "}
             <span
               style={{
-                color: M.tf,
+                color: vars.typography.faint,
                 fontWeight: 400,
                 letterSpacing: 0,
                 textTransform: "none",
@@ -3789,10 +4396,10 @@ export default function App() {
             style={{
               width: "100%",
               padding: "11px 12px",
-              background: M.s1,
-              border: `1px solid ${M.b1}`,
+              background: vars.background.surface,
+              border: `1px solid ${vars.border.soft}`,
               borderRadius: 10,
-              color: M.t1,
+              color: vars.typography.primary,
               fontSize: 13,
               outline: "none",
               resize: "none",
@@ -3806,8 +4413,8 @@ export default function App() {
             alignItems: "center",
             gap: 10,
             padding: "10px 12px",
-            background: M.s1,
-            border: `1px solid ${M.b1}`,
+            background: vars.background.surface,
+            border: `1px solid ${vars.border.soft}`,
             borderRadius: 10,
           }}
         >
@@ -3821,7 +4428,7 @@ export default function App() {
               width: 40,
               height: 22,
               borderRadius: 11,
-              background: fInv ? M.ac : M.b1,
+              background: fInv ? vars.typography.accent : vars.border.soft,
               display: "flex",
               alignItems: "center",
               padding: 2,
@@ -3842,7 +4449,7 @@ export default function App() {
               }}
             />
           </button>
-          <span style={{ fontSize: 13, color: M.t1 }}>
+          <span style={{ fontSize: 13, color: vars.typography.primary }}>
             {t("timer.invoiceable")}
           </span>
         </div>
@@ -3853,388 +4460,18 @@ export default function App() {
           style={{
             width: "100%",
             height: 46,
-            background: canSave ? M.btn : M.s3,
+            background: canSave ? vars.background.button : vars.background.glass,
             border: "none",
             borderRadius: 12,
-            color: canSave ? "#fff" : M.t3,
+            color: canSave ? "#fff" : vars.typography.tertiary,
             fontSize: 14,
             fontWeight: 700,
             cursor: canSave ? "pointer" : "default",
-            boxShadow: canSave ? M.bsh : "none",
+            boxShadow: canSave ? vars.shadow.button : "none",
           }}
         >
           {editingId ? t("form.saveChanges") : t("form.saveEntry")}
         </button>
-      </div>
-    );
-  })();
-
-  // ─── XP view ───────────────────────────────────────────────────────────
-  const xpView = (() => {
-    const level = Math.floor(xp / 1000) + 1;
-    const xpBase = (level - 1) * 1000;
-    const xpNext = level * 1000;
-    const pct = Math.min(((xp - xpBase) / (xpNext - xpBase)) * 100, 100);
-
-    return (
-      <div
-        style={{
-          padding: "14px 14px 24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}
-      >
-        <div style={{ margin: "-14px -14px 4px" }}>
-          <PageEyebrow
-            title={t("page.progress")}
-            hint={`${t("page.level")} ${level}`}
-            M={M}
-          />
-        </div>
-        {/* Level hero */}
-        <div
-          data-tour="xp-level"
-          style={{
-            textAlign: "center",
-            padding: "8px 0 10px",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-              fontSize: 9,
-              fontWeight: 700,
-              color: M.tf,
-              letterSpacing: 3,
-              textTransform: "uppercase",
-            }}
-          >
-            {t("page.level")}
-          </div>
-          <div
-            style={{
-              fontFamily: '"Instrument Serif","Georgia",serif',
-              fontSize: 92,
-              fontWeight: 400,
-              color: M.t1,
-              letterSpacing: -3,
-              lineHeight: 0.9,
-              margin: "4px 0 4px",
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {level}
-          </div>
-          <div
-            style={{
-              fontFamily: '"Instrument Serif","Georgia",serif',
-              fontStyle: "italic",
-              fontSize: 16,
-              color: M.t3,
-              lineHeight: 1.3,
-              letterSpacing: -0.1,
-            }}
-          >
-            {level >= 5
-              ? t("xp.titlePrincipal")
-              : level >= 3
-                ? t("xp.titleSenior")
-                : t("xp.titleDev")}
-          </div>
-        </div>
-
-        {/* XP progress bar */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div
-            style={{
-              height: 2,
-              background: M.b1,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${pct}%`,
-                background: `linear-gradient(90deg, ${M.ac}, ${M.pk})`,
-                transition: "width 500ms cubic-bezier(.22,1,.36,1)",
-              }}
-            />
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-              fontSize: 10,
-              color: M.t3,
-              fontWeight: 600,
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            <span>{xp.toLocaleString()} XP</span>
-            <span style={{ color: M.tf }}>
-              {(xpNext - xp).toLocaleString()} {t("xp.toNext")}
-            </span>
-          </div>
-        </div>
-
-        {xpCoach && (
-          <div
-            style={{
-              fontFamily: '"Instrument Serif","Georgia",serif',
-              fontStyle: "italic",
-              fontSize: 14,
-              color: M.t3,
-              lineHeight: 1.4,
-              textAlign: "center",
-              padding: "0 8px",
-            }}
-          >
-            {xpCoach}
-          </div>
-        )}
-
-        {/* Week bar chart */}
-        <div
-          style={{
-            paddingTop: 14,
-            borderTop: `1px solid ${M.b1}`,
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                fontSize: 9,
-                fontWeight: 600,
-                color: M.t3,
-                letterSpacing: 2.2,
-                textTransform: "uppercase",
-              }}
-            >
-              {t("xp.thisWeek")}
-            </span>
-            <span
-              style={{
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                fontSize: 10,
-                color: M.ac,
-                fontWeight: 700,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              +{Math.round(weekTotal * 8).toLocaleString()} XP
-            </span>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "flex-end",
-              height: 90,
-            }}
-          >
-            {weekH.map((h, i) => {
-              const isFut = i > todayI,
-                isToday = i === todayI,
-                empty = !isFut && h === 0;
-              const p2 = isFut ? 0 : Math.min((h / GOAL) * 100, 100);
-              const bc = h >= GOAL ? M.gn : isToday ? M.ac : "#d97706";
-              return (
-                <div
-                  key={i}
-                  style={{
-                    flex: 1,
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 5,
-                  }}
-                >
-                  <div
-                    style={{
-                      flex: 1,
-                      width: "100%",
-                      position: "relative",
-                      display: "flex",
-                      alignItems: "flex-end",
-                    }}
-                  >
-                    {isFut ? (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          border: `1px dashed ${M.b1}`,
-                          borderRadius: 4,
-                        }}
-                      />
-                    ) : empty ? (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          border: "1px dashed rgba(239, 68, 68, 0.35)",
-                          background: "rgba(239, 68, 68, 0.05)",
-                          borderRadius: 4,
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: `${p2}%`,
-                          background: bc,
-                          borderRadius: 4,
-                          minHeight: 6,
-                          outline: isToday ? `1.5px solid ${M.ac}` : "none",
-                          outlineOffset: 1,
-                        }}
-                      />
-                    )}
-                  </div>
-                  <span
-                    style={{
-                      fontFamily:
-                        '"JetBrains Mono",ui-monospace,monospace',
-                      fontSize: 8,
-                      fontWeight: 700,
-                      color: empty
-                        ? "#ef4444"
-                        : isToday
-                          ? M.ac
-                          : isFut
-                            ? M.tf
-                            : M.t2,
-                      letterSpacing: 0.2,
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    {isFut ? "—" : fmtHours(h)}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily:
-                        '"JetBrains Mono",ui-monospace,monospace',
-                      fontSize: 8,
-                      fontWeight: isToday ? 700 : 600,
-                      color: isToday ? M.ac : M.t3,
-                      letterSpacing: 1.4,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {DAYS[i]}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div
-            style={{
-              fontFamily: '"Instrument Serif","Georgia",serif',
-              fontStyle: "italic",
-              fontSize: 13,
-              color: M.t3,
-              textAlign: "center",
-              lineHeight: 1.4,
-            }}
-          >
-            {t("xp.thisWeekLine", { hours: fmtHours(weekTotal) })}
-          </div>
-        </div>
-
-        <div style={{ paddingTop: 14, borderTop: `1px solid ${M.b1}` }}>
-          <ChapterHeading
-            title={t("xp.achievements")}
-            hint={`${unlocked.length} / ${ACHS.length}`}
-          />
-        </div>
-        <div
-          data-tour="xp-achievements"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 8,
-          }}
-        >
-          {ACHS.map((a) => {
-            const got = unlocked.includes(a.id);
-            return (
-              <div
-                key={a.id}
-                className="engrave-card"
-                style={{
-                  background: got
-                    ? M.id === "dark"
-                      ? `${a.co}14`
-                      : `${a.co}0d`
-                    : "transparent",
-                  border: got
-                    ? `1px solid ${a.co}55`
-                    : `1px solid ${M.b1}`,
-                  borderRadius: 10,
-                  padding: "12px 6px 10px",
-                  textAlign: "center",
-                  opacity: got ? 1 : 0.45,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 22,
-                    lineHeight: 1,
-                    filter: got ? "none" : "grayscale(1)",
-                  }}
-                >
-                  {a.e}
-                </div>
-                <div
-                  style={{
-                    fontFamily: '"Instrument Serif","Georgia",serif',
-                    fontSize: 13,
-                    color: got ? a.co : M.t3,
-                    lineHeight: 1.15,
-                    letterSpacing: -0.1,
-                    marginTop: 2,
-                  }}
-                >
-                  {got ? achName(a.id, lang) : t("xp.locked")}
-                </div>
-                {got && (
-                  <div
-                    style={{
-                      fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                      fontSize: 8,
-                      fontWeight: 700,
-                      color: a.co,
-                      letterSpacing: 1.4,
-                      textTransform: "uppercase",
-                      marginTop: 2,
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    +{a.xp} XP
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
       </div>
     );
   })();
@@ -4244,8 +4481,7 @@ export default function App() {
     setHistoryScale("day");
   };
   const monthView = (
-    <MonthView
-      M={M}
+    <ui.MonthView
       goal={GOAL}
       referenceDate={selectedDate}
       onPickDay={pickDayForView}
@@ -4262,8 +4498,7 @@ export default function App() {
     />
   );
   const weekView = (
-    <WeekView
-      M={M}
+    <ui.WeekView
       goal={GOAL}
       referenceDate={selectedDate}
       onPickDay={pickDayForView}
@@ -4279,11 +4514,20 @@ export default function App() {
   );
 
   const dayView = (() => {
+    // Merge queued / quarantined entries for the selected day with server rows.
+    const sdISO = formatLocalDate(selectedDate);
+    const dayIds = new Set(dayEntries.map((e) => e.id));
+    const dayList = [
+      ...[...pendingQueue, ...failedQueue]
+        .filter((x) => x.entry.task_date === sdISO && !dayIds.has(x.entry.id))
+        .map((x) => x.entry),
+      ...dayEntries,
+    ];
     const dayGroups: Record<
       string,
       { cid: string; h: number; entries: TimeEntry[] }
     > = {};
-    dayEntries.forEach((e) => {
+    dayList.forEach((e) => {
       const key = e.company;
       if (!dayGroups[key])
         dayGroups[key] = { cid: e._company_id, h: 0, entries: [] };
@@ -4292,16 +4536,11 @@ export default function App() {
       ).toFixed(2);
       dayGroups[key].entries.push(e);
     });
-    const dayH = dayEntries.reduce((s, e) => s + parseFloat(e.hour || "0"), 0);
-    const dateLabel = selectedDate.toLocaleDateString(locale, {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    });
+    const dayH = dayList.reduce((s, e) => s + parseFloat(e.hour || "0"), 0);
     const dayClosed = monthClosure.isClosed(selectedDate.getFullYear(), selectedDate.getMonth()) === true;
 
     void dayClosed;
-    const dayBillableH = dayEntries.reduce(
+    const dayBillableH = dayList.reduce(
       (s, e) => s + (e.invoice === "1" ? parseFloat(e.hour) : 0),
       0,
     );
@@ -4313,10 +4552,10 @@ export default function App() {
         {/* Editorial date label */}
         <div
           style={{
-            fontFamily: '"Instrument Serif","Georgia",serif',
+            fontFamily: SERIF,
             fontStyle: "italic",
             fontSize: 22,
-            color: M.t1,
+            color: vars.typography.primary,
             letterSpacing: -0.3,
             lineHeight: 1.15,
             textAlign: "center",
@@ -4327,14 +4566,14 @@ export default function App() {
         </div>
 
         {/* Day hero */}
-        {dayEntries.length > 0 && (
+        {dayList.length > 0 && (
           <div style={{ textAlign: "center", padding: "6px 0 8px" }}>
             <div
               style={{
-                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontFamily: SERIF,
                 fontSize: 74,
                 fontWeight: 400,
-                color: dayH >= GOAL ? M.gn : M.t1,
+                color: dayH >= GOAL ? vars.typography.green : vars.typography.primary,
                 letterSpacing: -2.4,
                 lineHeight: 0.9,
                 fontVariantNumeric: "tabular-nums",
@@ -4358,14 +4597,14 @@ export default function App() {
                 <span style={{ width: "0.085em", height: "0.085em", borderRadius: "50%", background: "currentColor" }} />
               </span>
               {fmtHours(dayH).split(":")[1]}
-              <span style={{ fontStyle: "italic", fontSize: 34, color: dayH >= GOAL ? M.gn : M.ac, marginLeft: 4 }}>h</span>
+              <span style={{ fontStyle: "italic", fontSize: 34, color: dayH >= GOAL ? vars.typography.green : vars.typography.accent, marginLeft: 4 }}>h</span>
             </div>
             <div
               style={{
                 marginTop: 10,
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 10,
-                color: M.t3,
+                color: vars.typography.tertiary,
                 textTransform: "uppercase",
                 letterSpacing: 2.2,
                 fontWeight: 500,
@@ -4373,12 +4612,12 @@ export default function App() {
             >
               {dayH >= GOAL
                 ? `Day complete · ${dayBillablePct}% billable`
-                : `${dayBillablePct}% billable · ${dayEntries.length} ${dayEntries.length === 1 ? "entry" : "entries"}`}
+                : `${dayBillablePct}% billable · ${dayList.length} ${dayList.length === 1 ? "entry" : "entries"}`}
             </div>
           </div>
         )}
 
-        {dayEntries.length === 0 && dayEntriesLoading && (
+        {dayList.length === 0 && dayEntriesLoading && (
           <div
             style={{
               display: "flex",
@@ -4401,7 +4640,7 @@ export default function App() {
             />
           </div>
         )}
-        {dayEntries.length === 0 && !dayEntriesLoading && (
+        {dayList.length === 0 && !dayEntriesLoading && (
           <div
             style={{
               textAlign: "center",
@@ -4410,10 +4649,10 @@ export default function App() {
               lineHeight: 1.5,
             }}
           >
-            <div style={{ color: M.t2, fontWeight: 600, marginBottom: 4 }}>
+            <div style={{ color: vars.typography.secondary, fontWeight: 600, marginBottom: 4 }}>
               {t("history.noEntriesForDay")}
             </div>
-            <div style={{ color: M.tf, fontSize: 11 }}>
+            <div style={{ color: vars.typography.faint, fontSize: 11 }}>
               {t("history.emptyHint")}
             </div>
           </div>
@@ -4444,14 +4683,14 @@ export default function App() {
                   bottom: 4,
                   width: 3,
                   borderRadius: 2,
-                  background: M.co[gi % M.co.length],
+                  background: chart[gi % chart.length],
                 }}
               />
               <span
                 style={{
-                  fontFamily: '"Instrument Serif","Georgia",serif',
+                  fontFamily: SERIF,
                   fontSize: 17,
-                  color: M.co[gi % M.co.length],
+                  color: chart[gi % chart.length],
                   letterSpacing: -0.1,
                   lineHeight: 1.1,
                 }}
@@ -4460,10 +4699,10 @@ export default function App() {
               </span>
               <span
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 11,
                   fontWeight: 600,
-                  color: M.t2,
+                  color: vars.typography.secondary,
                   fontVariantNumeric: "tabular-nums",
                 }}
               >
@@ -4482,13 +4721,13 @@ export default function App() {
                       onDoubleClick={() => editEntry(e)}
                       title={t("entry.doubleClickEdit")}
                       style={{
-                        background: M.s1,
-                        border: `1px solid ${isPending ? "#ef4444" : M.b1}`,
+                        background: vars.background.surface,
+                        border: `1px solid ${isPending ? "#ef4444" : vars.border.soft}`,
                         borderRadius: 11,
                         padding: "9px 11px",
                         borderBottomLeftRadius: isPending ? 0 : 11,
                         borderBottomRightRadius: isPending ? 0 : 11,
-                        borderBottom: isPending ? "none" : `1px solid ${M.b1}`,
+                        borderBottom: isPending ? "none" : `1px solid ${vars.border.soft}`,
                         transition: "border-color .15s",
                         cursor: "pointer",
                       }}
@@ -4506,7 +4745,7 @@ export default function App() {
                             style={{
                               fontSize: 10,
                               fontWeight: 600,
-                              color: M.t3,
+                              color: vars.typography.tertiary,
                               marginBottom: 2,
                             }}
                           >
@@ -4515,7 +4754,7 @@ export default function App() {
                           <div
                             style={{
                               fontSize: 12,
-                              color: M.t1,
+                              color: vars.typography.primary,
                               lineHeight: 1.4,
                               wordBreak: "break-word",
                             }}
@@ -4526,7 +4765,7 @@ export default function App() {
                             <div
                               style={{
                                 fontSize: 11,
-                                color: M.t3,
+                                color: vars.typography.tertiary,
                                 marginTop: 4,
                                 fontStyle: "italic",
                               }}
@@ -4546,10 +4785,10 @@ export default function App() {
                         >
                           <span
                             style={{
-                              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                              fontFamily: MONO,
                               fontSize: 12,
                               fontWeight: 700,
-                              color: M.ac,
+                              color: vars.typography.accent,
                             }}
                           >
                             {fmtHours(parseFloat(e.hour))}
@@ -4563,13 +4802,13 @@ export default function App() {
                               height: 24,
                               borderRadius: "50%",
                               background: "transparent",
-                              border: `1px solid ${M.b1}`,
+                              border: `1px solid ${vars.border.soft}`,
                               display: "inline-flex",
                               alignItems: "center",
                               justifyContent: "center",
                               cursor: "pointer",
                               padding: 0,
-                              color: M.t2,
+                              color: vars.typography.secondary,
                               transition: "all .15s ease",
                             }}
                           >
@@ -4590,13 +4829,13 @@ export default function App() {
                                 : "transparent",
                               border: isPending
                                 ? "1px solid #ef4444"
-                                : `1px solid ${M.b1}`,
+                                : `1px solid ${vars.border.soft}`,
                               display: "inline-flex",
                               alignItems: "center",
                               justifyContent: "center",
                               cursor: "pointer",
                               padding: 0,
-                              color: isPending ? "#ef4444" : M.t3,
+                              color: isPending ? "#ef4444" : vars.typography.tertiary,
                               transition: "all .15s ease",
                             }}
                           >
@@ -4626,9 +4865,9 @@ export default function App() {
                           style={{
                             flex: 1,
                             padding: "10px 0",
-                            background: M.s2,
+                            background: vars.background.raised,
                             border: "none",
-                            color: M.t2,
+                            color: vars.typography.secondary,
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: "pointer",
@@ -4663,21 +4902,21 @@ export default function App() {
           </div>
         ))}
 
-        {dayEntries.length > 0 && (
+        {dayList.length > 0 && (
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "baseline",
               paddingTop: 12,
-              borderTop: `1px solid ${M.b1}`,
+              borderTop: `1px solid ${vars.border.soft}`,
             }}
           >
             <span
               style={{
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 9,
-                color: M.tf,
+                color: vars.typography.faint,
                 textTransform: "uppercase",
                 letterSpacing: 2.2,
                 fontWeight: 600,
@@ -4687,9 +4926,9 @@ export default function App() {
             </span>
             <span
               style={{
-                fontFamily: '"Instrument Serif","Georgia",serif',
+                fontFamily: SERIF,
                 fontSize: 22,
-                color: dayH >= GOAL ? M.gn : M.t1,
+                color: dayH >= GOAL ? vars.typography.green : vars.typography.primary,
                 lineHeight: 1,
                 letterSpacing: -0.4,
                 fontVariantNumeric: "tabular-nums",
@@ -4721,10 +4960,10 @@ export default function App() {
             padding: "9px 18px 9px 14px",
             borderRadius: 999,
             background: "transparent",
-            border: `1px solid ${M.b1}`,
-            color: M.t2,
+            border: `1px solid ${vars.border.soft}`,
+            color: vars.typography.secondary,
             cursor: "pointer",
-            fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+            fontFamily: MONO,
             fontSize: 11,
             fontWeight: 600,
             letterSpacing: 1.4,
@@ -4739,21 +4978,11 @@ export default function App() {
   })();
 
   const historyView = (
-    <div
-      style={{
-        padding: "16px 14px 24px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-      }}
+    <ui.Page
+      title={t("page.history")}
+      hint={t(`scale.${historyScale}` as "scale.week")}
+      gap={12}
     >
-      <div style={{ margin: "-16px -14px 0" }}>
-        <PageEyebrow
-          title={t("page.history")}
-          hint={t(`scale.${historyScale}` as "scale.week")}
-          M={M}
-        />
-      </div>
       <div
         style={{
           display: "flex",
@@ -4780,9 +5009,9 @@ export default function App() {
                   padding: "6px 12px",
                   border: "none",
                   borderRadius: 999,
-                  background: isActive ? M.ac : "transparent",
-                  color: isActive ? "#fff" : M.t3,
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  background: isActive ? vars.typography.accent : "transparent",
+                  color: isActive ? "#fff" : vars.typography.tertiary,
+                  fontFamily: MONO,
                   fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: 1.4,
@@ -4807,8 +5036,8 @@ export default function App() {
               height: 26,
               borderRadius: "50%",
               background: "transparent",
-              border: `1px solid ${M.b1}`,
-              color: M.t2,
+              border: `1px solid ${vars.border.soft}`,
+              color: vars.typography.secondary,
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
@@ -4831,8 +5060,8 @@ export default function App() {
               height: 26,
               borderRadius: "50%",
               background: "transparent",
-              border: `1px solid ${M.b1}`,
-              color: M.t2,
+              border: `1px solid ${vars.border.soft}`,
+              color: vars.typography.secondary,
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
@@ -4849,10 +5078,10 @@ export default function App() {
             <button
               onClick={jumpHistoryToCurrent}
               style={{
-                background: M.ac,
+                background: vars.typography.accent,
                 border: "none",
                 color: "#fff",
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 9,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -4874,19 +5103,71 @@ export default function App() {
         : historyScale === "week"
           ? weekView
           : monthView}
-    </div>
+
+      {simonMode && (
+        <ui.TodoCompactList
+          title={t("todo.upcomingSection")}
+          todos={todosUpcoming(todos)}
+          activeTaskKey={activeTaskKey}
+          showPressure={false}
+          onStart={startTodo}
+          onEdit={editTodo}
+        />
+      )}
+    </ui.Page>
+  );
+
+  const todoView = (
+    <ui.TodoView
+      todos={todos}
+      companies={companies}
+      getProjects={(cid) => projectCache[cid] || []}
+      ensureProjects={async (cid) => {
+        await ensureProjects(cid);
+      }}
+      draft={todoDraft}
+      onDraftChange={(patch) => setTodoDraft((d) => ({ ...d, ...patch }))}
+      activeTaskKey={activeTaskKey}
+      editingId={editingTodoId}
+      onAdd={addTodo}
+      onUpdate={updateTodo}
+      onResetForm={resetTodoForm}
+      onEdit={editTodo}
+      onToggle={toggleTodo}
+      onDelete={deleteTodo}
+    />
   );
 
   const views = {
     today: todayView,
+    todo: todoView,
     timer: timerView,
     history: historyView,
-    xp: xpView,
+    xp: (
+      <ui.XpView
+        xp={xp}
+        xpCoach={xpCoach}
+        weekTotal={weekTotal}
+        weekH={weekH}
+        todayI={todayI}
+        unlocked={unlocked}
+        mode={mode}
+        goal={GOAL}
+      />
+    ),
   };
 
   const hasCtx = !!(tCo && tPr);
   const coObj = companies.find((c) => c.id === tCo);
   const prObj = (projectCache[tCo] || []).find((p) => p.id === tPr);
+  // Estimate for the running task (if it maps to an estimated to-do), and the
+  // live total tracked against it (committed hours + the current session delta).
+  const topEstTodo = !simonMode
+    ? undefined
+    : (activeTodoId
+        ? todos.find((td) => td.id === activeTodoId && td.estimateH > 0)
+        : undefined) ?? estimatedTodoFor(tCo, tPr, tD);
+  const topEstLiveH = topEstTodo ? todoTrackedH(topEstTodo) : 0;
 
   const runningXpBonus = tRun ? Math.floor(tSec / 60) : 0;
   const displaySessionXp = sessionXp + runningXpBonus;
@@ -4897,7 +5178,7 @@ export default function App() {
       style={{
         position: "fixed",
         inset: 0,
-        background: M.bg,
+        background: vars.background.page,
         zIndex: 999,
         pointerEvents: modeTransition === "out" ? "auto" : "none",
         opacity: modeTransition === "out" ? 1 : 0,
@@ -4906,10 +5187,9 @@ export default function App() {
     />
   );
 
-  const warnColor = tRun ? null : tSec > 0 ? "#f59e0b" : "#ef4444";
-  const topBarBg = tRun ? M.bg : tSec > 0 ? "#ff7a00" : "#ff1f1f";
-  const topBarFg = tRun ? M.t1 : "#fff";
-  const topBarMuted = tRun ? M.t3 : "rgba(255,255,255,0.8)";
+  const topBarBg = tRun ? vars.background.page : tSec > 0 ? "#ff7a00" : "#ff1f1f";
+  const topBarFg = tRun ? vars.typography.primary : "#fff";
+  const topBarMuted = tRun ? vars.typography.tertiary : "rgba(255,255,255,0.8)";
 
   if (size === "top") {
     return (
@@ -4922,14 +5202,14 @@ export default function App() {
           style={{
             height: "100vh",
             width: "100vw",
-            background: M.bg,
+            background: vars.background.page,
             display: "flex",
             alignItems: "stretch",
             gap: 0,
             padding: 0,
             fontFamily:
               "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
-            borderBottom: `1px solid ${M.b1}`,
+            borderBottom: `1px solid ${vars.border.soft}`,
             position: "relative",
             overflow: "hidden",
           }}
@@ -4956,8 +5236,8 @@ export default function App() {
                 bottom: 0,
                 width: `${gpct}%`,
                 backgroundImage: done
-                  ? `linear-gradient(90deg, ${M.gn}12 0%, ${M.gn}22 50%, ${M.gn}12 100%)`
-                  : `linear-gradient(90deg, ${M.ac}0a 0%, ${M.ac}1c 50%, ${M.ac}0a 100%)`,
+                  ? `linear-gradient(90deg, color-mix(in srgb, ${vars.typography.green} 7%, transparent) 0%, color-mix(in srgb, ${vars.typography.green} 13%, transparent) 50%, color-mix(in srgb, ${vars.typography.green} 7%, transparent) 100%)`
+                  : `linear-gradient(90deg, color-mix(in srgb, ${vars.typography.accent} 4%, transparent) 0%, color-mix(in srgb, ${vars.typography.accent} 11%, transparent) 50%, color-mix(in srgb, ${vars.typography.accent} 4%, transparent) 100%)`,
                 pointerEvents: "none",
               }}
             />
@@ -4970,7 +5250,7 @@ export default function App() {
                 width: 14,
                 height: 14,
                 borderRadius: "50%",
-                background: tRun ? M.pk : M.btn,
+                background: tRun ? vars.typography.pink : vars.background.button,
                 border: "none",
                 display: "flex",
                 alignItems: "center",
@@ -5018,9 +5298,9 @@ export default function App() {
                   width: 5,
                   height: 5,
                   borderRadius: "50%",
-                  background: tRun ? M.pk : "#fff",
+                  background: tRun ? vars.typography.pink : "#fff",
                   boxShadow: tRun
-                    ? `0 0 5px ${M.pk}`
+                    ? `0 0 5px ${vars.typography.pink}`
                     : "0 0 4px rgba(255,255,255,0.6)",
                   animation: "pulse 1.2s ease-in-out infinite",
                   flexShrink: 0,
@@ -5028,16 +5308,36 @@ export default function App() {
               />
               <div
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 10,
                   fontWeight: 700,
-                  color: tRun ? M.ac : topBarFg,
+                  color: tRun ? vars.typography.accent : topBarFg,
                   letterSpacing: 0.1,
                   minWidth: 48,
                 }}
               >
                 {fmtClock(tSec)}
               </div>
+              {topEstTodo && (
+                <span
+                  title={t("todo.loggedOfEstimate", {
+                    logged: fmtHours(topEstLiveH),
+                    estimate: fmtHours(topEstTodo.estimateH),
+                  })}
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color:
+                      topEstLiveH >= topEstTodo.estimateH ? vars.typography.green : topBarMuted,
+                    letterSpacing: 0.2,
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  / {fmtHours(topEstTodo.estimateH)}
+                </span>
+              )}
             </div>
 
             <div
@@ -5065,7 +5365,7 @@ export default function App() {
                           fontWeight: 800,
                           letterSpacing: 1.4,
                           color: topBarFg,
-                          fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                          fontFamily: MONO,
                         }}
                       >
                         {half}
@@ -5090,9 +5390,9 @@ export default function App() {
                       <>
                         <span
                           style={{
-                            fontFamily: '"Instrument Serif","Georgia",serif',
+                            fontFamily: SERIF,
                             fontSize: 14,
-                            color: M.t1,
+                            color: vars.typography.primary,
                             letterSpacing: -0.2,
                             whiteSpace: "nowrap",
                             overflow: "hidden",
@@ -5107,9 +5407,9 @@ export default function App() {
                           <span
                             style={{
                               fontFamily:
-                                '"JetBrains Mono",ui-monospace,monospace',
+                                MONO,
                               fontSize: 8,
-                              color: M.tf,
+                              color: vars.typography.faint,
                               textTransform: "uppercase",
                               letterSpacing: 1.4,
                               fontWeight: 600,
@@ -5126,10 +5426,10 @@ export default function App() {
                     ) : (
                       <span
                         style={{
-                          fontFamily: '"Instrument Serif","Georgia",serif',
+                          fontFamily: SERIF,
                           fontStyle: "italic",
                           fontSize: 13,
-                          color: M.t3,
+                          color: vars.typography.tertiary,
                         }}
                       >
                         {t("timer.noTaskSelected")}
@@ -5142,10 +5442,10 @@ export default function App() {
                       key={funMessage}
                       className="fun-msg"
                       style={{
-                        fontFamily: '"Instrument Serif","Georgia",serif',
+                        fontFamily: SERIF,
                         fontStyle: "italic",
                         fontSize: 13,
-                        color: M.ac,
+                        color: vars.typography.accent,
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -5168,14 +5468,14 @@ export default function App() {
               gap: 10,
               flexShrink: 0,
               padding: "0 10px",
-              background: M.bg,
+              background: vars.background.page,
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
               {weekH.map((h, i) => {
                 const p = Math.min(1, h / GOAL);
                 const filled = p > 0;
-                const color = p >= 1 ? M.gn : p > 0 ? M.ac : M.b1;
+                const color = p >= 1 ? vars.typography.green : p > 0 ? vars.typography.accent : vars.border.soft;
                 return (
                   <span
                     key={i}
@@ -5202,10 +5502,10 @@ export default function App() {
             >
               <span
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 10,
                   fontWeight: 700,
-                  color: displaySessionXp > 0 ? M.ac : M.tf,
+                  color: displaySessionXp > 0 ? vars.typography.accent : vars.typography.faint,
                   fontVariantNumeric: "tabular-nums",
                   letterSpacing: 0.2,
                 }}
@@ -5214,9 +5514,9 @@ export default function App() {
               </span>
               <span
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 7,
-                  color: M.tf,
+                  color: vars.typography.faint,
                   textTransform: "uppercase",
                   letterSpacing: 1.4,
                   fontWeight: 600,
@@ -5228,14 +5528,14 @@ export default function App() {
                 <span
                   key={xpBump.id}
                   className="xp-bump"
-                  style={{ color: M.ac }}
+                  style={{ color: vars.typography.accent }}
                 >
                   +{xpBump.delta}
                 </span>
               )}
             </div>
 
-            <ActivityRing
+            <prim.ActivityRing
               progress={gpct / 100}
               done={done}
               size={22}
@@ -5245,8 +5545,8 @@ export default function App() {
                 style={{
                   fontSize: 7,
                   fontWeight: 700,
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
-                  color: done ? M.gn : M.t1,
+                  fontFamily: MONO,
+                  color: done ? vars.typography.green : vars.typography.primary,
                   letterSpacing: -0.2,
                   lineHeight: 1,
                   fontVariantNumeric: "tabular-nums",
@@ -5255,7 +5555,7 @@ export default function App() {
               >
                 {fmtHours(todayH)}
               </span>
-            </ActivityRing>
+            </prim.ActivityRing>
 
             <div
               className={justBumpedStreak ? "streak-pop" : undefined}
@@ -5263,16 +5563,16 @@ export default function App() {
                 display: "inline-flex",
                 alignItems: "baseline",
                 gap: 3,
-                color: M.pk,
+                color: vars.typography.pink,
               }}
             >
               <FlameIcon size={10} />
               <span
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 10,
                   fontWeight: 700,
-                  color: M.pk,
+                  color: vars.typography.pink,
                   fontVariantNumeric: "tabular-nums",
                   letterSpacing: 0.2,
                 }}
@@ -5281,9 +5581,9 @@ export default function App() {
               </span>
               <span
                 style={{
-                  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                  fontFamily: MONO,
                   fontSize: 7,
-                  color: M.tf,
+                  color: vars.typography.faint,
                   textTransform: "uppercase",
                   letterSpacing: 1.4,
                   fontWeight: 600,
@@ -5301,8 +5601,8 @@ export default function App() {
                 height: 22,
                 borderRadius: "50%",
                 background: "transparent",
-                border: `1px solid ${M.b1}`,
-                color: M.t2,
+                border: `1px solid ${vars.border.soft}`,
+                color: vars.typography.secondary,
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
@@ -5321,10 +5621,10 @@ export default function App() {
                 height: 22,
                 padding: "0 12px",
                 borderRadius: 999,
-                background: M.ac,
+                background: vars.typography.accent,
                 border: "none",
                 color: "#fff",
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 fontSize: 9,
                 fontWeight: 700,
                 letterSpacing: 1.4,
@@ -5346,29 +5646,165 @@ export default function App() {
     <>
       <div
         key="mode-full"
-        className={`mode-root ${themeClass} ${M.id === "dark" ? "app-dark-glow" : ""}`}
+        className={`mode-root ${themeClass} ${mode === "dark" ? "app-dark-glow" : ""}`}
         style={{
           height: "100vh",
-          background: M.id === "dark" ? undefined : M.bg,
+          background: mode === "dark" ? undefined : vars.background.page,
           fontFamily:
             "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
-          color: M.t1,
+          color: vars.typography.primary,
           position: "relative",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
         }}
       >
+        <div
+          onClick={tapSimonCorner}
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: 22,
+            height: 22,
+            zIndex: 9999,
+          }}
+        >
+          {simonMode && (
+            <span
+              style={{
+                position: "absolute",
+                top: 4,
+                left: 4,
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: "#10b981",
+                opacity: 0.7,
+              }}
+            />
+          )}
+        </div>
         {hdr}
+        {(!online || pendingQueue.length > 0) &&
+          (() => {
+            const n = pendingQueue.length;
+            const syncMode = online; // online with a queue → syncing
+            const accent = syncMode ? vars.typography.accent : "#f59e0b";
+            const text = !online
+              ? n > 0
+                ? t("offline.banner", { n })
+                : t("error.offlineBanner")
+              : t("offline.syncing", { n });
+            return (
+              <div
+                role="status"
+                style={{
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "7px 14px",
+                  background: `${accent}1a`,
+                  borderTop: `1px solid ${accent}40`,
+                  borderBottom: `1px solid ${accent}40`,
+                  color: syncMode
+                    ? vars.typography.accent
+                    : mode === "dark"
+                      ? "#fbbf24"
+                      : "#b45309",
+                  fontFamily: MONO,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: accent,
+                    flexShrink: 0,
+                    animation:
+                      syncMode || syncing
+                        ? "pulse 1.2s ease-in-out infinite"
+                        : undefined,
+                  }}
+                />
+                {text}
+              </div>
+            );
+          })()}
+        {failedQueue.length > 0 && (
+          <div
+            role="status"
+            style={{
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "7px 14px",
+              background: "#ef44441a",
+              borderTop: `1px solid #ef444440`,
+              borderBottom: `1px solid #ef444440`,
+              color: "#ef4444",
+              fontFamily: MONO,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+            }}
+          >
+            <span style={{ flex: 1 }}>
+              {t("offline.failedBanner", { n: failedQueue.length })}
+            </span>
+            <button
+              type="button"
+              onClick={retryFailed}
+              style={{
+                padding: "3px 10px",
+                borderRadius: 999,
+                background: "#ef4444",
+                color: "#fff",
+                border: "none",
+                fontFamily: MONO,
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+            >
+              {t("offline.retry")}
+            </button>
+          </div>
+        )}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-          {logOpen ? logView : views[tab]}
+          {absenceOpen ? (
+            <ui.AbsenceForm
+              company={fravaroCompany}
+              projects={
+                fravaroCompany ? projectCache[fravaroCompany.id] || [] : []
+              }
+              minFromISO={absenceMinFromISO}
+              todayISO={absenceTodayISO}
+              saving={absenceSaving}
+              onSubmit={reportAbsence}
+              onClose={() => setAbsenceOpen(false)}
+            />
+          ) : logOpen ? (
+            logView
+          ) : (
+            views[tab]
+          )}
         </div>
         <div
           style={{
             height: 40,
             flexShrink: 0,
-            borderTop: `1px solid ${M.b1}`,
-            background: M.bg,
+            borderTop: `1px solid ${vars.border.soft}`,
+            background: vars.background.page,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -5381,8 +5817,8 @@ export default function App() {
             style={{
               display: "flex",
               gap: 2,
-              background: M.s2,
-              border: `1px solid ${M.b1}`,
+              background: vars.background.raised,
+              border: `1px solid ${vars.border.soft}`,
               borderRadius: 7,
               padding: 2,
             }}
@@ -5395,8 +5831,8 @@ export default function App() {
                   width: 22,
                   height: 22,
                   borderRadius: 5,
-                  border: mode === m ? `1px solid ${M.b2}` : "none",
-                  background: mode === m ? M.s1 : "transparent",
+                  border: mode === m ? `1px solid ${vars.border.strong}` : "none",
+                  background: mode === m ? vars.background.surface : "transparent",
                   fontSize: 11,
                   cursor: "pointer",
                 }}
@@ -5413,8 +5849,8 @@ export default function App() {
               width: 22,
               height: 22,
               borderRadius: 5,
-              background: M.s2,
-              border: `1px solid ${M.b1}`,
+              background: vars.background.raised,
+              border: `1px solid ${vars.border.soft}`,
               fontSize: 12,
               cursor: "pointer",
               padding: 0,
@@ -5435,9 +5871,9 @@ export default function App() {
               width: 22,
               height: 22,
               borderRadius: 5,
-              background: pinned ? `${M.ac}26` : M.s2,
-              border: `1px solid ${pinned ? M.ac : M.b1}`,
-              color: pinned ? M.ac : M.t3,
+              background: pinned ? `color-mix(in srgb, ${vars.typography.accent} 15%, transparent)` : vars.background.raised,
+              border: `1px solid ${pinned ? vars.typography.accent : vars.border.soft}`,
+              color: pinned ? vars.typography.accent : vars.typography.tertiary,
               fontSize: 11,
               cursor: "pointer",
               padding: 0,
@@ -5456,9 +5892,9 @@ export default function App() {
               width: 22,
               height: 22,
               borderRadius: 5,
-              background: M.s2,
-              border: `1px solid ${M.b1}`,
-              color: M.t3,
+              background: vars.background.raised,
+              border: `1px solid ${vars.border.soft}`,
+              color: vars.typography.tertiary,
               fontSize: 11,
               fontWeight: 700,
               cursor: "pointer",
@@ -5475,7 +5911,7 @@ export default function App() {
               gap: 6,
               background: "none",
               border: "none",
-              color: M.t3,
+              color: vars.typography.tertiary,
               fontSize: 12,
               cursor: "pointer",
               padding: "4px 8px",
@@ -5487,7 +5923,7 @@ export default function App() {
         </div>
 
         {showIntro && (
-          <IntroOverlay
+          <ui.IntroOverlay
             mode={mode}
             step={introStep}
             steps={introSteps}
@@ -5519,8 +5955,8 @@ export default function App() {
                 bottom: 12,
                 left: 12,
                 right: 12,
-                background: M.s1,
-                border: `1.5px solid ${M.ac}`,
+                background: vars.background.surface,
+                border: `1.5px solid ${vars.typography.accent}`,
                 borderRadius: 14,
                 padding: "14px 16px",
                 zIndex: 201,
@@ -5532,7 +5968,7 @@ export default function App() {
                 style={{
                   fontSize: 14,
                   fontWeight: 700,
-                  color: M.t1,
+                  color: vars.typography.primary,
                   marginBottom: 6,
                 }}
               >
@@ -5541,7 +5977,7 @@ export default function App() {
               <div
                 style={{
                   fontSize: 12,
-                  color: M.t3,
+                  color: vars.typography.tertiary,
                   marginBottom: 12,
                   lineHeight: 1.4,
                 }}
@@ -5554,10 +5990,10 @@ export default function App() {
                   style={{
                     flex: 1,
                     padding: "9px 0",
-                    background: M.s2,
-                    border: `1px solid ${M.b1}`,
+                    background: vars.background.raised,
+                    border: `1px solid ${vars.border.soft}`,
                     borderRadius: 9,
-                    color: M.t2,
+                    color: vars.typography.secondary,
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -5574,7 +6010,7 @@ export default function App() {
                   style={{
                     flex: 1,
                     padding: "9px 0",
-                    background: M.btn,
+                    background: vars.background.button,
                     border: "none",
                     borderRadius: 9,
                     color: "#fff",
@@ -5590,32 +6026,49 @@ export default function App() {
           </>
         )}
 
-        {floats.map((f) => (
+        {floats.length > 0 && (
           <div
-            key={f.id}
+            aria-live="polite"
             style={{
               position: "absolute",
-              top: "30%",
-              left: "50%",
-              transform: "translateX(-50%)",
-              background: M.s1,
-              border: `1px solid ${M.b1}`,
-              borderRadius: 13,
-              padding: "9px 18px",
-              fontSize: 15,
-              fontWeight: 800,
-              color: f.col,
-              fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: 16,
               pointerEvents: "none",
-              animation: "floatUp 1.5s ease-out forwards",
-              whiteSpace: "nowrap",
+              overflow: "hidden",
               zIndex: 99,
-              boxShadow: `0 4px 24px ${f.col}44`,
             }}
           >
-            {f.txt}
+            {floats.map((f) => (
+              <div
+                key={f.id}
+                role="status"
+                style={{
+                  maxWidth: "100%",
+                  background: vars.background.surface,
+                  border: `1px solid ${vars.border.soft}`,
+                  borderRadius: 13,
+                  padding: "9px 18px",
+                  fontSize: 15,
+                  fontWeight: 800,
+                  color: f.col,
+                  fontFamily: MONO,
+                  textAlign: "center",
+                  lineHeight: 1.35,
+                  overflowWrap: "anywhere",
+                  animation: "floatUp 1.5s ease-out forwards",
+                  boxShadow: `0 4px 24px ${f.col}44`,
+                }}
+              >
+                {f.txt}
+              </div>
+            ))}
           </div>
-        ))}
+        )}
 
         {saveToast && (
           <div
@@ -5626,7 +6079,7 @@ export default function App() {
               alignItems: "center",
               justifyContent: "center",
               background:
-                M.id === "dark"
+                mode === "dark"
                   ? "rgba(11, 9, 16, 0.55)"
                   : "rgba(253, 252, 251, 0.65)",
               animation: "saveFlashBackdrop 2.1s cubic-bezier(.22,1,.36,1) forwards",
@@ -5645,9 +6098,9 @@ export default function App() {
                 gap: 14,
                 padding: "26px 30px 24px",
                 borderRadius: 22,
-                background: M.s1,
-                border: `1.5px solid ${M.gn}55`,
-                boxShadow: `0 14px 48px ${M.gn}55, 0 0 0 1px ${M.gn}22`,
+                background: vars.background.surface,
+                border: `1.5px solid color-mix(in srgb, ${vars.typography.green} 33%, transparent)`,
+                boxShadow: `0 14px 48px color-mix(in srgb, ${vars.typography.green} 33%, transparent), 0 0 0 1px color-mix(in srgb, ${vars.typography.green} 13%, transparent)`,
                 animation: "saveFlashCard 2.1s cubic-bezier(.22,1,.36,1) forwards",
               }}
             >
@@ -5656,11 +6109,11 @@ export default function App() {
                 width={72}
                 height={72}
                 fill="none"
-                stroke={M.gn}
                 strokeWidth={5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden
+                style={{ stroke: vars.typography.green }}
               >
                 <circle
                   className="save-flash-ring"
@@ -5690,7 +6143,7 @@ export default function App() {
                   style={{
                     fontSize: 15,
                     fontWeight: 800,
-                    color: M.t1,
+                    color: vars.typography.primary,
                     letterSpacing: -0.2,
                   }}
                 >
@@ -5699,8 +6152,8 @@ export default function App() {
                 <div
                   style={{
                     fontSize: 11,
-                    color: M.t3,
-                    fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                    color: vars.typography.tertiary,
+                    fontFamily: MONO,
                     letterSpacing: 0.3,
                   }}
                 >
@@ -5723,7 +6176,7 @@ export default function App() {
               const dx = Math.cos(angle) * dist;
               const dy = Math.sin(angle) * dist - 30;
               const rot = (Math.random() - 0.5) * 720;
-              const palette = [M.ac, M.pk, M.gn, "#e8c060"];
+              const palette = [vars.typography.accent, vars.typography.pink, vars.typography.green, "#e8c060"];
               const color = palette[i % palette.length];
               const delay = Math.random() * 120;
               return (
@@ -5752,8 +6205,8 @@ export default function App() {
               bottom: ach ? 90 : 14,
               left: 12,
               right: 12,
-              background: M.s1,
-              border: `1.5px solid ${M.gn}66`,
+              background: vars.background.surface,
+              border: `1.5px solid color-mix(in srgb, ${vars.typography.green} 40%, transparent)`,
               borderRadius: 14,
               padding: "14px 16px",
               display: "flex",
@@ -5761,7 +6214,7 @@ export default function App() {
               gap: 13,
               zIndex: 101,
               animation: "goalToastIn .6s cubic-bezier(.34,1.56,.64,1)",
-              boxShadow: `0 10px 36px ${M.gn}55`,
+              boxShadow: `0 10px 36px color-mix(in srgb, ${vars.typography.green} 33%, transparent)`,
             }}
             role="status"
             aria-live="polite"
@@ -5771,12 +6224,12 @@ export default function App() {
                 width: 44,
                 height: 44,
                 borderRadius: 12,
-                background: `${M.gn}1f`,
+                background: `color-mix(in srgb, ${vars.typography.green} 12%, transparent)`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
-                color: M.gn,
+                color: vars.typography.green,
               }}
             >
               <svg
@@ -5798,7 +6251,7 @@ export default function App() {
                 style={{
                   fontSize: 9,
                   fontWeight: 700,
-                  color: M.gn,
+                  color: vars.typography.green,
                   letterSpacing: 1.4,
                   textTransform: "uppercase",
                   marginBottom: 3,
@@ -5810,14 +6263,14 @@ export default function App() {
                 style={{
                   fontSize: 15,
                   fontWeight: 800,
-                  color: M.t1,
+                  color: vars.typography.primary,
                   marginBottom: 2,
                   letterSpacing: -0.2,
                 }}
               >
                 {goalCelebration.title}
               </div>
-              <div style={{ fontSize: 11, color: M.t3 }}>
+              <div style={{ fontSize: 11, color: vars.typography.tertiary }}>
                 {goalCelebration.sub}
               </div>
             </div>
@@ -5831,7 +6284,7 @@ export default function App() {
               bottom: 14,
               left: 12,
               right: 12,
-              background: M.s1,
+              background: vars.background.surface,
               border: `1.5px solid ${ach.co}55`,
               borderRadius: 14,
               padding: "12px 14px",
@@ -5875,13 +6328,13 @@ export default function App() {
                 style={{
                   fontSize: 13,
                   fontWeight: 700,
-                  color: M.t1,
+                  color: vars.typography.primary,
                   marginBottom: 2,
                 }}
               >
                 {achName(ach.id, lang)}
               </div>
-              <div style={{ fontSize: 10, color: M.t3 }}>
+              <div style={{ fontSize: 10, color: vars.typography.tertiary }}>
                 {achDescription(ach.id, lang)}
               </div>
             </div>
@@ -5890,7 +6343,7 @@ export default function App() {
                 fontSize: 12,
                 fontWeight: 800,
                 color: ach.co,
-                fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+                fontFamily: MONO,
                 background: `${ach.co}18`,
                 borderRadius: 7,
                 padding: "4px 9px",

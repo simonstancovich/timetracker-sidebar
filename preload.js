@@ -9,6 +9,8 @@ const subscribe = (channel, mapArgs) => (cb) => {
 contextBridge.exposeInMainWorld('electronAPI', {
   // Auth
   checkAuth: () => ipcRenderer.invoke('check-auth'),
+  ping: () => ipcRenderer.invoke('ping'),
+  login: (creds) => ipcRenderer.invoke('login', creds),
   openAuth: () => ipcRenderer.invoke('open-auth'),
   signOut: () => ipcRenderer.invoke('sign-out'),
   onAuthSuccess: subscribe('auth-success'),

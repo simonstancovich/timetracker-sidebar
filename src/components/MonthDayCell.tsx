@@ -1,19 +1,8 @@
+import { vars } from "../theme";
 import type { CSSProperties } from "react";
 import { dateKey } from "../lib/swedishHolidays";
 import { fmtHours } from "../lib/hours";
-
-// Only the theme tokens this cell paints with.
-interface CellTheme {
-  ac: string;
-  gn: string;
-  b1: string;
-  t1: string;
-  t2: string;
-  tf: string;
-  goalInk: string;
-  partialInk: string;
-  missedInk: string;
-}
+import { MONO, SERIF } from "../lib/fonts";
 
 interface Props {
   date: Date | null;
@@ -22,7 +11,6 @@ interface Props {
   holiday: string | undefined;
   goal: number;
   loaded: boolean;
-  M: CellTheme;
   onPick: (d: Date) => void;
 }
 
@@ -37,7 +25,6 @@ interface CellTone {
 // far past goal the day went, amber = partial, red = missed workday, dashed =
 // off day. Colours are computed (alpha ramps, status hexes) so they stay inline.
 function cellTone(
-  M: CellTheme,
   isToday: boolean,
   hours: number,
   goal: number,
@@ -45,36 +32,36 @@ function cellTone(
   isWorkday: boolean,
 ): CellTone {
   if (isToday) {
-    return { bg: `${M.ac}1a`, border: `1.5px solid ${M.ac}`, numColor: M.ac, hoursColor: M.ac };
+    return { bg: `color-mix(in srgb, ${vars.typography.accent} 10%, transparent)`, border: `1.5px solid ${vars.typography.accent}`, numColor: vars.typography.accent, hoursColor: vars.typography.accent };
   }
   if (hours >= goal) {
     const heatPct = Math.min(1, hours / (goal * 1.5));
-    const alphaHex = Math.round(50 + heatPct * 110).toString(16).padStart(2, "0");
+    const alphaPct = Math.round(((50 + heatPct * 110) / 255) * 100);
     return {
-      bg: `${M.gn}${alphaHex}`,
-      border: `1px solid ${M.gn}66`,
-      numColor: M.goalInk,
-      hoursColor: M.goalInk,
+      bg: `color-mix(in srgb, ${vars.typography.green} ${alphaPct}%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${vars.typography.green} 40%, transparent)`,
+      numColor: vars.typography.goalInk,
+      hoursColor: vars.typography.goalInk,
     };
   }
   if (!isFuture && hours > 0) {
     return {
       bg: "rgba(217, 119, 6, 0.12)",
       border: "1px solid rgba(217, 119, 6, 0.45)",
-      numColor: M.t1,
-      hoursColor: M.partialInk,
+      numColor: vars.typography.primary,
+      hoursColor: vars.typography.partialInk,
     };
   }
   if (!isFuture && isWorkday) {
     return {
       bg: "rgba(239, 68, 68, 0.08)",
       border: "1px solid rgba(239, 68, 68, 0.35)",
-      numColor: M.t1,
-      hoursColor: M.missedInk,
+      numColor: vars.typography.primary,
+      hoursColor: vars.typography.missedInk,
     };
   }
-  const border = isWorkday ? `1px solid ${M.b1}` : `1px dashed ${M.b1}`;
-  return { bg: "transparent", border, numColor: M.tf, hoursColor: M.t2 };
+  const border = isWorkday ? `1px solid ${vars.border.soft}` : `1px dashed ${vars.border.soft}`;
+  return { bg: "transparent", border, numColor: vars.typography.faint, hoursColor: vars.typography.secondary };
 }
 
 const cellButton: CSSProperties = {
@@ -92,7 +79,7 @@ const cellButton: CSSProperties = {
 };
 
 const dayNumber: CSSProperties = {
-  fontFamily: '"Instrument Serif","Georgia",serif',
+  fontFamily: SERIF,
   fontSize: 18,
   lineHeight: 1,
   fontVariantNumeric: "tabular-nums",
@@ -100,7 +87,7 @@ const dayNumber: CSSProperties = {
 };
 
 const hoursLabel: CSSProperties = {
-  fontFamily: '"JetBrains Mono",ui-monospace,monospace',
+  fontFamily: MONO,
   fontSize: 9,
   fontWeight: 700,
   lineHeight: 1,
@@ -108,7 +95,7 @@ const hoursLabel: CSSProperties = {
   letterSpacing: 0.3,
 };
 
-export function MonthDayCell({ date, dayKey, hours, holiday, goal, loaded, M, onPick }: Props) {
+export function MonthDayCell({ date, dayKey, hours, holiday, goal, loaded, onPick }: Props) {
   if (!date) return <div />;
   if (!loaded) {
     return <div className="skeleton" style={{ aspectRatio: "1 / 1", borderRadius: 8 }} />;
@@ -119,7 +106,7 @@ export function MonthDayCell({ date, dayKey, hours, holiday, goal, loaded, M, on
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
   const isWorkday = !isWeekend && !holiday;
 
-  const tone = cellTone(M, isToday, hours, goal, isFuture, isWorkday);
+  const tone = cellTone(isToday, hours, goal, isFuture, isWorkday);
   const showHours = !isFuture && (hours > 0 || isWorkday);
 
   const dayNum = date.getDate();

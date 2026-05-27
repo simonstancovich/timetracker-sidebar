@@ -1,5 +1,3 @@
-import { shadows } from "./shadows";
-
 export type Mode = "light" | "dark";
 
 export const colors = {
@@ -43,6 +41,10 @@ export const colors = {
     green500: "#16a34a", // light green
     error: "#ef4444", // tailwind red-500, both modes
     warning: "#f59e0b", // tailwind amber-500, both modes
+    // Error text legible on the translucent-red failstate strip (RetryStrip):
+    // darker red on the pale light bg, softer red on the dark bg.
+    dangerStrong: "#b91c1c", // light
+    dangerSoft: "#fca5a5", // dark
     // Deep "ink" colors for text sitting on the tinted month-heatmap cells
     // (light mode); chosen for legibility on the pale green/amber/red fills.
     forestInk: "#0f4d2a", // hit-goal text
@@ -119,7 +121,8 @@ type TypoName =
   | "green"
   | "onAccent"
   | "error"
-  | "warning";
+  | "warning"
+  | "danger";
 
 const TYPOGRAPHY_MAP: Record<
   TypoName,
@@ -138,6 +141,7 @@ const TYPOGRAPHY_MAP: Record<
   onAccent: { light: "white", dark: "white" },
   error: { light: "error", dark: "error" },
   warning: { light: "warning", dark: "warning" },
+  danger: { light: "dangerStrong", dark: "dangerSoft" },
 };
 
 type BgName =
@@ -210,72 +214,3 @@ export function pickColor(
 }
 
 export const chartColors = (mode: Mode) => colors.chart[mode];
-
-export const light = {
-  id: "light",
-  bg: colors.background.pageLight,
-  s1: colors.background.white,
-  s2: colors.background.surfaceLight,
-  s3: colors.background.raisedLight,
-  b1: colors.border.softLight,
-  b2: colors.border.strongLight,
-  ac: colors.brand.violet400,
-  ad: colors.background.accentLight,
-  at: colors.brand.violet500,
-  am: colors.background.accentMutedLight,
-  pk: colors.typography.pink500,
-  pb: colors.background.pinkLight,
-  pp: colors.background.pinkPaperLight,
-  pv: colors.typography.pinkVivid,
-  gn: colors.typography.green500,
-  gb: colors.background.greenLight,
-  gd: colors.border.greenLight,
-  t1: colors.typography.ink,
-  t2: colors.typography.inkSoft,
-  t3: colors.typography.inkMuted,
-  tf: colors.typography.inkFaint,
-  lo: colors.brand.violet400,
-  btn: colors.brand.violet400,
-  bsh: shadows.brand,
-  co: colors.chart.light,
-  goalInk: colors.typography.forestInk,
-  partialInk: colors.typography.amberInk,
-  missedInk: colors.typography.redInk,
-} as const;
-
-export const dark = {
-  id: "dark",
-  bg: colors.background.pageDark,
-  s1: colors.background.glassDark,
-  s2: colors.background.surfaceDark,
-  s3: colors.background.raisedDark,
-  b1: colors.border.softDark,
-  b2: colors.border.strongDark,
-  ac: colors.brand.violet200,
-  ad: colors.background.accentDark,
-  at: colors.typography.violet500,
-  am: colors.background.accentMutedDark,
-  pk: colors.typography.pink400,
-  pb: colors.background.pinkDark,
-  pp: colors.background.pinkPaperDark,
-  pv: colors.typography.pink400,
-  gn: colors.typography.green400,
-  gb: colors.background.greenDark,
-  gd: colors.border.greenDark,
-  t1: colors.typography.gray100,
-  t2: colors.typography.gray300,
-  t3: colors.typography.gray500,
-  tf: colors.typography.gray700,
-  lo: colors.background.white,
-  btn: colors.brand.violet300,
-  bsh: shadows.heavy,
-  co: colors.chart.dark,
-  // Dark mode keeps the hit-goal number at primary ink (the green fill is
-  // already vivid); partial/missed inks stay the same warm/red as light.
-  goalInk: colors.typography.gray100,
-  partialInk: colors.typography.amberInk,
-  missedInk: colors.typography.redInk,
-} as const;
-
-export type Theme = typeof light | typeof dark;
-export const themes: Record<Mode, Theme> = { light, dark };

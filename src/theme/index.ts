@@ -3,10 +3,6 @@ export {
   pickColor,
   chartColors,
   alpha,
-  light,
-  dark,
-  themes,
-  type Theme,
   type Mode,
 } from "./colors";
 
@@ -26,4 +22,4 @@ export { zIndex } from "./zIndex";
 export { opacity } from "./opacity";
 export { duration, easing, transitions } from "./transitions";
 
-export { vars, lightTheme, darkTheme } from "./theme.css";
+export { vars, lightTheme, darkTheme, chart } from "./theme.css";

@@ -1,10 +1,42 @@
 {
   "tab": {
     "today": "Today",
+    "todo": "To-do",
     "timer": "Timer",
     "log": "+ Log",
     "history": "History",
     "xp": "XP"
+  },
+  "todo": {
+    "eyebrow": "To-do",
+    "eyebrowHint": "{{open}} open · {{done}} done",
+    "taskPlaceholder": "What needs doing?",
+    "estimatePlaceholder": "Est (h)",
+    "estimateLabel": "Estimate (h)",
+    "plannedLabel": "Planned",
+    "deadlineLabel": "Deadline",
+    "plannedOn": "Planned {{date}}",
+    "add": "Add to-do",
+    "save": "Save",
+    "cancel": "Cancel",
+    "editing": "Editing",
+    "editHint": "Double-click to edit",
+    "empty": "Nothing on the list. Add a task above to get started.",
+    "start": "Start",
+    "startTask": "Start task",
+    "running": "Running",
+    "delete": "Delete",
+    "markDone": "Mark done",
+    "markUndone": "Reopen",
+    "loggedOfEstimate": "{{logged}} of {{estimate}}",
+    "noEstimate": "no estimate",
+    "overdue": "Overdue",
+    "dueToday": "Due today",
+    "dueTomorrow": "Due tomorrow",
+    "dueInDays": "Due in {{n}}d",
+    "todaySection": "On your plate",
+    "upcomingSection": "Coming up",
+    "noProject": "Pick client + project to log directly"
   },
   "header": {
     "todayHours": "Today",
@@ -139,9 +171,48 @@
     "showingResults": "Showing {{n}} of {{total}} — type to filter",
     "typeHoursHint": "Type 1:30 or 1.5",
     "fillFirst": "Fill client, project & task first",
-    "saveFailed": "Save failed: {{err}}",
-    "deleteFailed": "Delete failed: {{err}}",
+    "saveFailed": "Couldn't save — {{err}}",
+    "deleteFailed": "Couldn't delete — {{err}}",
     "back": "Back"
+  },
+  "error": {
+    "offlineBanner": "No connection — changes can't be saved until you're back online",
+    "api": {
+      "offline": "Can't reach the server. Check your connection and try again.",
+      "timeout": "The server took too long to respond. Please try again.",
+      "auth": "Your session expired. Please sign in again.",
+      "server": "The server hit a problem. Please try again shortly.",
+      "notFound": "Couldn't find that on the server.",
+      "unknown": "Something went wrong. Please try again."
+    },
+    "loadClients": "Couldn't load clients.",
+    "loadProjects": "Couldn't load projects."
+  },
+  "offline": {
+    "queued": "Saved offline — will sync when you reconnect",
+    "banner": "Offline — {{n}} saved locally, will sync when you reconnect",
+    "syncing": "Syncing {{n}} saved offline…",
+    "syncFailed": "Couldn't sync an entry — it was discarded",
+    "pendingBadge": "Offline",
+    "failedBadge": "Failed",
+    "failedBanner": "{{n}} couldn't be saved — check and retry",
+    "retry": "Retry"
+  },
+  "absence": {
+    "button": "Report absence",
+    "title": "Report absence",
+    "type": "Type of absence",
+    "from": "From",
+    "to": "To",
+    "note": "Task *",
+    "notePlaceholder": "e.g. vacation, sick, parental…",
+    "preview": "{{days}} working days · {{hours}} h",
+    "noDays": "No working days in that range",
+    "submit": "Report absence",
+    "saving": "Reporting…",
+    "cancel": "Cancel",
+    "noClient": "No Frånvaro client found",
+    "done": "Absence reported for {{n}} days"
   },
   "entry": {
     "cancel": "Cancel",
@@ -163,7 +234,13 @@
   },
   "login": {
     "pitch": "Sign in with your DevCore account to start tracking time.",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "username": "Username",
+    "password": "Password",
+    "signingIn": "Signing in…",
+    "badCreds": "Wrong username or password.",
+    "failed": "Couldn't sign in. Please try again.",
+    "browserFallback": "Trouble signing in? Use the browser"
   },
   "week": {
     "total": "Week total",

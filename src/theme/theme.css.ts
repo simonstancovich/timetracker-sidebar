@@ -1,5 +1,5 @@
 import { createThemeContract, createTheme, globalStyle } from "@vanilla-extract/css";
-import { pickColor, chartColors } from "./colors";
+import { colors, pickColor, chartColors } from "./colors";
 import { fontFamily, fontSize, fontWeight, lineHeight } from "./typography";
 import { spacing } from "./spacing";
 import { radii } from "./radii";
@@ -22,6 +22,10 @@ export const vars = createThemeContract({
     onAccent: null,
     error: null,
     warning: null,
+    danger: null,
+    goalInk: null,
+    partialInk: null,
+    missedInk: null,
   },
   background: {
     page: null,
@@ -34,6 +38,7 @@ export const vars = createThemeContract({
     pinkPaper: null,
     green: null,
     warning: null,
+    button: null,
   },
   border: {
     soft: null,
@@ -52,6 +57,7 @@ export const vars = createThemeContract({
   shadow: {
     brand: null,
     heavy: null,
+    button: null,
   },
   font: {
     body: null,
@@ -80,6 +86,10 @@ export const lightTheme = createTheme(vars, {
     onAccent: pickColor("typography", "onAccent", "light"),
     error: pickColor("typography", "error", "light"),
     warning: pickColor("typography", "warning", "light"),
+    danger: pickColor("typography", "danger", "light"),
+    goalInk: colors.typography.forestInk,
+    partialInk: colors.typography.amberInk,
+    missedInk: colors.typography.redInk,
   },
   background: {
     page: pickColor("background", "page", "light"),
@@ -92,6 +102,7 @@ export const lightTheme = createTheme(vars, {
     pinkPaper: pickColor("background", "pinkPaper", "light"),
     green: pickColor("background", "green", "light"),
     warning: pickColor("background", "warning", "light"),
+    button: colors.brand.violet400,
   },
   border: {
     soft: pickColor("border", "soft", "light"),
@@ -102,7 +113,7 @@ export const lightTheme = createTheme(vars, {
     warning: pickColor("border", "warning", "light"),
   },
   chart: { "0": chartL[0], "1": chartL[1], "2": chartL[2], "3": chartL[3] },
-  shadow: { brand: shadows.brand, heavy: shadows.heavy },
+  shadow: { brand: shadows.brand, heavy: shadows.heavy, button: shadows.brand },
   font: {
     body: fontFamily.body,
     display: fontFamily.display,
@@ -125,6 +136,10 @@ export const darkTheme = createTheme(vars, {
     onAccent: pickColor("typography", "onAccent", "dark"),
     error: pickColor("typography", "error", "dark"),
     warning: pickColor("typography", "warning", "dark"),
+    danger: pickColor("typography", "danger", "dark"),
+    goalInk: colors.typography.gray100,
+    partialInk: colors.typography.amberInk,
+    missedInk: colors.typography.redInk,
   },
   background: {
     page: pickColor("background", "page", "dark"),
@@ -137,6 +152,7 @@ export const darkTheme = createTheme(vars, {
     pinkPaper: pickColor("background", "pinkPaper", "dark"),
     green: pickColor("background", "green", "dark"),
     warning: pickColor("background", "warning", "dark"),
+    button: colors.brand.violet300,
   },
   border: {
     soft: pickColor("border", "soft", "dark"),
@@ -147,7 +163,7 @@ export const darkTheme = createTheme(vars, {
     warning: pickColor("border", "warning", "dark"),
   },
   chart: { "0": chartD[0], "1": chartD[1], "2": chartD[2], "3": chartD[3] },
-  shadow: { brand: shadows.brand, heavy: shadows.heavy },
+  shadow: { brand: shadows.brand, heavy: shadows.heavy, button: shadows.heavy },
   font: {
     body: fontFamily.body,
     display: fontFamily.display,
@@ -155,9 +171,19 @@ export const darkTheme = createTheme(vars, {
   },
 });
 
+// Chart palette as an indexable array (the per-mode values resolve via the
+// theme class), for call sites that cycle colours by index.
+export const chart = [
+  vars.chart["0"],
+  vars.chart["1"],
+  vars.chart["2"],
+  vars.chart["3"],
+] as const;
+
 export { fontSize, fontWeight, lineHeight, spacing, radii, shadows };
 
 globalStyle(`.${lightTheme}`, {
+  colorScheme: "light",
   vars: {
     "--shadow-engrave":
       "inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 0 rgba(0,0,0,0.025)",
@@ -166,6 +192,7 @@ globalStyle(`.${lightTheme}`, {
 });
 
 globalStyle(`.${darkTheme}`, {
+  colorScheme: "dark",
   vars: {
     "--shadow-engrave":
       "inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 0 rgba(0,0,0,0.42)",

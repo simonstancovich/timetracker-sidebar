@@ -1,6 +1,8 @@
 declare global {
   interface ElectronAPI {
     checkAuth: () => Promise<boolean>
+    ping: () => Promise<{ reachable: boolean }>
+    login: (creds: { username: string; password: string }) => Promise<{ success: boolean; error?: string }>
     openAuth: () => Promise<void>
     signOut: () => Promise<void>
     onAuthSuccess: (cb: () => void) => () => void
