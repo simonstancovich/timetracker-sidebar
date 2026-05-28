@@ -21,6 +21,7 @@ export const size = styleVariants({
   base: { fontSize: fontSize.base },
   md: { fontSize: fontSize.md },
   lg: { fontSize: fontSize.lg },
+  xl: { fontSize: fontSize.xl },
 });
 
 export const weight = styleVariants({

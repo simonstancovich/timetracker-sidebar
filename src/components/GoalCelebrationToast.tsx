@@ -1,5 +1,6 @@
 import { useTranslation } from "../lib/i18n";
 import { vars } from "../theme";
+import * as prim from "../primitives";
 
 interface Celebration {
   title: string;
@@ -62,34 +63,23 @@ export function GoalCelebrationToast({ celebration, liftedForAch }: Props) {
           <polyline points="20 6 9 17 4 12" />
         </svg>
       </div>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 9,
-            fontWeight: 700,
-            color: vars.typography.green,
-            letterSpacing: 1.4,
-            textTransform: "uppercase",
-            marginBottom: 3,
-          }}
+      <prim.Stack gap="xs" minWidth0>
+        <prim.MonoText
+          size="2xs"
+          weight="bold"
+          color="green"
+          tracking="loosest"
+          transform="uppercase"
         >
           {t("goal.eyebrow")}
-        </div>
-        <div
-          style={{
-            fontSize: 15,
-            fontWeight: 800,
-            color: vars.typography.primary,
-            marginBottom: 2,
-            letterSpacing: -0.2,
-          }}
-        >
+        </prim.MonoText>
+        <prim.Text size="xl" weight="black" color="primary" tracking="tight">
           {celebration.title}
-        </div>
-        <div style={{ fontSize: 11, color: vars.typography.tertiary }}>
+        </prim.Text>
+        <prim.Text size="sm" color="tertiary">
           {celebration.sub}
-        </div>
-      </div>
+        </prim.Text>
+      </prim.Stack>
     </div>
   );
 }

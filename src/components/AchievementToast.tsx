@@ -1,6 +1,7 @@
 import { achDescription, achName, useTranslation, type Lang } from "../lib/i18n";
 import { vars } from "../theme";
 import { MONO } from "../lib/fonts";
+import * as prim from "../primitives";
 import type { Ach } from "../lib/achievements";
 
 interface Props {
@@ -45,9 +46,10 @@ export function AchievementToast({ ach, lang }: Props) {
       >
         {ach.e}
       </div>
-      <div style={{ flex: 1 }}>
-        <div
+      <prim.Stack gap="none" minWidth0>
+        <span
           style={{
+            fontFamily: MONO,
             fontSize: 9,
             fontWeight: 700,
             color: ach.co,
@@ -57,22 +59,15 @@ export function AchievementToast({ ach, lang }: Props) {
           }}
         >
           {t("xp.achievementUnlocked")}
-        </div>
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: vars.typography.primary,
-            marginBottom: 2,
-          }}
-        >
+        </span>
+        <prim.Text size="md" weight="bold" color="primary">
           {achName(ach.id, lang)}
-        </div>
-        <div style={{ fontSize: 10, color: vars.typography.tertiary }}>
+        </prim.Text>
+        <prim.Text size="xs" color="tertiary">
           {achDescription(ach.id, lang)}
-        </div>
-      </div>
-      <div
+        </prim.Text>
+      </prim.Stack>
+      <span
         style={{
           fontSize: 12,
           fontWeight: 800,
@@ -84,7 +79,7 @@ export function AchievementToast({ ach, lang }: Props) {
         }}
       >
         +{ach.xp} XP
-      </div>
+      </span>
     </div>
   );
 }

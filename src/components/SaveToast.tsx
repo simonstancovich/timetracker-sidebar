@@ -1,5 +1,5 @@
 import { vars } from "../theme";
-import { MONO } from "../lib/fonts";
+import * as prim from "../primitives";
 
 interface SaveToastData {
   cheer: string;
@@ -75,35 +75,14 @@ export function SaveToast({ toast, mode }: Props) {
             strokeDashoffset="40"
           />
         </svg>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 800,
-              color: vars.typography.primary,
-              letterSpacing: -0.2,
-            }}
-          >
+        <prim.Stack align="center" gap="none">
+          <prim.Text size="xl" weight="black" color="primary" tracking="tight">
             {toast.cheer}
-          </div>
-          <div
-            style={{
-              fontSize: 11,
-              color: vars.typography.tertiary,
-              fontFamily: MONO,
-              letterSpacing: 0.3,
-            }}
-          >
+          </prim.Text>
+          <prim.MonoText size="sm" weight="normal" color="tertiary" tracking="wide">
             +{toast.hours}  ·  +{toast.xp} XP
-          </div>
-        </div>
+          </prim.MonoText>
+        </prim.Stack>
       </div>
     </div>
   );
