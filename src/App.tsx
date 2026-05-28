@@ -84,16 +84,12 @@ import { MONO, SERIF } from "./lib/fonts";
 import { workingDaysInRange } from "./lib/absence";
 
 import {
-  createTodo,
-  normalizeTodo,
   taskKey,
   todosInPlay,
   todosUpcoming,
-  TODOS_STORE_KEY,
   type Todo,
-  type TodoDraft,
-  type TodoFormState,
 } from "./lib/todos";
+import { useTodos } from "./lib/useTodos";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 import {
@@ -281,22 +277,18 @@ export default function App() {
   const [pendingAchs, setPendingAchs] = useState<Ach[]>([]);
   const [achStats, setAchStats] = useState<AchStats>(EMPTY_ACH_STATS);
   const [achStatsLoaded, setAchStatsLoaded] = useState(false);
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [todosLoaded, setTodosLoaded] = useState(false);
-  const [activeTodoId, setActiveTodoId] = useState<string | null>(null);
-  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
-  // Hours already on the entry when the active to-do session began, so we only
-  // credit the new delta back to the to-do (continuing an entry resumes its time).
-  const activeTodoBaseHoursRef = useRef(0);
-  // To-do draft form, lifted here so it survives collapsing to top-bar mode.
-  const [todoDraft, setTodoDraft] = useState<TodoFormState>({
-    text: "",
-    estimate: "",
-    planned: "",
-    deadline: "",
-    co: "",
-    pr: "",
-  });
+  // To-do state (cohesive hook): items, draft form, active/editing ids, accrual.
+  const {
+    todos,
+    activeTodoId, setActiveTodoId,
+    editingTodoId, setEditingTodoId,
+    todoDraft, setTodoDraft,
+    activeTodoBaseHoursRef,
+    accrueTodoHours,
+    addTodo, updateTodo, toggleTodo, deleteTodo,
+    estimatedTodoFor,
+    resetTodoForm,
+  } = useTodos(authed);
   const [lastCelebratedDate, setLastCelebratedDate] = useState<string>("");
   const [goalCelebration, setGoalCelebration] = useState<{
     title: string;
@@ -473,24 +465,6 @@ export default function App() {
     }
   };
 
-
-  // Credit a logged session back to the to-do that started it (if any). Uses the
-  // same billed (rounded-up-to-15-min) hours the entry is saved with, so the
-  // to-do's logged total stays in sync with its entries. Only the delta since the
-  // session began counts, so continuing an entry isn't double-counted.
-  const accrueTodoHours = (todoId: string | null, totalHours: number) => {
-    if (!todoId) return;
-    const billed = roundUpToQuarter(totalHours);
-    const delta = +(billed - activeTodoBaseHoursRef.current).toFixed(2);
-    if (delta <= 0) return;
-    setTodos((ts) =>
-      ts.map((td) =>
-        td.id === todoId
-          ? { ...td, loggedH: +(td.loggedH + delta).toFixed(2) }
-          : td,
-      ),
-    );
-  };
 
   const stopAndLogCurrent = async () => {
     if (!tCo || !tPr || !tD.trim()) {
@@ -1332,56 +1306,6 @@ export default function App() {
     }
   };
 
-  // ─── To-do list (local, electron-store) ────────────────────────────────
-  useEffect(() => {
-    if (!authed) return;
-    let cancelled = false;
-    window.electronAPI.storeGet(TODOS_STORE_KEY).then((saved) => {
-      if (cancelled) return;
-      if (Array.isArray(saved))
-        setTodos((saved as Todo[]).map(normalizeTodo));
-      setTodosLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [authed]);
-
-  useEffect(() => {
-    if (todosLoaded) window.electronAPI.storeSet(TODOS_STORE_KEY, todos);
-  }, [todos, todosLoaded]);
-
-  const resetTodoForm = () => {
-    setEditingTodoId(null);
-    setTodoDraft({
-      text: "",
-      estimate: "",
-      planned: "",
-      deadline: "",
-      co: "",
-      pr: "",
-    });
-  };
-  const addTodo = (draft: TodoDraft) =>
-    setTodos((ts) => [createTodo(draft), ...ts]);
-  const updateTodo = (id: string, draft: TodoDraft) =>
-    setTodos((ts) =>
-      ts.map((td) =>
-        td.id === id
-          ? {
-              ...td,
-              text: draft.text,
-              estimateH: draft.estimateH,
-              plannedDate: draft.plannedDate,
-              deadline: draft.deadline,
-              companyId: draft.companyId,
-              companyName: draft.companyName,
-              projectId: draft.projectId,
-              projectName: draft.projectName,
-            }
-          : td,
-      ),
-    );
   // Double-click a to-do to edit it: fill the form and jump to the To-do tab.
   const editTodo = async (todo: Todo) => {
     setEditingTodoId(todo.id);
@@ -1396,23 +1320,6 @@ export default function App() {
     if (todo.companyId) await ensureProjects(todo.companyId);
     setTab("todo");
   };
-  const toggleTodo = (id: string) =>
-    setTodos((ts) =>
-      ts.map((td) => (td.id === id ? { ...td, done: !td.done } : td)),
-    );
-  const deleteTodo = (id: string) =>
-    setTodos((ts) => ts.filter((td) => td.id !== id));
-
-  // The estimated to-do (if any) a tracked task belongs to, so logged entries
-  // and the running timer can show progress against its estimate.
-  const estimatedTodoFor = (cid: string, prid: string, desc: string) =>
-    todos.find(
-      (td) =>
-        td.estimateH > 0 &&
-        td.companyId === cid &&
-        td.projectId === prid &&
-        td.text === desc,
-    );
 
   // Hours tracked against a to-do, derived from its actual time entries (the
   // source of truth, in sync with the per-client totals). The running session
