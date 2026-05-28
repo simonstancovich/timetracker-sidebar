@@ -54,6 +54,7 @@ import { MONO, SERIF } from "./lib/fonts";
 
 import {
   taskKey,
+  todoTrackedH,
   todosInPlay,
   todosUpcoming,
   type Todo,
@@ -713,25 +714,8 @@ export function AppShell({
   // source of truth, in sync with the per-client totals). The running session
   // counts live: a resumed entry uses the live clock, and a fresh session not
   // yet saved is added on top so progress ticks up in real time.
-  const todoTrackedH = (td: Todo) => {
-    const belongs = (cid: string, prid: string, desc: string) =>
-      cid === td.companyId && prid === td.projectId && desc === td.text;
-    let sum = 0;
-    let countedRunning = false;
-    for (const e of entries) {
-      if (!belongs(e._company_id, e._project_id, e.description)) continue;
-      if (tRun && draftId === e.id) {
-        sum += tSec / 3600;
-        countedRunning = true;
-      } else {
-        sum += parseFloat(e.hour) || 0;
-      }
-    }
-    if (tRun && !countedRunning && draftId === null && belongs(tCo, tPr, tD)) {
-      sum += tSec / 3600;
-    }
-    return sum;
-  };
+  const trackedHForTodo = (td: Todo) =>
+    todoTrackedH(td, entries, { tCo, tPr, tD, tRun, tSec, draftId });
 
   // Key of the task currently running (if any), so to-do rows can show a live
   // "Running" state by matching their own task â€” independent of activeTodoId.
@@ -1127,7 +1111,7 @@ export function AppShell({
       todos={todosInPlay(todos)}
       activeTaskKey={activeTaskKey}
       estimatedTodoFor={estimatedTodoFor}
-      todoTrackedH={todoTrackedH}
+      todoTrackedH={trackedHForTodo}
       setTab={setTab}
       setTD={setTD}
       setLogOpen={setLogOpen}
@@ -1314,7 +1298,7 @@ export function AppShell({
     : (activeTodoId
         ? todos.find((td) => td.id === activeTodoId && td.estimateH > 0)
         : undefined) ?? estimatedTodoFor(tCo, tPr, tD);
-  const topEstLiveH = topEstTodo ? todoTrackedH(topEstTodo) : 0;
+  const topEstLiveH = topEstTodo ? trackedHForTodo(topEstTodo) : 0;
 
   const runningXpBonus = tRun ? Math.floor(tSec / 60) : 0;
   const displaySessionXp = sessionXp + runningXpBonus;

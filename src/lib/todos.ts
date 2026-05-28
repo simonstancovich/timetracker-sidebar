@@ -158,6 +158,52 @@ export function todosUpcoming(todos: Todo[]): Todo[] {
     });
 }
 
+interface TimerSnapshotForTodo {
+  tCo: string;
+  tPr: string;
+  tD: string;
+  tRun: boolean;
+  tSec: number;
+  draftId: string | null;
+}
+
+interface EntryForTodo {
+  id: string;
+  _company_id: string;
+  _project_id: string;
+  description: string;
+  hour: string;
+}
+
+// Hours tracked against a to-do, derived from its actual time entries (the
+// source of truth, kept in sync with the per-client totals). The running
+// session counts live: a resumed entry uses the live clock, and a fresh
+// session not yet saved is added on top so progress ticks up in real time.
+export function todoTrackedH(
+  td: Todo,
+  entries: EntryForTodo[],
+  timer: TimerSnapshotForTodo,
+): number {
+  const { tCo, tPr, tD, tRun, tSec, draftId } = timer;
+  const belongs = (cid: string, prid: string, desc: string) =>
+    cid === td.companyId && prid === td.projectId && desc === td.text;
+  let sum = 0;
+  let countedRunning = false;
+  for (const e of entries) {
+    if (!belongs(e._company_id, e._project_id, e.description)) continue;
+    if (tRun && draftId === e.id) {
+      sum += tSec / 3600;
+      countedRunning = true;
+    } else {
+      sum += parseFloat(e.hour) || 0;
+    }
+  }
+  if (tRun && !countedRunning && draftId === null && belongs(tCo, tPr, tD)) {
+    sum += tSec / 3600;
+  }
+  return sum;
+}
+
 // Sort: open before done; within open, soonest deadline first (no-deadline
 // last), then newest. Done items keep newest-first.
 export function sortTodos(todos: Todo[]): Todo[] {
