@@ -1,6 +1,7 @@
 import { useTranslation } from "../lib/i18n";
 import { vars } from "../theme";
 import { MONO } from "../lib/fonts";
+import { Button } from "../primitives/Button/Button";
 
 interface Props {
   label: string;
@@ -35,25 +36,9 @@ export function RetryStrip({ label, onRetry }: Props) {
       >
         {label}
       </span>
-      <button
-        type="button"
-        onClick={onRetry}
-        style={{
-          padding: "3px 10px",
-          borderRadius: 999,
-          background: "#ef4444",
-          color: "#fff",
-          border: "none",
-          fontFamily: MONO,
-          fontSize: 9,
-          fontWeight: 700,
-          letterSpacing: 1,
-          textTransform: "uppercase",
-          cursor: "pointer",
-        }}
-      >
+      <Button variant="danger" size="xs" shape="pill" mono onClick={onRetry}>
         {t("offline.retry")}
-      </button>
+      </Button>
     </div>
   );
 }

@@ -45,6 +45,11 @@ export const variant = styleVariants({
     color: vars.typography.tertiary,
     border: `1px solid ${vars.border.soft}`,
   },
+  danger: {
+    background: vars.typography.error,
+    color: vars.typography.onAccent,
+    border: "none",
+  },
   link: {
     background: "transparent",
     color: vars.typography.faint,

@@ -1074,27 +1074,11 @@ export function TimerView({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={openAbsence}
-        style={{
-          alignSelf: "center",
-          marginTop: 4,
-          padding: "8px 16px",
-          borderRadius: 999,
-          background: "transparent",
-          color: vars.typography.tertiary,
-          border: `1px solid ${vars.border.soft}`,
-          fontFamily: MONO,
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: 1.4,
-          textTransform: "uppercase",
-          cursor: "pointer",
-        }}
-      >
-        {t("absence.button")}
-      </button>
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+        <prim.Button variant="ghost" size="sm" shape="pill" mono onClick={openAbsence}>
+          {t("absence.button")}
+        </prim.Button>
+      </div>
     </Page>
   );
 }

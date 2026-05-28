@@ -1,5 +1,6 @@
 import { useTranslation } from "../lib/i18n";
 import { MONO } from "../lib/fonts";
+import { Button } from "../primitives/Button/Button";
 
 interface Props {
   count: number;
@@ -29,25 +30,9 @@ export function FailedQueueBanner({ count, onRetry }: Props) {
       }}
     >
       <span style={{ flex: 1 }}>{t("offline.failedBanner", { n: count })}</span>
-      <button
-        type="button"
-        onClick={onRetry}
-        style={{
-          padding: "3px 10px",
-          borderRadius: 999,
-          background: "#ef4444",
-          color: "#fff",
-          border: "none",
-          fontFamily: MONO,
-          fontSize: 9,
-          fontWeight: 700,
-          letterSpacing: 1,
-          textTransform: "uppercase",
-          cursor: "pointer",
-        }}
-      >
+      <Button variant="danger" size="xs" shape="pill" mono onClick={onRetry}>
         {t("offline.retry")}
-      </button>
+      </Button>
     </div>
   );
 }
