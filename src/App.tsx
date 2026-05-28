@@ -68,6 +68,7 @@ import {
 } from "./lib/i18n";
 import { useModal } from "./lib/useModal";
 import { useLogForm } from "./lib/useLogForm";
+import { useTimer } from "./lib/useTimer";
 import { buildIntroSteps } from "./lib/introSteps";
 import * as prim from "./primitives";
 
@@ -330,20 +331,21 @@ export default function App() {
   } | null>(null);
   const fid = useRef(0);
 
-  // Timer state
-  const [tSec, setTSec] = useState(0);
-  // Latest tSec for effects that need its value but must not re-run each tick.
-  const tSecRef = useRef(tSec);
-  tSecRef.current = tSec;
-  const [tRun, setTRun] = useState(false);
-  const [tCo, setTCo] = useState("");
-  const [tPr, setTPr] = useState("");
-  const [tD, setTD] = useState("");
-  const [tNote, setTNote] = useState("");
-  const [tInv, setTInv] = useState(true);
+  // Timer state (cohesive hook)
+  const {
+    tSec, setTSec, tSecRef,
+    tRun, setTRun,
+    tCo, setTCo,
+    tPr, setTPr,
+    tD, setTD,
+    tNote, setTNote,
+    tInv, setTInv,
+    draftId, setDraftId,
+    reset: clearTimerFields,
+    hydrate: hydrateTimer,
+  } = useTimer();
   const [timerLoaded, setTimerLoaded] = useState(false);
   const [timerFormOpen, setTimerFormOpen] = useState(true);
-  const tick = useRef<number | null>(null);
 
   const prevDisplayXp = useRef(0);
   useEffect(() => {
@@ -377,7 +379,6 @@ export default function App() {
     hydrate: hydrateLogForm,
   } = logFormApi;
   const [logFormLoaded, setLogFormLoaded] = useState(false);
-  const [draftId, setDraftId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<{
     title: string;
     body: string;
@@ -403,14 +404,7 @@ export default function App() {
   } | null>(null);
 
   const resetTimer = () => {
-    setTRun(false);
-    setTSec(0);
-    setTCo("");
-    setTPr("");
-    setTD("");
-    setTNote("");
-    setTInv(true);
-    setDraftId(null);
+    clearTimerFields();
     draftIdRef.current = null;
     setTimerFormOpen(true);
     setActiveTodoId(null);
@@ -658,22 +652,15 @@ export default function App() {
     setEntries([]);
     setEntriesLoading(true);
     setWeekH([0, 0, 0, 0, 0]);
-    setTRun(false);
-    setTSec(0);
-    setTCo("");
-    setTPr("");
-    setTD("");
-    setTNote("");
-    setTInv(true);
+    clearTimerFields();
     setPendingCancelTimer(false);
     resetLogForm();
     setFHInput("1:00");
-    setDraftId(null);
     setSessionXp(0);
     setCurrentUser(null);
     setTimerLoaded(false);
     setLogFormLoaded(false);
-  }, [authed, resetLogForm, setFHInput]);
+  }, [authed, clearTimerFields, resetLogForm, setFHInput]);
 
   // ─── Persisted: mode, xp, unlocked, streak, timer ──────────────────────
   useEffect(() => {
@@ -721,19 +708,7 @@ export default function App() {
 
       // restore running timer
       if (t && typeof t === "object") {
-        setTCo(t.tCo || "");
-        setTPr(t.tPr || "");
-        setTD(t.tD || "");
-        setTNote(t.tNote || "");
-        setTInv(typeof t.tInv === "boolean" ? t.tInv : true);
-        if (t.draftId) setDraftId(t.draftId);
-        if (t.running && typeof t.startedAt === "number") {
-          setTSec(Math.max(0, Math.floor((Date.now() - t.startedAt) / 1000)));
-          setTRun(true);
-        } else {
-          setTSec(typeof t.tSec === "number" ? t.tSec : 0);
-          setTRun(false);
-        }
+        hydrateTimer(t);
         if (t.tCo) {
           loadProjects(t.tCo)
             .then((list) => setProjectCache((c) => ({ ...c, [t.tCo]: list })))
@@ -742,7 +717,7 @@ export default function App() {
       }
       setTimerLoaded(true);
     })();
-  }, [authed]);
+  }, [authed, hydrateTimer]);
 
   useEffect(() => {
     window.electronAPI.storeSet("mode", mode);
@@ -918,7 +893,7 @@ export default function App() {
       startedAt: tRun ? Date.now() - tSecRef.current * 1000 : null,
       draftId,
     });
-  }, [authed, timerLoaded, tCo, tPr, tD, tNote, tInv, tRun, draftId]);
+  }, [authed, timerLoaded, tCo, tPr, tD, tNote, tInv, tRun, draftId, tSecRef]);
 
   // Persist Log form fields too so manual-log inputs survive app restarts.
   useEffect(() => {
@@ -1081,18 +1056,6 @@ export default function App() {
     );
   }, [authed, entries]);
 
-  // ─── Timer tick ────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (tRun)
-      tick.current = window.setInterval(() => setTSec((s) => s + 1), 1000);
-    else if (tick.current) {
-      clearInterval(tick.current);
-      tick.current = null;
-    }
-    return () => {
-      if (tick.current) clearInterval(tick.current);
-    };
-  }, [tRun]);
 
   // ─── Auto-save draft every 5 min while running ─────────────────────────
   // Only depend on tRun — we read the latest fields through a ref so typing
