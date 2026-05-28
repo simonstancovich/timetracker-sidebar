@@ -1,5 +1,6 @@
 export * from "./AbsenceForm";
 export * from "./AchievementToast";
+export * from "./AppFooter";
 export * from "./AppHeader";
 export * from "./ChapterHeading";
 export * from "./Combobox";
