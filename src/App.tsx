@@ -1844,166 +1844,46 @@ export default function App() {
     />
   );
 
-  const historyView = (
-    <ui.Page
-      title={t("page.history")}
-      hint={t(`scale.${historyScale}` as "scale.week")}
-      gap={12}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-        }}
-      >
-        <div
-          role="tablist"
-          style={{ display: "flex", gap: 4 }}
-        >
-          {(["day", "week", "month"] as const).map((v) => {
-            const labelKey =
-              v === "day" ? "daily" : v === "week" ? "weekly" : "monthly";
-            const isActive = historyScale === v;
-            return (
-              <button
-                key={v}
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setHistoryScale(v)}
-                style={{
-                  padding: "6px 12px",
-                  border: "none",
-                  borderRadius: 999,
-                  background: isActive ? vars.typography.accent : "transparent",
-                  color: isActive ? "#fff" : vars.typography.tertiary,
-                  fontFamily: MONO,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: 1.4,
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  transition: "all 150ms ease",
-                }}
-              >
-                {t(`history.${labelKey}`)}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <button
-            onClick={() => stepHistoryDate(-1)}
-            aria-label={t("scale.prev", {
-              scale: t(`scale.${historyScale}` as "scale.week"),
-            })}
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: "50%",
-              background: "transparent",
-              border: `1px solid ${vars.border.soft}`,
-              color: vars.typography.secondary,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              transition: "all 140ms ease",
-            }}
-          >
-            <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <button
-            onClick={() => stepHistoryDate(1)}
-            aria-label={t("scale.next", {
-              scale: t(`scale.${historyScale}` as "scale.week"),
-            })}
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: "50%",
-              background: "transparent",
-              border: `1px solid ${vars.border.soft}`,
-              color: vars.typography.secondary,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              transition: "all 140ms ease",
-            }}
-          >
-            <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-          {!historyIsOnCurrent && (
-            <button
-              onClick={jumpHistoryToCurrent}
-              style={{
-                background: vars.typography.accent,
-                border: "none",
-                color: "#fff",
-                fontFamily: MONO,
-                fontSize: 9,
-                fontWeight: 700,
-                cursor: "pointer",
-                padding: "0 10px",
-                height: 22,
-                marginLeft: 4,
-                borderRadius: 999,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-              }}
-            >
-              {t("header.now")}
-            </button>
-          )}
-        </div>
-      </div>
-      {historyScale === "day" ? (
-        <ui.DayView
-          selectedDate={selectedDate}
-          dayEntries={dayEntries}
-          dayEntriesLoading={dayEntriesLoading}
-          pendingQueue={pendingQueue}
-          failedQueue={failedQueue}
-          goal={GOAL}
-          pendingDeleteId={pendingDeleteId}
-          onEditEntry={editEntry}
-          onSetPendingDelete={setPendingDeleteId}
-          onDeleteEntry={delEntry}
-          onLogPastTime={() => {
-            const [y, mo, da] = [
-              selectedDate.getFullYear(),
-              selectedDate.getMonth(),
-              selectedDate.getDate(),
-            ];
-            setEditingDate(new Date(y, mo, da));
-            setLogOpen(true);
-          }}
-        />
-      ) : historyScale === "week" ? (
-        weekView
-      ) : (
-        monthView
-      )}
+  const dayView = (
+    <ui.DayView
+      selectedDate={selectedDate}
+      dayEntries={dayEntries}
+      dayEntriesLoading={dayEntriesLoading}
+      pendingQueue={pendingQueue}
+      failedQueue={failedQueue}
+      goal={GOAL}
+      pendingDeleteId={pendingDeleteId}
+      onEditEntry={editEntry}
+      onSetPendingDelete={setPendingDeleteId}
+      onDeleteEntry={delEntry}
+      onLogPastTime={() => {
+        const [y, mo, da] = [
+          selectedDate.getFullYear(),
+          selectedDate.getMonth(),
+          selectedDate.getDate(),
+        ];
+        setEditingDate(new Date(y, mo, da));
+        setLogOpen(true);
+      }}
+    />
+  );
 
-      {simonMode && (
-        <ui.TodoCompactList
-          title={t("todo.upcomingSection")}
-          todos={todosUpcoming(todos)}
-          activeTaskKey={activeTaskKey}
-          showPressure={false}
-          onStart={startTodo}
-          onEdit={editTodo}
-        />
-      )}
-    </ui.Page>
+  const historyView = (
+    <ui.HistoryView
+      historyScale={historyScale}
+      setHistoryScale={setHistoryScale}
+      stepHistoryDate={stepHistoryDate}
+      historyIsOnCurrent={historyIsOnCurrent}
+      jumpHistoryToCurrent={jumpHistoryToCurrent}
+      dayView={dayView}
+      weekView={weekView}
+      monthView={monthView}
+      simonMode={simonMode}
+      upcomingTodos={todosUpcoming(todos)}
+      activeTaskKey={activeTaskKey}
+      startTodo={startTodo}
+      editTodo={editTodo}
+    />
   );
 
   const todoView = (

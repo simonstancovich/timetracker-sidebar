@@ -4,6 +4,7 @@ export * from "./ChapterHeading";
 export * from "./Combobox";
 export * from "./DayView";
 export * from "./ErrorBoundary";
+export * from "./HistoryView";
 export * from "./HoursRingButton";
 export * from "./IntroOverlay";
 export * from "./LoginScreen";
