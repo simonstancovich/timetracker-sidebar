@@ -57,7 +57,6 @@ import {
 import { useModal } from "./lib/useModal";
 import { useLogForm } from "./lib/useLogForm";
 import { useTimer } from "./lib/useTimer";
-import { buildIntroSteps } from "./lib/introSteps";
 import * as prim from "./primitives";
 
 import { SunIcon } from "./icons/SunIcon";
@@ -80,6 +79,7 @@ import { useProgress } from "./lib/useProgress";
 import { useSyncQueue } from "./lib/useSyncQueue";
 import { useFloats } from "./lib/useFloats";
 import { useProgressFeedback } from "./lib/useProgressFeedback";
+import { useIntro } from "./lib/useIntro";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 import {
@@ -168,9 +168,6 @@ export default function App() {
   }, []);
 
   const [funMessage, setFunMessage] = useState<string | null>(null);
-  const [showIntro, setShowIntro] = useState(false);
-  const [introChecked, setIntroChecked] = useState(false);
-  const [introStep, setIntroStep] = useState(0);
   const [greetingMsg, setGreetingMsg] = useState<string>("");
   const [timerInsight, setTimerInsight] = useState<string>("");
   const [xpCoach, setXpCoach] = useState<string>("");
@@ -315,6 +312,27 @@ export default function App() {
   } = useTimer();
   const [timerLoaded, setTimerLoaded] = useState(false);
   const [timerFormOpen, setTimerFormOpen] = useState(true);
+
+  // First-run intro tour (cohesive hook).
+  const {
+    showIntro, setShowIntro,
+    introStep, setIntroStep,
+    introSteps,
+    introCanAdvance,
+    dismissIntro,
+    advanceIntro,
+  } = useIntro({
+    authed,
+    lang,
+    tab,
+    tCo,
+    tPr,
+    tD,
+    tRun,
+    timerFormOpen,
+    sizeRef,
+    goSizeRef,
+  });
 
   // Log form state (cohesive hook)
   const logFormApi = useLogForm();
@@ -625,37 +643,6 @@ export default function App() {
     r.setProperty("--select-bg", vars.background.page);
     r.setProperty("--select-fg", vars.typography.primary);
   }, []);
-  useEffect(() => {
-    if (!authed || introChecked) return;
-    window.electronAPI.storeGet("intro_seen").then((seen) => {
-      if (!seen) {
-        setShowIntro(true);
-        setIntroStep(0);
-        if (sizeRef.current !== "full") goSizeRef.current("full");
-      }
-      setIntroChecked(true);
-    });
-  }, [authed, introChecked]);
-
-  const dismissIntro = () => {
-    setShowIntro(false);
-    setIntroStep(0);
-    window.electronAPI.storeSet("intro_seen", true);
-    window.electronAPI.setBlurCollapseDisabled(false);
-  };
-
-  const introSteps = useMemo(() => buildIntroSteps(lang), [lang]);
-  const advanceIntro = () => {
-    setIntroStep((s) => {
-      const next = s + 1;
-      if (next >= introSteps.length) {
-        dismissIntro();
-        return 0;
-      }
-      return next;
-    });
-  };
-
   const startIntroFresh = () => {
     setTRun(false);
     setTSec(0);
@@ -679,32 +666,6 @@ export default function App() {
     if (!showIntro || !devcoreId) return;
     void ensureProjects(devcoreId);
   }, [showIntro, devcoreId, ensureProjects]);
-
-  const introIndex = useMemo(() => {
-    const m: Record<string, number> = {};
-    introSteps.forEach((s, i) => {
-      m[s.key] = i;
-    });
-    return m;
-  }, [introSteps]);
-
-  useEffect(() => {
-    if (!showIntro) return;
-    // Any client / project works â€” not restricted to DevCore / Utbildning â€”
-    // so the tour continues for tenants without those exact names.
-    const at = (key: string) => introStep === introIndex[key];
-    if (at("openTimer") && tab === "timer") setIntroStep(introIndex.startClock);
-    if (at("startClock") && tRun) setIntroStep(introIndex.pickClient);
-    if (at("pickClient") && tCo) setIntroStep(introIndex.pickProject);
-    if (at("pickProject") && tPr) setIntroStep(introIndex.describe);
-    if (at("revealRunning") && !timerFormOpen) setIntroStep(introIndex.liveActions);
-    if (at("openToday") && tab === "today") setIntroStep(introIndex.todayStats);
-    if (at("openHistory") && tab === "history") setIntroStep(introIndex.historyScale);
-    if (at("openXp") && tab === "xp") setIntroStep(introIndex.xpLevel);
-  }, [showIntro, introStep, introIndex, tab, tCo, tPr, tRun, timerFormOpen]);
-
-  const introCanAdvance =
-    introStep === introIndex.describe ? tD.trim().length > 0 : true;
 
   useEffect(() => {
     window.electronAPI.setBlurCollapseDisabled(showIntro || !authed || pinned);
