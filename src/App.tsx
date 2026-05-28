@@ -11,9 +11,6 @@ import {
 
 type WindowSize = "full" | "top";
 
-// Thin entry: owns auth gating + device-scoped prefs (mode/lang/pinned/window
-// size) + theme class. Routes to the cold-start spinner, LoginScreen, or the
-// full app (AppShell). All actual app logic lives in AppShell.
 export default function App() {
   const { t } = useTranslation();
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -22,22 +19,17 @@ export default function App() {
   const [pinned, setPinned] = useState(false);
   const [size, setWindowSize] = useState<WindowSize>("full");
 
-  // Pre-auth IPC + initial auth check. The onForcedSize listener runs here so
-  // the main process can force the window into top-bar mode before the user
-  // ever signs in (e.g. on restart with a saved mode).
   useEffect(() => {
     window.electronAPI.checkAuth().then(setAuthed);
     const unsubs = [
       window.electronAPI.onAuthSuccess(() => setAuthed(true)),
       window.electronAPI.onSignedOut(() => setAuthed(false)),
       window.electronAPI.onSessionLost(() => setAuthed(false)),
-      window.electronAPI.onForcedSize((s) => setWindowSize(s)),
+      window.electronAPI.onForcedSize(setWindowSize),
     ];
     return () => unsubs.forEach((off) => typeof off === "function" && off());
   }, []);
 
-  // Hydrate device-scoped prefs before auth completes so the LoginScreen and
-  // cold-start spinner already reflect the user's choices.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -56,7 +48,6 @@ export default function App() {
     };
   }, []);
 
-  // Persist prefs on change.
   useEffect(() => {
     window.electronAPI.storeSet("mode", mode);
   }, [mode]);
@@ -68,8 +59,6 @@ export default function App() {
     window.electronAPI.storeSet("pinned", pinned);
   }, [pinned]);
 
-  // Force the window back to full on sign-out (top-bar mode without auth is
-  // pointless — there's nothing to display).
   useEffect(() => {
     if (authed === false && size !== "full") {
       setWindowSize("full");
