@@ -80,6 +80,7 @@ import { useEntries } from "./lib/useEntries";
 import { useCompanies } from "./lib/useCompanies";
 import { useProgress } from "./lib/useProgress";
 import { useSyncQueue } from "./lib/useSyncQueue";
+import { useFloats } from "./lib/useFloats";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 import {
@@ -265,9 +266,8 @@ export default function App() {
       if (hideId) clearTimeout(hideId);
     };
   }, [size, lang]);
-  const [floats, setFloats] = useState<
-    { id: number; txt: string; col: string }[]
-  >([]);
+  // Toast-style "floats" (cohesive hook).
+  const { floats, addFloat } = useFloats();
   // To-do state (cohesive hook): items, draft form, active/editing ids, accrual.
   const {
     todos,
@@ -325,7 +325,6 @@ export default function App() {
     hours: string;
     xp: number;
   } | null>(null);
-  const fid = useRef(0);
 
   // Timer state (cohesive hook)
   const {
@@ -1244,16 +1243,6 @@ export default function App() {
       landingTab: "today",
     });
   };
-
-  const addFloat = useCallback((txt: string, col: string) => {
-    const id = ++fid.current;
-    setFloats((f) => {
-      // Dedupe an identical message that's already showing; cap at 3 at once.
-      if (f.some((x) => x.txt === txt)) return f;
-      return [...f, { id, txt, col }].slice(-3);
-    });
-    setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1500);
-  }, []);
 
   // Secret corner: 3 clicks within 1.5s toggles Simon mode.
   const tapSimonCorner = () => {
