@@ -5,6 +5,7 @@ export * from "./AppHeader";
 export * from "./ChapterHeading";
 export * from "./Combobox";
 export * from "./ConfettiBurst";
+export * from "./ConfirmationModal";
 export * from "./DayView";
 export * from "./ErrorBoundary";
 export * from "./FailedQueueBanner";
