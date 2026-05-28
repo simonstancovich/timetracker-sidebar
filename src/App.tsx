@@ -19,10 +19,7 @@ import {
 } from "./api";
 import { classifyApiError, apiErrorKey } from "./lib/apiError";
 import {
-  PENDING_STORE_KEY,
-  FAILED_STORE_KEY,
   LIVE_SESSION_ID,
-  entrySignature,
   isPendingId,
   makePendingEntry,
   type PendingEntry,
@@ -88,6 +85,7 @@ import { useTodos } from "./lib/useTodos";
 import { useEntries } from "./lib/useEntries";
 import { useCompanies } from "./lib/useCompanies";
 import { useProgress } from "./lib/useProgress";
+import { useSyncQueue } from "./lib/useSyncQueue";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 import {
@@ -313,14 +311,19 @@ export default function App() {
   const [simonMode, setSimonMode] = useState(false);
   const simonClicksRef = useRef(0);
   const simonResetRef = useRef<number | null>(null);
-  // Offline save queue — entries that couldn't reach the API yet.
-  const [pendingQueue, setPendingQueue] = useState<PendingEntry[]>([]);
-  const [pendingLoaded, setPendingLoaded] = useState(false);
-  const [failedQueue, setFailedQueue] = useState<PendingEntry[]>([]);
-  const [failedLoaded, setFailedLoaded] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const pendingQueueRef = useRef<PendingEntry[]>([]);
-  const flushingRef = useRef(false);
+  // Offline save queue (cohesive hook): pending + failed + flushPending + retryFailed
+  // + the 4 load/persist effects + flush-on-reconnect + retry-on-interval.
+  const {
+    pendingQueue, setPendingQueue,
+    failedQueue, setFailedQueue,
+    syncing,
+    retryFailed,
+  } = useSyncQueue({
+    online,
+    setOnline,
+    setEntries,
+    onAuthFailed: onUnauthenticated,
+  });
   const [absenceOpen, setAbsenceOpen] = useState(false);
   const [absenceSaving, setAbsenceSaving] = useState(false);
   const [saveToast, setSaveToast] = useState<{
@@ -1108,29 +1111,6 @@ export default function App() {
     window.electronAPI.storeGet("simonMode").then((v) => setSimonMode(v === true));
   }, []);
 
-  useEffect(() => {
-    window.electronAPI.storeGet(PENDING_STORE_KEY).then((v) => {
-      if (Array.isArray(v)) setPendingQueue(v as PendingEntry[]);
-      setPendingLoaded(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    pendingQueueRef.current = pendingQueue;
-    if (pendingLoaded) window.electronAPI.storeSet(PENDING_STORE_KEY, pendingQueue);
-  }, [pendingQueue, pendingLoaded]);
-
-  useEffect(() => {
-    window.electronAPI.storeGet(FAILED_STORE_KEY).then((v) => {
-      if (Array.isArray(v)) setFailedQueue(v as PendingEntry[]);
-      setFailedLoaded(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (failedLoaded) window.electronAPI.storeSet(FAILED_STORE_KEY, failedQueue);
-  }, [failedQueue, failedLoaded]);
-
   // The To-do feature lives behind Simon mode; bounce off the tab when it's off.
   useEffect(() => {
     if (!simonMode && tab === "todo") setTab("today");
@@ -1316,99 +1296,6 @@ export default function App() {
     addFloat(wrapKey ? t(wrapKey, { err: human }) : human, "#ef4444");
     return kind;
   };
-
-  // Push the offline queue to the API. Stops on the first network/auth error so
-  // we don't hammer. Before sending each item it checks the server for an
-  // identical entry that day and skips it (no duplicates after an ambiguous
-  // failure). Entries the server rejects outright are quarantined for review,
-  // never silently dropped. Refetches today afterwards to show synced rows.
-  const flushPending = useCallback(async () => {
-    if (flushingRef.current) return;
-    const queue = [...pendingQueueRef.current];
-    if (queue.length === 0) return;
-    flushingRef.current = true;
-    setSyncing(true);
-    let touched = false;
-    let stoppedOffline = false;
-    const drop = (id: string) =>
-      setPendingQueue((q) => q.filter((x) => x.localId !== id));
-    // Per-day signature cache so a re-send can't duplicate an entry the server
-    // already has. Loaded lazily; a load failure means we're offline → stop.
-    const daySigs = new Map<string, Set<string>>();
-    for (const item of queue) {
-      const dateISO = item.payload.task_date.slice(0, 10);
-      let sigs = daySigs.get(dateISO);
-      if (!sigs) {
-        try {
-          const rows = await loadTimeEntries(new Date(`${dateISO}T00:00:00`));
-          sigs = new Set(rows.map(entrySignature));
-          daySigs.set(dateISO, sigs);
-        } catch (err) {
-          const kind = classifyApiError(err);
-          if (kind === "auth") {
-            setAuthed(false);
-            break;
-          }
-          setOnline(false);
-          stoppedOffline = true;
-          break;
-        }
-      }
-      const sig = entrySignature(item.payload);
-      if (sigs.has(sig)) {
-        // Already on the server (or an identical earlier item synced) — done.
-        drop(item.localId);
-        touched = true;
-        continue;
-      }
-      try {
-        await saveTimeEntry(item.payload);
-        setOnline(true);
-        sigs.add(sig);
-        drop(item.localId);
-        touched = true;
-      } catch (err) {
-        const kind = classifyApiError(err);
-        if (kind === "auth") {
-          setAuthed(false);
-          break;
-        }
-        if (kind === "offline" || kind === "timeout") {
-          setOnline(false);
-          stoppedOffline = true;
-          break;
-        }
-        // Server rejected it — quarantine for review instead of losing it.
-        const reason = err instanceof Error ? err.message : "rejected";
-        setFailedQueue((f) => [...f, { ...item, error: reason }]);
-        drop(item.localId);
-        touched = true;
-      }
-    }
-    flushingRef.current = false;
-    setSyncing(false);
-    if (touched && !stoppedOffline) {
-      try {
-        const fresh = await loadTimeEntries(new Date());
-        setEntries(fresh);
-      } catch {
-        /* refresh is best-effort */
-      }
-    }
-  }, [setOnline, setEntries]);
-
-  // Flush whenever we're online with a non-empty queue (reconnect or new item).
-  useEffect(() => {
-    if (online && pendingLoaded && pendingQueue.length > 0) void flushPending();
-  }, [online, pendingLoaded, pendingQueue.length, flushPending]);
-
-  // Retry periodically — covers a reachable network but unreachable server,
-  // where the OS "online" event never fires.
-  useEffect(() => {
-    if (!online || pendingQueue.length === 0) return;
-    const id = window.setInterval(() => void flushPending(), 30_000);
-    return () => clearInterval(id);
-  }, [online, pendingQueue.length, flushPending]);
 
   const saveNewEntry = async (
     cid: string,
@@ -1676,14 +1563,6 @@ export default function App() {
     } catch (err) {
       handleApiError(err, "form.deleteFailed");
     }
-  };
-
-  // Move quarantined entries back into the sync queue to try again.
-  const retryFailed = () => {
-    if (failedQueue.length === 0) return;
-    const items = failedQueue.map(({ error: _e, ...rest }) => rest);
-    setFailedQueue([]);
-    setPendingQueue((q) => [...q, ...items]);
   };
 
   // The "Frånvaro" client (absence) — a normal client in the list.
