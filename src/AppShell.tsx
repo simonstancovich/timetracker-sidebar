@@ -48,8 +48,6 @@ import * as prim from "./primitives";
 import {
   taskKey,
   todoTrackedH,
-  todosInPlay,
-  todosUpcoming,
   type Todo,
 } from "./lib/todos";
 import { useTodos } from "./lib/useTodos";
@@ -1080,205 +1078,6 @@ export function AppShell({
     />
   );
 
-  // â”€â”€â”€ Today view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const todayView = (
-    <ui.TodayView
-      username={currentUser.username}
-      todayH={todayH}
-      liveTodayH={liveTodayH}
-      liveTodayEntries={liveTodayEntries}
-      liveDone={liveDone}
-      streak={streak}
-      goal={GOAL}
-      justHitGoal={justHitGoal}
-      justBumpedStreak={justBumpedStreak}
-      entries={entries}
-      entriesLoading={entriesLoading}
-      groups={groups}
-      failedIds={failedIds}
-      pendingDeleteId={pendingDeleteId}
-      setPendingDeleteId={setPendingDeleteId}
-      timer={{ tRun, draftId, tCo, tPr, setTRun }}
-      simonMode={simonMode}
-      todos={todosInPlay(todos)}
-      activeTaskKey={activeTaskKey}
-      estimatedTodoFor={estimatedTodoFor}
-      todoTrackedH={trackedHForTodo}
-      setTab={setTab}
-      setTD={setTD}
-      setLogOpen={setLogOpen}
-      startTodo={startTodo}
-      editTodo={editTodo}
-      editEntry={editEntry}
-      delEntry={delEntry}
-      switchTaskGuarded={switchTaskGuarded}
-      greetingMsg={greetingMsg}
-      emptyMsg={emptyMsg}
-      mode={mode}
-      locale={locale}
-      lang={lang}
-    />
-  );
-
-  // â”€â”€â”€ Timer view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const timerView = (
-    <ui.TimerView
-      timer={{
-        tCo, tPr, tD, tNote, tInv, tSec, tRun, draftId,
-        setTCo, setTPr, setTD, setTNote, setTInv, setTRun,
-      }}
-      todos={{ activeTodoId, setActiveTodoId, accrueTodoHours }}
-      companies={{
-        list: companies,
-        cache: projectCache,
-        error: companiesError,
-        projectErrors,
-        ensure: ensureProjects,
-        reload: reloadCompanies,
-      }}
-      entries={entries}
-      saveNewEntry={saveNewEntry}
-      stopAndLogCurrent={stopAndLogCurrent}
-      cancelTimer={cancelTimer}
-      startSideQuest={startSideQuest}
-      restoreStashedTimer={restoreStashedTimer}
-      resetTimer={resetTimer}
-      addFloat={addFloat}
-      isInternalCompany={isInternalCompany}
-      setTab={setTab}
-      timerFormOpen={timerFormOpen}
-      setTimerFormOpen={setTimerFormOpen}
-      pendingCancelTimer={pendingCancelTimer}
-      setPendingCancelTimer={setPendingCancelTimer}
-      stashedTimer={stashedTimer}
-      todayH={todayH}
-      streak={streak}
-      done={done}
-      goal={GOAL}
-      lang={lang}
-      timerInsight={timerInsight}
-      openAbsence={absence.open}
-    />
-  );
-
-  const pickDayForView = (d: Date) => {
-    setSelectedDate(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
-    setHistoryScale("day");
-  };
-  const monthView = (
-    <ui.MonthView
-      goal={GOAL}
-      referenceDate={selectedDate}
-      onPickDay={pickDayForView}
-      onBackfillDay={(d) => {
-        const [y, mo, da] = [d.getFullYear(), d.getMonth(), d.getDate()];
-        setEditingDate(new Date(y, mo, da));
-        setTab("timer");
-        setLogOpen(true);
-      }}
-      firstName={currentUser.username.trim().split(/\s+/)[0]}
-      confirm={(opts) => setConfirmation(opts)}
-      notify={(msg, col) => addFloat(msg, col)}
-      monthClosure={monthClosure}
-    />
-  );
-  const weekView = (
-    <ui.WeekView
-      goal={GOAL}
-      referenceDate={selectedDate}
-      onPickDay={pickDayForView}
-      onBackfillDay={(d) => {
-        const [y, mo, da] = [d.getFullYear(), d.getMonth(), d.getDate()];
-        setEditingDate(new Date(y, mo, da));
-        setTab("timer");
-        setLogOpen(true);
-      }}
-      firstName={currentUser.username.trim().split(/\s+/)[0]}
-      monthClosure={monthClosure}
-    />
-  );
-
-  const dayView = (
-    <ui.DayView
-      selectedDate={selectedDate}
-      dayEntries={dayEntries}
-      dayEntriesLoading={dayEntriesLoading}
-      pendingQueue={pendingQueue}
-      failedQueue={failedQueue}
-      goal={GOAL}
-      pendingDeleteId={pendingDeleteId}
-      onEditEntry={editEntry}
-      onSetPendingDelete={setPendingDeleteId}
-      onDeleteEntry={delEntry}
-      onLogPastTime={() => {
-        const [y, mo, da] = [
-          selectedDate.getFullYear(),
-          selectedDate.getMonth(),
-          selectedDate.getDate(),
-        ];
-        setEditingDate(new Date(y, mo, da));
-        setLogOpen(true);
-      }}
-    />
-  );
-
-  const historyView = (
-    <ui.HistoryView
-      historyScale={historyScale}
-      setHistoryScale={setHistoryScale}
-      stepHistoryDate={stepHistoryDate}
-      historyIsOnCurrent={historyIsOnCurrent}
-      jumpHistoryToCurrent={jumpHistoryToCurrent}
-      dayView={dayView}
-      weekView={weekView}
-      monthView={monthView}
-      simonMode={simonMode}
-      upcomingTodos={todosUpcoming(todos)}
-      activeTaskKey={activeTaskKey}
-      startTodo={startTodo}
-      editTodo={editTodo}
-    />
-  );
-
-  const todoView = (
-    <ui.TodoView
-      todos={todos}
-      companies={companies}
-      getProjects={(cid) => projectCache[cid] || []}
-      ensureProjects={async (cid) => {
-        await ensureProjects(cid);
-      }}
-      draft={todoDraft}
-      onDraftChange={(patch) => setTodoDraft((d) => ({ ...d, ...patch }))}
-      activeTaskKey={activeTaskKey}
-      editingId={editingTodoId}
-      onAdd={addTodo}
-      onUpdate={updateTodo}
-      onResetForm={resetTodoForm}
-      onEdit={editTodo}
-      onToggle={toggleTodo}
-      onDelete={deleteTodo}
-    />
-  );
-
-  const views = {
-    today: todayView,
-    todo: todoView,
-    timer: timerView,
-    history: historyView,
-    xp: (
-      <ui.XpView
-        xp={xp}
-        xpCoach={xpCoach}
-        weekTotal={weekTotal}
-        weekH={weekH}
-        todayI={todayI}
-        unlocked={unlocked}
-        mode={mode}
-        goal={GOAL}
-      />
-    ),
-  };
 
   const hasCtx = !!(tCo && tPr);
   const coObj = companies.find((c) => c.id === tCo);
@@ -1436,7 +1235,100 @@ export function AppShell({
           onClose={() => setLogOpen(false)}
         />
       ) : (
-        views[tab]
+        <ui.AppViews
+          tab={tab}
+          username={currentUser.username}
+          timer={{
+            tCo, tPr, tD, tNote, tInv, tSec, tRun, draftId,
+            setTCo, setTPr, setTD, setTNote, setTInv, setTRun,
+          }}
+          activeTodoId={activeTodoId}
+          setActiveTodoId={setActiveTodoId}
+          accrueTodoHours={accrueTodoHours}
+          companies={companies}
+          projectCache={projectCache}
+          companiesError={companiesError}
+          projectErrors={projectErrors}
+          ensureProjects={ensureProjects}
+          reloadCompanies={reloadCompanies}
+          isInternalCompany={isInternalCompany}
+          entries={entries}
+          entriesLoading={entriesLoading}
+          dayEntries={dayEntries}
+          dayEntriesLoading={dayEntriesLoading}
+          pendingQueue={pendingQueue}
+          failedQueue={failedQueue}
+          pendingDeleteId={pendingDeleteId}
+          setPendingDeleteId={setPendingDeleteId}
+          todayH={todayH}
+          liveTodayH={liveTodayH}
+          liveTodayEntries={liveTodayEntries}
+          liveDone={liveDone}
+          groups={groups}
+          failedIds={failedIds}
+          streak={streak}
+          xp={xp}
+          unlocked={unlocked}
+          weekH={weekH}
+          weekTotal={weekTotal}
+          todayI={todayI}
+          goal={GOAL}
+          justHitGoal={justHitGoal}
+          justBumpedStreak={justBumpedStreak}
+          todos={todos}
+          activeTaskKey={activeTaskKey}
+          estimatedTodoFor={estimatedTodoFor}
+          todoTrackedH={trackedHForTodo}
+          todoDraft={todoDraft}
+          setTodoDraft={setTodoDraft}
+          editingTodoId={editingTodoId}
+          addTodo={addTodo}
+          updateTodo={updateTodo}
+          resetTodoForm={resetTodoForm}
+          toggleTodo={toggleTodo}
+          deleteTodo={deleteTodo}
+          startTodo={startTodo}
+          editTodo={editTodo}
+          saveNewEntry={saveNewEntry}
+          editEntry={editEntry}
+          delEntry={delEntry}
+          switchTaskGuarded={switchTaskGuarded}
+          stopAndLogCurrent={stopAndLogCurrent}
+          cancelTimer={cancelTimer}
+          startSideQuest={startSideQuest}
+          restoreStashedTimer={restoreStashedTimer}
+          resetTimer={resetTimer}
+          stashedTimer={stashedTimer}
+          historyScale={historyScale}
+          setHistoryScale={setHistoryScale}
+          stepHistoryDate={stepHistoryDate}
+          historyIsOnCurrent={historyIsOnCurrent}
+          jumpHistoryToCurrent={jumpHistoryToCurrent}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          setEditingDate={setEditingDate}
+          setTab={setTab}
+          setTD={setTD}
+          setLogOpen={setLogOpen}
+          timerFormOpen={timerFormOpen}
+          setTimerFormOpen={setTimerFormOpen}
+          pendingCancelTimer={pendingCancelTimer}
+          setPendingCancelTimer={setPendingCancelTimer}
+          setConfirmation={setConfirmation}
+          simonMode={simonMode}
+          mode={mode}
+          lang={lang}
+          locale={locale}
+          greetingMsg={greetingMsg}
+          emptyMsg={emptyMsg}
+          timerInsight={timerInsight}
+          xpCoach={xpCoach}
+          done={done}
+          monthClosure={monthClosure}
+          ach={ach}
+          addFloat={addFloat}
+          openAbsence={absence.open}
+        />
       )}
     </ui.AppLayout>
   );

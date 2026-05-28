@@ -20,7 +20,7 @@ interface Props {
   pendingDeleteId: string | null;
   onEditEntry: (e: TimeEntry) => void;
   onSetPendingDelete: (id: string | null) => void;
-  onDeleteEntry: (id: string) => void | Promise<void>;
+  onDeleteEntry: (id: string) => unknown;
   onLogPastTime: () => void;
 }
 
