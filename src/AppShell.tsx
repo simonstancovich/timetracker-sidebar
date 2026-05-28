@@ -39,12 +39,9 @@ import {
 } from "./lib/achievements";
 import { pickRandomMessage } from "./lib/funMessages";
 import { pickTip } from "./lib/productivityTips";
-import { pickGreeting } from "./lib/greetingMessages";
-import { getTimerInsight } from "./lib/timerInsights";
 import {
   emptyTodayMessage,
   saveCheer,
-  xpCoachNote,
 } from "./lib/personality";
 import { getHolidays, isWorkingDay } from "./lib/swedishHolidays";
 import { Lang, useTranslation } from "./lib/i18n";
@@ -79,6 +76,11 @@ import { useNowTick } from "./lib/useNowTick";
 import { useDayEntries } from "./lib/useDayEntries";
 import { useTodayDerivations } from "./lib/useTodayDerivations";
 import { useSideQuest } from "./lib/useSideQuest";
+import {
+  useGreetingMessage,
+  useTimerInsight,
+  useXpCoach,
+} from "./lib/useRotatingMessages";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 
@@ -160,9 +162,6 @@ export function AppShell({
   const nowTick = useNowTick();
 
   const [funMessage, setFunMessage] = useState<string | null>(null);
-  const [greetingMsg, setGreetingMsg] = useState<string>("");
-  const [timerInsight, setTimerInsight] = useState<string>("");
-  const [xpCoach, setXpCoach] = useState<string>("");
   const [modeTransition, setModeTransition] = useState<"idle" | "out" | "in">(
     "idle",
   );
@@ -566,16 +565,7 @@ export function AppShell({
     window.electronAPI.setBlurCollapseDisabled(showIntro || !authed || pinned);
   }, [showIntro, authed, pinned]);
 
-  useEffect(() => {
-    if (!currentUser) return;
-    const first = currentUser.username.trim().split(/\s+/)[0] || "friend";
-    setGreetingMsg(pickGreeting(first, lang));
-    const id = window.setInterval(
-      () => setGreetingMsg(pickGreeting(first, lang)),
-      30 * 60 * 1000,
-    );
-    return () => clearInterval(id);
-  }, [currentUser, lang]);
+  const greetingMsg = useGreetingMessage(currentUser, lang);
 
   const emptyMsg = useMemo(() => emptyTodayMessage(lang), [lang]);
 
@@ -689,51 +679,16 @@ export function AppShell({
     goal: GOAL,
   });
 
-  // Volatile timer values for the ambient insight â€” read via ref so the message
-  // recomputes on the interval / language change rather than on every tick.
-  const insightInputRef = useRef({ tRun, tSec, tCo, tPr, tD, todayH, streak });
-  insightInputRef.current = { tRun, tSec, tCo, tPr, tD, todayH, streak };
-  useEffect(() => {
-    if (!currentUser) return;
-    const first = currentUser.username.trim().split(/\s+/)[0] || "";
-    const compute = () =>
-      setTimerInsight(
-        getTimerInsight({
-          ...insightInputRef.current,
-          goal: GOAL,
-          entriesToday: entries.length,
-          firstName: first,
-          lang,
-        }),
-      );
-    compute();
-    const id = window.setInterval(compute, 2 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [currentUser, lang, entries.length]);
+  const timerInsight = useTimerInsight(currentUser, lang, GOAL, entries.length, {
+    tRun, tSec, tCo, tPr, tD, todayH, streak,
+  });
 
   const weekTotal = useMemo(() => weekH.reduce((s, h) => s + h, 0), [weekH]);
 
   const xpIntoLevel = xp % 1000;
-  // Volatile XP values read via ref so the coaching note recomputes hourly /
-  // on language change, not on every XP tick.
-  const xpCoachInputRef = useRef({ xp, xpIntoLevel, streak, weekTotal });
-  xpCoachInputRef.current = { xp, xpIntoLevel, streak, weekTotal };
-  useEffect(() => {
-    if (!currentUser) return;
-    const first = currentUser.username.trim().split(/\s+/)[0] || "";
-    const compute = () =>
-      setXpCoach(
-        xpCoachNote({
-          ...xpCoachInputRef.current,
-          xpPerLevel: 1000,
-          firstName: first,
-          lang,
-        }),
-      );
-    compute();
-    const id = window.setInterval(compute, 60 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [currentUser, lang]);
+  const xpCoach = useXpCoach(currentUser, lang, {
+    xp, xpIntoLevel, streak, weekTotal,
+  });
 
   const gpct = Math.min((todayH / GOAL) * 100, 100);
 
