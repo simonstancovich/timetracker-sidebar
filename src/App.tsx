@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { vars, lightTheme, darkTheme } from "./theme";
+import { lightTheme, darkTheme } from "./theme";
 import * as prim from "./primitives";
 import { LoginScreen } from "./components/LoginScreen";
 import { AppShell } from "./AppShell";
@@ -71,19 +71,12 @@ export default function App() {
   if (authed === null) return spinner;
   if (!authed)
     return (
-      <div
-        className={themeClass}
-        style={{
-          height: "100vh",
-          background: vars.background.page,
-          color: vars.typography.primary,
-        }}
-      >
+      <prim.Stack fullHeight background="page" className={themeClass}>
         <LoginScreen
           onAuthed={() => setAuthed(true)}
           onOpenBrowser={() => window.electronAPI.openAuth()}
         />
-      </div>
+      </prim.Stack>
     );
 
   return (
