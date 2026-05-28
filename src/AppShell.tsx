@@ -22,7 +22,6 @@ import { classifyApiError, apiErrorKey } from "./lib/apiError";
 import {
   isPendingId,
   makePendingEntry,
-  type PendingEntry,
 } from "./lib/pendingEntries";
 import { formatLocalDate, isOnCurrent, mondayOf } from "./lib/date";
 import {
@@ -55,8 +54,6 @@ import { MoonIcon } from "./icons/MoonIcon";
 
 import { MONO, SERIF } from "./lib/fonts";
 
-import { workingDaysInRange } from "./lib/absence";
-
 import {
   taskKey,
   todosInPlay,
@@ -84,6 +81,7 @@ import {
 import { useGoSize } from "./lib/useGoSize";
 import { useAutoSaveDraft } from "./lib/useAutoSaveDraft";
 import { useSimonMode } from "./lib/useSimonMode";
+import { useAbsence } from "./lib/useAbsence";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 
@@ -242,8 +240,6 @@ export function AppShell({
     setEntries,
     onAuthFailed: onUnauthenticated,
   });
-  const [absenceOpen, setAbsenceOpen] = useState(false);
-  const [absenceSaving, setAbsenceSaving] = useState(false);
   const [saveToast, setSaveToast] = useState<{
     cheer: string;
     hours: string;
@@ -1075,101 +1071,22 @@ export function AppShell({
   };
 
   // The "FrÃ¥nvaro" client (absence) â€” a normal client in the list.
-  const fravaroCompany = useMemo(
-    () => companies.find((c) => /fr[Ã¥a]nvaro/i.test(c.name)) || null,
-    [companies],
-  );
-
-  // DevCore is internal work â€” its entries are always non-billable.
+  // DevCore is internal work — its entries are always non-billable.
   const isInternalCompany = (companyId: string) =>
     /devcore/i.test(companies.find((c) => c.id === companyId)?.name || "");
 
-  // Absence range bounds: past is capped at the start of the current month;
-  // the future is open.
-  const absenceMinFromISO = (() => {
-    const d = new Date();
-    d.setDate(1);
-    return formatLocalDate(d);
-  })();
-  const absenceTodayISO = formatLocalDate(new Date());
-
-  const openAbsence = async () => {
-    if (fravaroCompany) await ensureProjects(fravaroCompany.id);
-    setAbsenceOpen(true);
-  };
-
-  // Bulk-log 8h absence for each working day in the range, under the FrÃ¥nvaro
-  // client + chosen project. Rides the offline queue like any other save.
-  const reportAbsence = async (
-    projectId: string,
-    fromISO: string,
-    toISO: string,
-    note: string,
-  ) => {
-    if (!currentUser || !fravaroCompany) return;
-    const project = (projectCache[fravaroCompany.id] || []).find(
-      (p) => p.id === projectId,
-    );
-    if (!project) return;
-    const days = workingDaysInRange(fromISO, toISO);
-    if (days.length === 0) {
-      addFloat(t("absence.noDays"), "#f59e0b");
-      return;
-    }
-    setAbsenceSaving(true);
-    const todayISOStr = formatLocalDate(new Date());
-    const queued: PendingEntry[] = [];
-    let count = 0;
-    let authFailed = false;
-    for (const dayISO of days) {
-      const payload = buildSavePayload({
-        company: fravaroCompany,
-        project,
-        hours: 8,
-        description: note.trim() || project.name,
-        internalNote: "",
-        invoice: false,
-        user: currentUser,
-        entryDate: new Date(`${dayISO}T00:00:00`),
-        existingId: null,
-      });
-      if (!online) {
-        queued.push(makePendingEntry(payload));
-        count++;
-        continue;
-      }
-      try {
-        await saveTimeEntry(payload);
-        setOnline(true);
-        count++;
-      } catch (err) {
-        const kind = classifyApiError(err);
-        if (kind === "auth") {
-          onSignOut();
-          authFailed = true;
-          break;
-        }
-        if (kind === "offline" || kind === "timeout") {
-          setOnline(false);
-          queued.push(makePendingEntry(payload));
-          count++;
-        }
-        // other errors: skip this day
-      }
-    }
-    if (queued.length) setPendingQueue((q) => [...q, ...queued]);
-    setAbsenceSaving(false);
-    if (authFailed) return;
-    setAbsenceOpen(false);
-    if (days.includes(todayISOStr) && online && queued.length === 0) {
-      try {
-        setEntries(await loadTimeEntries(new Date()));
-      } catch {
-        /* best-effort refresh */
-      }
-    }
-    if (count > 0) addFloat(t("absence.done", { n: count }), "#10b981");
-  };
+  const absence = useAbsence({
+    companies,
+    ensureProjects,
+    projectCache,
+    currentUser,
+    online,
+    setOnline,
+    setPendingQueue,
+    setEntries,
+    onSignOut,
+    addFloat,
+  });
 
   // currentUser may still be loading on first render; show a themed spinner.
   const spinner = (
@@ -1288,7 +1205,7 @@ export function AppShell({
       goal={GOAL}
       lang={lang}
       timerInsight={timerInsight}
-      openAbsence={openAbsence}
+      openAbsence={absence.open}
     />
   );
 
@@ -1953,15 +1870,15 @@ export function AppShell({
       }
       modeOverlay={modeOverlay}
     >
-      {absenceOpen ? (
+      {absence.isOpen ? (
         <ui.AbsenceForm
-          company={fravaroCompany}
-          projects={fravaroCompany ? projectCache[fravaroCompany.id] || [] : []}
-          minFromISO={absenceMinFromISO}
-          todayISO={absenceTodayISO}
-          saving={absenceSaving}
-          onSubmit={reportAbsence}
-          onClose={() => setAbsenceOpen(false)}
+          company={absence.fravaroCompany}
+          projects={absence.projects}
+          minFromISO={absence.minFromISO}
+          todayISO={absence.todayISO}
+          saving={absence.saving}
+          onSubmit={absence.submit}
+          onClose={absence.close}
         />
       ) : logOpen ? (
         <ui.LogView
