@@ -36,7 +36,6 @@ import {
 import {
   ACHS,
   CHECKS,
-  EMPTY_ACH_STATS,
   isoWeekKey,
   type Ach,
   type AchCtx,
@@ -88,6 +87,7 @@ import {
 import { useTodos } from "./lib/useTodos";
 import { useEntries } from "./lib/useEntries";
 import { useCompanies } from "./lib/useCompanies";
+import { useProgress } from "./lib/useProgress";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 import {
@@ -228,9 +228,19 @@ export default function App() {
     entriesLoading, setEntriesLoading,
     pendingDeleteId, setPendingDeleteId,
   } = useEntries({ authed, nowTick, onUnauthenticated });
-  const [weekH, setWeekH] = useState<number[]>([0, 0, 0, 0, 0]);
-
-  const [xp, setXp] = useState(0);
+  // Player progression (cohesive hook): XP, streak, week hours, achievement
+  // stats + unlocks + toast queue. Owns load/persist + dequeue/dismiss effects.
+  const {
+    xp, setXp,
+    streak, setStreak,
+    unlocked, setUnlocked,
+    weekH, setWeekH,
+    achStats, setAchStats,
+    lastCelebratedDate, setLastCelebratedDate,
+    ach,
+    setPendingAchs,
+    clear: clearProgress,
+  } = useProgress({ authed });
 
   useEffect(() => {
     if (Date.now() < sessionSettledAt.current) {
@@ -263,15 +273,9 @@ export default function App() {
       if (hideId) clearTimeout(hideId);
     };
   }, [size, lang]);
-  const [unlocked, setUnlocked] = useState<string[]>([]);
-  const [streak, setStreak] = useState(0);
   const [floats, setFloats] = useState<
     { id: number; txt: string; col: string }[]
   >([]);
-  const [ach, setAch] = useState<Ach | null>(null);
-  const [pendingAchs, setPendingAchs] = useState<Ach[]>([]);
-  const [achStats, setAchStats] = useState<AchStats>(EMPTY_ACH_STATS);
-  const [achStatsLoaded, setAchStatsLoaded] = useState(false);
   // To-do state (cohesive hook): items, draft form, active/editing ids, accrual.
   const {
     todos,
@@ -284,7 +288,6 @@ export default function App() {
     estimatedTodoFor,
     resetTodoForm,
   } = useTodos(authed);
-  const [lastCelebratedDate, setLastCelebratedDate] = useState<string>("");
   const [goalCelebration, setGoalCelebration] = useState<{
     title: string;
     sub: string;
@@ -620,16 +623,9 @@ export default function App() {
   // Reset user-scoped state on sign-out so the next user doesn't inherit it.
   useEffect(() => {
     if (authed) return;
-    setXp(0);
-    setUnlocked([]);
-    setStreak(0);
-    setAchStats(EMPTY_ACH_STATS);
-    setAchStatsLoaded(false);
-    setPendingAchs([]);
-    setAch(null);
+    clearProgress();
     setEntries([]);
     setEntriesLoading(true);
-    setWeekH([0, 0, 0, 0, 0]);
     clearTimerFields();
     setPendingCancelTimer(false);
     resetLogForm();
@@ -638,53 +634,21 @@ export default function App() {
     setCurrentUser(null);
     setTimerLoaded(false);
     setLogFormLoaded(false);
-  }, [authed, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading]);
+  }, [authed, clearProgress, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading]);
 
-  // ─── Persisted: mode, xp, unlocked, streak, timer ──────────────────────
+  // ─── Persisted: mode, lang, timer ──────────────────────────────────────
+  // (Player progression — xp / unlocked / streak / achStats — loads via useProgress.)
   useEffect(() => {
     if (!authed) return;
     (async () => {
-      const [m, x, u, s, last, t, l] = await Promise.all([
+      const [m, t, l] = await Promise.all([
         window.electronAPI.storeGet("mode"),
-        window.electronAPI.storeGet("xp"),
-        window.electronAPI.storeGet("unlocked"),
-        window.electronAPI.storeGet("streak"),
-        window.electronAPI.storeGet("lastLoggedDate"),
         window.electronAPI.storeGet("timer"),
         window.electronAPI.storeGet("lang"),
       ]);
       if (m === "dark" || m === "light") setMode(m);
       if (l === "en" || l === "sv") setLang(l);
-      setXp(typeof x === "number" ? x : 0);
-      setUnlocked(Array.isArray(u) ? u : []);
-      const savedCelebrated = await window.electronAPI.storeGet(
-        "lastCelebratedDate",
-      );
-      if (typeof savedCelebrated === "string")
-        setLastCelebratedDate(savedCelebrated);
-      const savedStats = await window.electronAPI.storeGet("achStats");
-      setAchStats(
-        savedStats && typeof savedStats === "object"
-          ? { ...EMPTY_ACH_STATS, ...savedStats }
-          : EMPTY_ACH_STATS,
-      );
-      setAchStatsLoaded(true);
 
-      // Streak valid if we've logged today or on the most recent
-      // previous working day (skipping weekends + Swedish holidays).
-      const now = new Date();
-      const today = formatLocalDate(now);
-      const hols = getHolidays(now.getFullYear());
-      const prev = new Date(now);
-      do {
-        prev.setDate(prev.getDate() - 1);
-      } while (!isWorkingDay(prev, hols));
-      const prevWD = formatLocalDate(prev);
-      if (typeof s === "number" && (last === today || last === prevWD))
-        setStreak(s);
-      else setStreak(0);
-
-      // restore running timer
       if (t && typeof t === "object") {
         hydrateTimer(t);
         if (t.tCo) void ensureProjects(t.tCo);
@@ -817,39 +781,6 @@ export default function App() {
 
   const emptyMsg = useMemo(() => emptyTodayMessage(lang), [lang]);
 
-  useEffect(() => {
-    if (authed) window.electronAPI.storeSet("xp", xp);
-  }, [xp, authed]);
-  useEffect(() => {
-    if (authed) window.electronAPI.storeSet("unlocked", unlocked);
-  }, [unlocked, authed]);
-  useEffect(() => {
-    if (authed) window.electronAPI.storeSet("streak", streak);
-  }, [streak, authed]);
-  useEffect(() => {
-    if (authed && achStatsLoaded)
-      window.electronAPI.storeSet("achStats", achStats);
-  }, [achStats, authed, achStatsLoaded]);
-
-  // Dequeue: when no toast is showing and the queue has items, pop the next
-  // one into `ach`. The dismiss timer is a separate effect (below) so the
-  // cleanup here doesn't kill it on the first re-render.
-  useEffect(() => {
-    if (ach || pendingAchs.length === 0) return;
-    const [next, ...rest] = pendingAchs;
-    setAch(next);
-    setPendingAchs(rest);
-  }, [ach, pendingAchs]);
-
-  // Auto-dismiss the currently-shown toast after 3.2s. Runs whenever `ach`
-  // becomes truthy; cleanup runs when `ach` flips back to null (via this
-  // timeout) or when a new toast replaces it.
-  useEffect(() => {
-    if (!ach) return;
-    const id = window.setTimeout(() => setAch(null), 3200);
-    return () => clearTimeout(id);
-  }, [ach]);
-
   // Persist timer on control/field changes (NOT on tSec tick — startedAt covers elapsed).
   useEffect(() => {
     if (!authed || !timerLoaded) return;
@@ -980,7 +911,7 @@ export default function App() {
         ),
       ),
     );
-  }, [authed, entries]);
+  }, [authed, entries, setWeekH]);
 
 
   // ─── Auto-save draft every 5 min while running ─────────────────────────
@@ -1225,7 +1156,7 @@ export default function App() {
     setJustHitGoal(true);
     setLastCelebratedDate(today);
     window.electronAPI.storeSet("lastCelebratedDate", today);
-  }, [done, authed, lastCelebratedDate, lang]);
+  }, [done, authed, lastCelebratedDate, lang, setLastCelebratedDate]);
 
   // Auto-dismiss bloom + celebration toast in separate effects keyed on the
   // flags, so the trigger above re-running (it sets lastCelebratedDate, a dep)
