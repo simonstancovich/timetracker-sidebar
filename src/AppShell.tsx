@@ -1094,21 +1094,6 @@ export function AppShell({
   const runningXpBonus = tRun ? Math.floor(tSec / 60) : 0;
   const displaySessionXp = sessionXp + runningXpBonus;
 
-  const modeOverlay = (
-    <div
-      aria-hidden
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: vars.background.page,
-        zIndex: 999,
-        pointerEvents: modeTransition === "out" ? "auto" : "none",
-        opacity: modeTransition === "out" ? 1 : 0,
-        transition: "opacity 180ms ease-out",
-      }}
-    />
-  );
-
   const topBarBg = tRun ? vars.background.page : tSec > 0 ? "#ff7a00" : "#ff1f1f";
   const topBarFg = tRun ? vars.typography.primary : vars.typography.onAccent;
   const topBarMuted = tRun ? vars.typography.tertiary : "rgba(255,255,255,0.8)";
@@ -1121,7 +1106,7 @@ export function AppShell({
         setMode={setMode}
         lang={lang}
         goSize={goSize}
-        modeOverlay={modeOverlay}
+        modeOverlay={<ui.ModeTransitionOverlay phase={modeTransition} />}
         tRun={tRun}
         setTRun={setTRun}
         tSec={tSec}
@@ -1203,7 +1188,7 @@ export function AppShell({
           <ui.AchievementToast ach={ach} lang={lang} />
         </>
       }
-      modeOverlay={modeOverlay}
+      modeOverlay={<ui.ModeTransitionOverlay phase={modeTransition} />}
     >
       {absence.isOpen ? (
         <ui.AbsenceForm

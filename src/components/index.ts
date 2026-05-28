@@ -20,6 +20,7 @@ export * from "./IntroOverlay";
 export * from "./LoginScreen";
 export * from "./LogView";
 export * from "./MeetingsWidget";
+export * from "./ModeTransitionOverlay";
 export * from "./MonthDayCell";
 export * from "./MonthGoalProgress";
 export * from "./MonthHeadsUp";
