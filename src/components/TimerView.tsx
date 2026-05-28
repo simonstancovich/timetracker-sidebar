@@ -765,27 +765,16 @@ export function TimerView({
             </div>
           )}
           <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
-            <button
-              type="button"
+            <prim.Button
               data-tour="timer-switch"
+              variant="ghost"
+              size="xs"
+              shape="pill"
+              mono
               onClick={() => setTimerFormOpen(true)}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 999,
-                background: "transparent",
-                border: `1px solid ${vars.border.soft}`,
-                color: vars.typography.tertiary,
-                fontFamily: MONO,
-                fontSize: 9,
-                fontWeight: 600,
-                letterSpacing: 1.6,
-                textTransform: "uppercase",
-                cursor: "pointer",
-                transition: "all .15s ease",
-              }}
             >
               {t("timer.switchTask")}
-            </button>
+            </prim.Button>
             {tRun && !stashedTimer && (
               <button
                 type="button"
@@ -905,40 +894,24 @@ export function TimerView({
             justifyContent: "center",
           }}
         >
-          <button
+          <prim.Button
+            variant="ghost"
+            size="sm"
+            shape="pill"
+            mono
             onClick={() => setPendingCancelTimer(false)}
-            style={{
-              padding: "9px 18px",
-              background: "transparent",
-              border: `1px solid ${vars.border.soft}`,
-              borderRadius: 999,
-              color: vars.typography.secondary,
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: 1.4,
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
           >
             {t("entry.cancel")}
-          </button>
-          <button
+          </prim.Button>
+          <prim.Button
+            variant="danger"
+            size="sm"
+            shape="pill"
+            mono
             onClick={() => void cancelTimer()}
-            style={{
-              padding: "9px 18px",
-              background: "#ef4444",
-              border: "none",
-              borderRadius: 999,
-              color: "#fff",
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: 1.4,
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
           >
             {t("timer.cancelDiscard")}
-          </button>
+          </prim.Button>
         </div>
       )}
 
