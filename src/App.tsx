@@ -10,13 +10,9 @@ import {
 import * as ui from "./components";
 import { FlameIcon } from "./icons/FlameIcon";
 import {
-  Company,
-  Project,
   TimeEntry,
   buildSavePayload,
   deleteTimeEntry,
-  loadCompanies,
-  loadProjects,
   loadTimeEntries,
   loadUsers,
   saveTimeEntry,
@@ -91,6 +87,7 @@ import {
 } from "./lib/todos";
 import { useTodos } from "./lib/useTodos";
 import { useEntries } from "./lib/useEntries";
+import { useCompanies } from "./lib/useCompanies";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 import {
@@ -223,14 +220,6 @@ export default function App() {
     _user_id: string;
     username: string;
   } | null>(null);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [companiesError, setCompaniesError] = useState(false);
-  const [projectErrors, setProjectErrors] = useState<Record<string, boolean>>(
-    {},
-  );
-  const [projectCache, setProjectCache] = useState<Record<string, Project[]>>(
-    {},
-  );
   // Entry storage + today-load (cohesive hook). Save/delete/edit orchestrate
   // through these setters but live in App because they touch XP/achievements/queues.
   const onUnauthenticated = useCallback(() => setAuthed(false), []);
@@ -307,6 +296,15 @@ export default function App() {
     typeof document === "undefined" ? true : !document.hidden,
   );
   const { online, setOnline } = useConnection();
+  // Company catalog + lazy project cache (cohesive hook).
+  const {
+    companies,
+    companiesError,
+    projectErrors,
+    projectCache,
+    ensureProjects,
+    reload: reloadCompanies,
+  } = useCompanies({ authed, onOnlineChange: setOnline });
   // Simon mode — hidden dev gate. Triple-click the secret corner to toggle.
   // Reveals features we keep deactivated for tester/demo builds. Persisted.
   const [simonMode, setSimonMode] = useState(false);
@@ -689,15 +687,11 @@ export default function App() {
       // restore running timer
       if (t && typeof t === "object") {
         hydrateTimer(t);
-        if (t.tCo) {
-          loadProjects(t.tCo)
-            .then((list) => setProjectCache((c) => ({ ...c, [t.tCo]: list })))
-            .catch(() => {});
-        }
+        if (t.tCo) void ensureProjects(t.tCo);
       }
       setTimerLoaded(true);
     })();
-  }, [authed, hydrateTimer]);
+  }, [authed, hydrateTimer, ensureProjects]);
 
   useEffect(() => {
     window.electronAPI.storeSet("mode", mode);
@@ -766,11 +760,8 @@ export default function App() {
 
   useEffect(() => {
     if (!showIntro || !devcoreId) return;
-    if (projectCache[devcoreId]) return;
-    loadProjects(devcoreId)
-      .then((list) => setProjectCache((pc) => ({ ...pc, [devcoreId]: list })))
-      .catch(() => {});
-  }, [showIntro, devcoreId, projectCache]);
+    void ensureProjects(devcoreId);
+  }, [showIntro, devcoreId, ensureProjects]);
 
   const introIndex = useMemo(() => {
     const m: Record<string, number> = {};
@@ -882,14 +873,11 @@ export default function App() {
       const f = await window.electronAPI.storeGet("logForm");
       if (f && typeof f === "object") {
         hydrateLogForm(f);
-        if (f.fCo)
-          loadProjects(f.fCo)
-            .then((list) => setProjectCache((c) => ({ ...c, [f.fCo]: list })))
-            .catch(() => {});
+        if (f.fCo) void ensureProjects(f.fCo);
       }
       setLogFormLoaded(true);
     })();
-  }, [authed, hydrateLogForm]);
+  }, [authed, hydrateLogForm, ensureProjects]);
 
   useEffect(() => {
     if (!authed || !logFormLoaded) return;
@@ -903,24 +891,6 @@ export default function App() {
     });
   }, [authed, logFormLoaded, fCo, fPr, fH, fD, fNote, fInv]);
 
-  // ─── Load companies once authed ────────────────────────────────────────
-  const loadCompaniesNow = useCallback(() => {
-    setCompaniesError(false);
-    loadCompanies()
-      .then((list) => {
-        setCompanies(list);
-        setOnline(true);
-      })
-      .catch((err) => {
-        setCompaniesError(true);
-        const k = classifyApiError(err);
-        if (k === "offline" || k === "timeout") setOnline(false);
-      });
-  }, [setOnline]);
-  useEffect(() => {
-    if (!authed) return;
-    loadCompaniesNow();
-  }, [authed, loadCompaniesNow]);
 
   // ─── Resolve current user (prefer cache; else infer from entries + user.load) ─
   useEffect(() => {
@@ -1271,22 +1241,6 @@ export default function App() {
     const id = window.setTimeout(() => setGoalCelebration(null), 4200);
     return () => clearTimeout(id);
   }, [goalCelebration]);
-
-  // Lazy load projects for a company
-  const ensureProjects = async (cid: string) => {
-    if (projectCache[cid]) return projectCache[cid];
-    try {
-      const list = await loadProjects(cid);
-      setProjectCache((c) => ({ ...c, [cid]: list }));
-      setProjectErrors((e) => (e[cid] ? { ...e, [cid]: false } : e));
-      return list;
-    } catch (err) {
-      setProjectErrors((e) => ({ ...e, [cid]: true }));
-      const k = classifyApiError(err);
-      if (k === "offline" || k === "timeout") setOnline(false);
-      return [];
-    }
-  };
 
   // Double-click a to-do to edit it: fill the form and jump to the To-do tab.
   const editTodo = async (todo: Todo) => {
@@ -3147,7 +3101,7 @@ export default function App() {
           {companiesError && companies.length === 0 && (
             <ui.RetryStrip
               label={t("error.loadClients")}
-              onRetry={loadCompaniesNow}
+              onRetry={reloadCompanies}
             />
           )}
           <div data-tour="timer-company">
@@ -4617,7 +4571,7 @@ export default function App() {
                 error: companiesError,
                 projectErrors,
                 ensure: ensureProjects,
-                reload: loadCompaniesNow,
+                reload: reloadCompanies,
               }}
               saveNewEntry={saveNewEntry}
               addFloat={addFloat}
