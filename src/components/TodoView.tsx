@@ -328,7 +328,7 @@ function TodoRow({ todo,
             borderRadius: 6,
             border: `1.5px solid ${todo.done ? vars.typography.green : vars.border.soft}`,
             background: todo.done ? vars.typography.green : "transparent",
-            color: "#fff",
+            color: vars.typography.onAccent,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -392,7 +392,7 @@ function TodoRow({ todo,
               padding: "3px 7px",
               borderRadius: 999,
               background: vars.typography.accent,
-              color: "#fff",
+              color: vars.typography.onAccent,
               fontFamily: MONO,
               fontSize: 8,
               fontWeight: 700,
@@ -400,7 +400,7 @@ function TodoRow({ todo,
               textTransform: "uppercase",
             }}
           >
-            <span className="todo-live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff", ["--todo-live-ring" as string]: "rgba(255,255,255,.6)" } as CSSProperties} />
+            <span className="todo-live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: vars.typography.onAccent, ["--todo-live-ring" as string]: "rgba(255,255,255,.6)" } as CSSProperties} />
             {t("todo.running")}
           </span>
         ) : (
@@ -622,7 +622,7 @@ function TodoCompactRow({ todo,
                 padding: "5px 10px",
                 borderRadius: 999,
                 background: vars.typography.accent,
-                color: "#fff",
+                color: vars.typography.onAccent,
                 fontFamily: MONO,
                 fontSize: 9,
                 fontWeight: 700,
@@ -637,7 +637,7 @@ function TodoCompactRow({ todo,
                 width: 5,
                 height: 5,
                 borderRadius: "50%",
-                background: "#fff",
+                background: vars.typography.onAccent,
               }}
             />
             {t("todo.running")}
@@ -652,7 +652,7 @@ function TodoCompactRow({ todo,
               padding: "6px 12px",
               borderRadius: 999,
               background: vars.background.button,
-              color: "#fff",
+              color: vars.typography.onAccent,
               border: "none",
               fontFamily: MONO,
               fontSize: 9,

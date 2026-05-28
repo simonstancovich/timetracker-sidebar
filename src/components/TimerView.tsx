@@ -350,7 +350,7 @@ export function TimerView({
               className="timer-dial-btn"
               style={{
                 background: vars.background.button,
-                color: "#fff",
+                color: vars.typography.onAccent,
                 boxShadow: vars.shadow.button,
               }}
             >
@@ -453,7 +453,7 @@ export function TimerView({
                     background: vars.background.button,
                     border: "1px solid transparent",
                     borderRadius: 999,
-                    color: "#fff",
+                    color: vars.typography.onAccent,
                     fontSize: 12,
                     fontWeight: 600,
                     letterSpacing: 1.4,
@@ -475,7 +475,7 @@ export function TimerView({
                   background: vars.background.button,
                   border: "1px solid transparent",
                   borderRadius: 999,
-                  color: "#fff",
+                  color: vars.typography.onAccent,
                   fontSize: 12,
                   fontWeight: 600,
                   letterSpacing: 1.4,
@@ -681,7 +681,7 @@ export function TimerView({
                       width: 12,
                       height: 12,
                       borderRadius: "50%",
-                      background: "#fff",
+                      background: vars.typography.onAccent,
                       transform: `translateX(${tInv ? 12 : 0}px)`,
                       transition: "transform .2s",
                     }}
@@ -705,7 +705,7 @@ export function TimerView({
                 borderRadius: 999,
                 background: vars.background.button,
                 border: "none",
-                color: "#fff",
+                color: vars.typography.onAccent,
                 cursor: "pointer",
                 fontFamily: MONO,
                 fontSize: 11,
@@ -846,7 +846,7 @@ export function TimerView({
               borderRadius: "50%",
               background: vars.background.button,
               border: "none",
-              color: "#fff",
+              color: vars.typography.onAccent,
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",

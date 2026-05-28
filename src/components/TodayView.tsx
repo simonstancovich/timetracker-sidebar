@@ -774,7 +774,7 @@ export function TodayView({
                               padding: "10px 0",
                               background: vars.typography.error,
                               border: "none",
-                              color: "#fff",
+                              color: vars.typography.onAccent,
                               fontSize: 12,
                               fontWeight: 700,
                               cursor: "pointer",

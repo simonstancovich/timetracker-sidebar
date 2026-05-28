@@ -101,7 +101,7 @@ export function ConfirmationModal({ request, onDismiss }: Props) {
               background: vars.background.button,
               border: "none",
               borderRadius: 9,
-              color: "#fff",
+              color: vars.typography.onAccent,
               fontSize: 13,
               fontWeight: 700,
               cursor: "pointer",

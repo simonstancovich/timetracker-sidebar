@@ -1319,7 +1319,7 @@ export function AppShell({
   );
 
   const topBarBg = tRun ? vars.background.page : tSec > 0 ? "#ff7a00" : "#ff1f1f";
-  const topBarFg = tRun ? vars.typography.primary : "#fff";
+  const topBarFg = tRun ? vars.typography.primary : vars.typography.onAccent;
   const topBarMuted = tRun ? vars.typography.tertiary : "rgba(255,255,255,0.8)";
 
   if (size === "top") {
@@ -1429,7 +1429,7 @@ export function AppShell({
                   width: 5,
                   height: 5,
                   borderRadius: "50%",
-                  background: tRun ? vars.typography.pink : "#fff",
+                  background: tRun ? vars.typography.pink : vars.typography.onAccent,
                   boxShadow: tRun
                     ? `0 0 5px ${vars.typography.pink}`
                     : "0 0 4px rgba(255,255,255,0.6)",
@@ -1754,7 +1754,7 @@ export function AppShell({
                 borderRadius: 999,
                 background: vars.typography.accent,
                 border: "none",
-                color: "#fff",
+                color: vars.typography.onAccent,
                 fontFamily: MONO,
                 fontSize: 9,
                 fontWeight: 700,

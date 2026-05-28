@@ -109,7 +109,7 @@ export function LoginScreen({ onAuthed, onOpenBrowser }: Props) {
             padding: "11px 0",
             borderRadius: 999,
             background: canSubmit ? vars.background.button : vars.background.raised,
-            color: canSubmit ? "#fff" : vars.typography.faint,
+            color: canSubmit ? vars.typography.onAccent : vars.typography.faint,
             border: "none",
             fontSize: 14,
             fontWeight: 700,

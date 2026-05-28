@@ -75,7 +75,7 @@ export function HistoryView({
                   border: "none",
                   borderRadius: 999,
                   background: isActive ? vars.typography.accent : "transparent",
-                  color: isActive ? "#fff" : vars.typography.tertiary,
+                  color: isActive ? vars.typography.onAccent : vars.typography.tertiary,
                   fontFamily: MONO,
                   fontSize: 10,
                   fontWeight: 700,
@@ -165,7 +165,7 @@ export function HistoryView({
               style={{
                 background: vars.typography.accent,
                 border: "none",
-                color: "#fff",
+                color: vars.typography.onAccent,
                 fontFamily: MONO,
                 fontSize: 9,
                 fontWeight: 700,
