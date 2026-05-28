@@ -15,7 +15,6 @@ import {
   buildSavePayload,
   deleteTimeEntry,
   loadTimeEntries,
-  loadUsers,
   saveTimeEntry,
 } from "./api";
 import { classifyApiError, apiErrorKey } from "./lib/apiError";
@@ -76,6 +75,7 @@ import { useSyncQueue } from "./lib/useSyncQueue";
 import { useFloats } from "./lib/useFloats";
 import { useProgressFeedback } from "./lib/useProgressFeedback";
 import { useIntro } from "./lib/useIntro";
+import { useCurrentUser } from "./lib/useCurrentUser";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 
@@ -209,13 +209,14 @@ export function AppShell({
     }
   };
 
-  const [currentUser, setCurrentUser] = useState<{
-    _user_id: string;
-    username: string;
-  } | null>(null);
-  // Entry storage + today-load (cohesive hook). Save/delete/edit orchestrate
-  // through these setters but live in App because they touch XP/achievements/queues.
   const onUnauthenticated = useCallback(() => onSignOut(), [onSignOut]);
+  const onCannotResolveUser = useCallback(() => {
+    window.electronAPI.signOut();
+  }, []);
+  const { currentUser, setCurrentUser } = useCurrentUser({
+    authed,
+    onUnresolvable: onCannotResolveUser,
+  });
   const {
     entries, setEntries,
     entriesLoading, setEntriesLoading,
@@ -585,7 +586,7 @@ export function AppShell({
     setCurrentUser(null);
     setTimerLoaded(false);
     setLogFormLoaded(false);
-  }, [authed, clearProgress, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading]);
+  }, [authed, clearProgress, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading, setCurrentUser]);
 
   // â”€â”€â”€ Persisted: mode, lang, timer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // (Player progression â€” xp / unlocked / streak / achStats â€” loads via useProgress.)
@@ -692,50 +693,6 @@ export function AppShell({
     });
   }, [authed, logFormLoaded, fCo, fPr, fH, fD, fNote, fInv]);
 
-
-  // â”€â”€â”€ Resolve current user (prefer cache; else infer from entries + user.load) â”€
-  useEffect(() => {
-    if (!authed) return;
-    (async () => {
-      const cached = await window.electronAPI.storeGet("currentUser");
-      if (cached && cached._user_id && cached.username) {
-        setCurrentUser(cached);
-        return;
-      }
-      // Need a recent entry to discover _user_id (entries are scoped to me).
-      try {
-        const today = await loadTimeEntries(new Date());
-        let uid = today[0]?._user_id;
-        if (!uid) {
-          // try last 14 days until we find one
-          for (let i = 1; i <= 14 && !uid; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const rows = await loadTimeEntries(d);
-            uid = rows[0]?._user_id;
-          }
-        }
-        // We can't run the app without knowing who the user is. If anything
-        // along the resolution path fails, sign out and let them re-auth
-        // rather than guessing or showing data under a wrong identity.
-        if (!uid) {
-          window.electronAPI.signOut();
-          return;
-        }
-        const users = await loadUsers();
-        const me = users.find((u) => u.id === uid);
-        if (!me) {
-          window.electronAPI.signOut();
-          return;
-        }
-        const resolved = { _user_id: me.id, username: me.name || me.username };
-        setCurrentUser(resolved);
-        await window.electronAPI.storeSet("currentUser", resolved);
-      } catch {
-        window.electronAPI.signOut();
-      }
-    })();
-  }, [authed]);
 
   useEffect(() => {
     if (!authed) return;
