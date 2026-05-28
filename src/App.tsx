@@ -59,13 +59,6 @@ export default function App() {
     window.electronAPI.storeSet("pinned", pinned);
   }, [pinned]);
 
-  useEffect(() => {
-    if (authed === false && size !== "full") {
-      setWindowSize("full");
-      window.electronAPI.setSize("full");
-    }
-  }, [authed, size]);
-
   const themeClass = mode === "dark" ? darkTheme : lightTheme;
   const spinner = (
     <prim.Spinner
@@ -104,7 +97,10 @@ export default function App() {
       size={size}
       setWindowSize={setWindowSize}
       themeClass={themeClass}
-      onSignOut={() => setAuthed(false)}
+      onSignOut={() => {
+        setAuthed(false);
+        window.electronAPI.signOut();
+      }}
     />
   );
 }

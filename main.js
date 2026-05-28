@@ -272,6 +272,10 @@ const USER_SCOPED_STORE_KEYS = [
 async function signOut() {
   await session.fromPartition("persist:timetracker").clearStorageData();
   for (const key of USER_SCOPED_STORE_KEYS) store.delete(key);
+  if (currentMode !== "full") {
+    await setWindowSize("full");
+    mainWindow?.webContents.send("forced-size", "full");
+  }
   mainWindow?.webContents.send("signed-out");
 }
 
@@ -344,6 +348,10 @@ ipcMain.handle("api-call", async (event, payload) => {
   }
   if (res.status >= 300 && res.status < 400) {
     log.warn(`[api] ${label} → redirect ${res.status} (session lost)`);
+    if (currentMode !== "full") {
+      await setWindowSize("full");
+      mainWindow?.webContents.send("forced-size", "full");
+    }
     mainWindow?.webContents.send("session-lost");
     return { error: "not_authenticated" };
   }
