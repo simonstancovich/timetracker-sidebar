@@ -2,6 +2,7 @@ export * from "./AbsenceForm";
 export * from "./AchievementToast";
 export * from "./AppFooter";
 export * from "./AppHeader";
+export * from "./AppLayout";
 export * from "./ChapterHeading";
 export * from "./Combobox";
 export * from "./ConfettiBurst";

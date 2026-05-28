@@ -1915,67 +1915,23 @@ export function AppShell({
   }
 
   return (
-    <>
-      <div
-        key="mode-full"
-        className={`mode-root ${themeClass} ${mode === "dark" ? "app-dark-glow" : ""}`}
-        style={{
-          height: "100vh",
-          background: mode === "dark" ? undefined : vars.background.page,
-          fontFamily:
-            "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
-          color: vars.typography.primary,
-          position: "relative",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <ui.SimonCorner active={simonMode} onTap={tapSimonCorner} />
-        {hdr}
-        <ui.OfflineBanner
-          online={online}
-          pendingCount={pendingQueue.length}
-          syncing={syncing}
-          mode={mode}
-        />
-        <ui.FailedQueueBanner count={failedQueue.length} onRetry={retryFailed} />
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-          {absenceOpen ? (
-            <ui.AbsenceForm
-              company={fravaroCompany}
-              projects={
-                fravaroCompany ? projectCache[fravaroCompany.id] || [] : []
-              }
-              minFromISO={absenceMinFromISO}
-              todayISO={absenceTodayISO}
-              saving={absenceSaving}
-              onSubmit={reportAbsence}
-              onClose={() => setAbsenceOpen(false)}
-            />
-          ) : logOpen ? (
-            <ui.LogView
-              form={logFormApi}
-              entries={entries}
-              companies={{
-                list: companies,
-                cache: projectCache,
-                error: companiesError,
-                projectErrors,
-                ensure: ensureProjects,
-                reload: reloadCompanies,
-              }}
-              saveNewEntry={saveNewEntry}
-              addFloat={addFloat}
-              switchTaskGuarded={switchTaskGuarded}
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              onClose={() => setLogOpen(false)}
-            />
-          ) : (
-            views[tab]
-          )}
-        </div>
+    <ui.AppLayout
+      themeClass={themeClass}
+      mode={mode}
+      topLeftCorner={<ui.SimonCorner active={simonMode} onTap={tapSimonCorner} />}
+      header={hdr}
+      banners={
+        <>
+          <ui.OfflineBanner
+            online={online}
+            pendingCount={pendingQueue.length}
+            syncing={syncing}
+            mode={mode}
+          />
+          <ui.FailedQueueBanner count={failedQueue.length} onRetry={retryFailed} />
+        </>
+      }
+      footer={
         <ui.AppFooter
           mode={mode}
           setMode={setMode}
@@ -1986,32 +1942,67 @@ export function AppShell({
           onShowIntro={startIntroFresh}
           onSignOut={confirmSignOut}
         />
-
-        {showIntro && (
-          <ui.IntroOverlay
-            mode={mode}
-            step={introStep}
-            steps={introSteps}
-            onAdvance={advanceIntro}
-            onSkip={dismissIntro}
-            canAdvance={introCanAdvance}
+      }
+      overlays={
+        <>
+          {showIntro && (
+            <ui.IntroOverlay
+              mode={mode}
+              step={introStep}
+              steps={introSteps}
+              onAdvance={advanceIntro}
+              onSkip={dismissIntro}
+              canAdvance={introCanAdvance}
+            />
+          )}
+          <ui.ConfirmationModal
+            request={confirmation}
+            onDismiss={() => setConfirmation(null)}
           />
-        )}
-
-        <ui.ConfirmationModal
-          request={confirmation}
-          onDismiss={() => setConfirmation(null)}
+          <ui.FloatStack floats={floats} />
+          <ui.SaveToast toast={saveToast} mode={mode} />
+          <ui.ConfettiBurst show={justHitGoal} />
+          <ui.GoalCelebrationToast
+            celebration={goalCelebration}
+            liftedForAch={!!ach}
+          />
+          <ui.AchievementToast ach={ach} lang={lang} />
+        </>
+      }
+      modeOverlay={modeOverlay}
+    >
+      {absenceOpen ? (
+        <ui.AbsenceForm
+          company={fravaroCompany}
+          projects={fravaroCompany ? projectCache[fravaroCompany.id] || [] : []}
+          minFromISO={absenceMinFromISO}
+          todayISO={absenceTodayISO}
+          saving={absenceSaving}
+          onSubmit={reportAbsence}
+          onClose={() => setAbsenceOpen(false)}
         />
-
-        <ui.FloatStack floats={floats} />
-
-        <ui.SaveToast toast={saveToast} mode={mode} />
-        <ui.ConfettiBurst show={justHitGoal} />
-
-        <ui.GoalCelebrationToast celebration={goalCelebration} liftedForAch={!!ach} />
-        <ui.AchievementToast ach={ach} lang={lang} />
-      </div>
-      {modeOverlay}
-    </>
+      ) : logOpen ? (
+        <ui.LogView
+          form={logFormApi}
+          entries={entries}
+          companies={{
+            list: companies,
+            cache: projectCache,
+            error: companiesError,
+            projectErrors,
+            ensure: ensureProjects,
+            reload: reloadCompanies,
+          }}
+          saveNewEntry={saveNewEntry}
+          addFloat={addFloat}
+          switchTaskGuarded={switchTaskGuarded}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          onClose={() => setLogOpen(false)}
+        />
+      ) : (
+        views[tab]
+      )}
+    </ui.AppLayout>
   );
 }
