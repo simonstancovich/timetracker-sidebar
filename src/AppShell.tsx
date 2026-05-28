@@ -78,6 +78,7 @@ import { useCurrentUser } from "./lib/useCurrentUser";
 import { useNowTick } from "./lib/useNowTick";
 import { useDayEntries } from "./lib/useDayEntries";
 import { useTodayDerivations } from "./lib/useTodayDerivations";
+import { useSideQuest } from "./lib/useSideQuest";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 
@@ -302,6 +303,12 @@ export function AppShell({
     reset: clearTimerFields,
     hydrate: hydrateTimer,
   } = useTimer();
+  // Silent background save for crash-safety. Upserts the current timer into a
+  // server draft entry; later saves update the same id so we don't spawn duplicates.
+  const draftIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    draftIdRef.current = draftId;
+  }, [draftId]);
   const [timerLoaded, setTimerLoaded] = useState(false);
   const [timerFormOpen, setTimerFormOpen] = useState(true);
 
@@ -353,19 +360,6 @@ export function AppShell({
     onClose: () => setConfirmation(null),
   });
 
-  // Side-quest stack: when an interruption comes in, freeze the main timer and
-  // start a fresh one. Restore the main when the side quest is logged/abandoned.
-  const [stashedTimer, setStashedTimer] = useState<{
-    co: string;
-    pr: string;
-    desc: string;
-    note: string;
-    inv: boolean;
-    sec: number;
-    draftId: string | null;
-    coName: string;
-  } | null>(null);
-
   const resetTimer = () => {
     clearTimerFields();
     draftIdRef.current = null;
@@ -373,68 +367,21 @@ export function AppShell({
     setActiveTodoId(null);
   };
 
-  const startSideQuest = () => {
-    if (stashedTimer) return; // single level of nesting
-    const coName = companies.find((c) => c.id === tCo)?.name || "";
-    setStashedTimer({
-      co: tCo,
-      pr: tPr,
-      desc: tD,
-      note: tNote,
-      inv: tInv,
-      sec: tSec,
-      draftId: draftIdRef.current,
-      coName,
-    });
-    // Fresh blank timer, running immediately â€” details filled later.
-    setTCo("");
-    setTPr("");
-    setTD("");
-    setTNote("");
-    setTInv(true);
-    setTSec(0);
-    setDraftId(null);
-    draftIdRef.current = null;
-    setTimerFormOpen(true);
-    setTRun(true);
-  };
-
-  const restoreStashedTimer = () => {
-    if (!stashedTimer) return;
-    setTCo(stashedTimer.co);
-    setTPr(stashedTimer.pr);
-    setTD(stashedTimer.desc);
-    setTNote(stashedTimer.note);
-    setTInv(stashedTimer.inv);
-    setTSec(stashedTimer.sec);
-    setDraftId(stashedTimer.draftId);
-    draftIdRef.current = stashedTimer.draftId;
-    setStashedTimer(null);
-    setTimerFormOpen(false);
-    setTRun(false); // restored paused â€” user taps resume
-  };
-
-  const [pendingCancelTimer, setPendingCancelTimer] = useState(false);
-  const cancelTimer = async () => {
-    setPendingCancelTimer(false);
-    const id = draftIdRef.current;
-    if (stashedTimer) {
-      // Abandoning a side quest â€” pop the main timer back instead of clearing.
-      restoreStashedTimer();
-    } else {
-      resetTimer();
-    }
-    if (id) {
-      // Best-effort: remove the crash-safe draft from the server. Swallow
-      // errors â€” the local state is already cleared, so the user's intent
-      // has been honored even if the round-trip fails.
-      try {
-        await deleteTimeEntry(id);
-      } catch {
-        /* ignore */
-      }
-    }
-  };
+  const {
+    stashedTimer,
+    pendingCancelTimer, setPendingCancelTimer,
+    startSideQuest, restoreStashedTimer, cancelTimer,
+  } = useSideQuest({
+    timer: {
+      tCo, tPr, tD, tNote, tInv, tSec,
+      setTCo, setTPr, setTD, setTNote, setTInv, setTSec,
+      setDraftId, setTRun,
+    },
+    draftIdRef,
+    companies,
+    resetTimer,
+    setTimerFormOpen,
+  });
 
 
   const stopAndLogCurrent = async () => {
@@ -566,7 +513,7 @@ export function AppShell({
     setCurrentUser(null);
     setTimerLoaded(false);
     setLogFormLoaded(false);
-  }, [authed, clearProgress, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading, setCurrentUser]);
+  }, [authed, clearProgress, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading, setCurrentUser, setPendingCancelTimer]);
 
   // â”€â”€â”€ Persisted: mode, lang, timer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // (Player progression â€” xp / unlocked / streak / achStats â€” loads via useProgress.)
@@ -1207,12 +1154,6 @@ export function AppShell({
     return saved?.id || existingId || null;
   };
 
-  // Silent background save for crash-safety. Upserts the current timer into a server
-  // draft entry; later saves update the same id so we don't spawn duplicates.
-  const draftIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    draftIdRef.current = draftId;
-  }, [draftId]);
   const autoSaveDraft = async () => {
     if (!currentUser) return;
     if (!tCo || !tPr || !tD.trim()) return;
