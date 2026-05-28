@@ -43,8 +43,6 @@ import { pickGreeting } from "./lib/greetingMessages";
 import { getTimerInsight } from "./lib/timerInsights";
 import {
   emptyTodayMessage,
-  goalDoneCheer,
-  goalDoneSub,
   saveCheer,
   xpCoachNote,
 } from "./lib/personality";
@@ -81,6 +79,7 @@ import { useCompanies } from "./lib/useCompanies";
 import { useProgress } from "./lib/useProgress";
 import { useSyncQueue } from "./lib/useSyncQueue";
 import { useFloats } from "./lib/useFloats";
+import { useProgressFeedback } from "./lib/useProgressFeedback";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 import {
@@ -168,14 +167,7 @@ export default function App() {
     return () => clearTimeout(id);
   }, []);
 
-  const [sessionXp, setSessionXp] = useState(0);
-  const lastXp = useRef<number | null>(null);
-  const sessionSettledAt = useRef(Date.now() + 2500);
   const [funMessage, setFunMessage] = useState<string | null>(null);
-  const [xpBump, setXpBump] = useState<{ id: number; delta: number } | null>(
-    null,
-  );
-  const xpBumpId = useRef(0);
   const [showIntro, setShowIntro] = useState(false);
   const [introChecked, setIntroChecked] = useState(false);
   const [introStep, setIntroStep] = useState(0);
@@ -236,17 +228,6 @@ export default function App() {
   } = useProgress({ authed });
 
   useEffect(() => {
-    if (Date.now() < sessionSettledAt.current) {
-      lastXp.current = xp;
-      return;
-    }
-    if (lastXp.current !== null && xp > lastXp.current) {
-      setSessionXp((s) => s + (xp - lastXp.current!));
-    }
-    lastXp.current = xp;
-  }, [xp]);
-
-  useEffect(() => {
     if (size !== "top") {
       setFunMessage(null);
       return;
@@ -280,13 +261,6 @@ export default function App() {
     estimatedTodoFor,
     resetTodoForm,
   } = useTodos(authed);
-  const [goalCelebration, setGoalCelebration] = useState<{
-    title: string;
-    sub: string;
-  } | null>(null);
-  const [justHitGoal, setJustHitGoal] = useState(false);
-  const [justBumpedStreak, setJustBumpedStreak] = useState(false);
-  const prevStreakRef = useRef<number>(0);
   const [windowFocused, setWindowFocused] = useState(
     typeof document === "undefined" ? true : !document.hidden,
   );
@@ -341,22 +315,6 @@ export default function App() {
   } = useTimer();
   const [timerLoaded, setTimerLoaded] = useState(false);
   const [timerFormOpen, setTimerFormOpen] = useState(true);
-
-  const prevDisplayXp = useRef(0);
-  useEffect(() => {
-    const current = sessionXp + (tRun ? Math.floor(tSec / 60) : 0);
-    if (current > prevDisplayXp.current) {
-      const delta = current - prevDisplayXp.current;
-      const id = ++xpBumpId.current;
-      setXpBump({ id, delta });
-      const t = window.setTimeout(() => {
-        setXpBump((cur) => (cur && cur.id === id ? null : cur));
-      }, 1500);
-      prevDisplayXp.current = current;
-      return () => clearTimeout(t);
-    }
-    prevDisplayXp.current = current;
-  }, [sessionXp, tRun, tSec]);
 
   // Log form state (cohesive hook)
   const logFormApi = useLogForm();
@@ -626,7 +584,6 @@ export default function App() {
     setPendingCancelTimer(false);
     resetLogForm();
     setFHInput("1:00");
-    setSessionXp(0);
     setCurrentUser(null);
     setTimerLoaded(false);
     setLogFormLoaded(false);
@@ -1109,42 +1066,24 @@ export default function App() {
     if (!simonMode && tab === "todo") setTab("today");
   }, [simonMode, tab]);
 
-  // Streak increment â€” pop animation when streak goes up after first hydration.
-  useEffect(() => {
-    const prev = prevStreakRef.current;
-    prevStreakRef.current = streak;
-    if (streak > prev && prev > 0) {
-      setJustBumpedStreak(true);
-      const t = window.setTimeout(() => setJustBumpedStreak(false), 1200);
-      return () => clearTimeout(t);
-    }
-  }, [streak]);
-
-  // 8h goal celebration â€” fires once per calendar day on first crossing.
-  useEffect(() => {
-    if (!authed || !done) return;
-    const today = formatLocalDate(new Date());
-    if (lastCelebratedDate === today) return;
-    setGoalCelebration({ title: goalDoneCheer(lang), sub: goalDoneSub(lang) });
-    setJustHitGoal(true);
-    setLastCelebratedDate(today);
-    window.electronAPI.storeSet("lastCelebratedDate", today);
-  }, [done, authed, lastCelebratedDate, lang, setLastCelebratedDate]);
-
-  // Auto-dismiss bloom + celebration toast in separate effects keyed on the
-  // flags, so the trigger above re-running (it sets lastCelebratedDate, a dep)
-  // can't cancel these timers mid-flight and strand them on forever.
-  useEffect(() => {
-    if (!justHitGoal) return;
-    const id = window.setTimeout(() => setJustHitGoal(false), 1700);
-    return () => clearTimeout(id);
-  }, [justHitGoal]);
-
-  useEffect(() => {
-    if (!goalCelebration) return;
-    const id = window.setTimeout(() => setGoalCelebration(null), 4200);
-    return () => clearTimeout(id);
-  }, [goalCelebration]);
+  // Animation feedback for player progression (cohesive hook).
+  const {
+    sessionXp,
+    xpBump,
+    justBumpedStreak,
+    justHitGoal,
+    goalCelebration,
+  } = useProgressFeedback({
+    authed,
+    xp,
+    streak,
+    tRun,
+    tSec,
+    done,
+    lang,
+    lastCelebratedDate,
+    setLastCelebratedDate,
+  });
 
   // Double-click a to-do to edit it: fill the form and jump to the To-do tab.
   const editTodo = async (todo: Todo) => {
