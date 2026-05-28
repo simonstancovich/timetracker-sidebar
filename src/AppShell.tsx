@@ -81,6 +81,7 @@ import {
   useTimerInsight,
   useXpCoach,
 } from "./lib/useRotatingMessages";
+import { useGoSize } from "./lib/useGoSize";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 
@@ -162,26 +163,6 @@ export function AppShell({
   const nowTick = useNowTick();
 
   const [funMessage, setFunMessage] = useState<string | null>(null);
-  const [modeTransition, setModeTransition] = useState<"idle" | "out" | "in">(
-    "idle",
-  );
-
-  const goSize = async (s: "full" | "top") => {
-    if (s === "full" && tRun) setTab("timer");
-    if (modeTransition !== "idle") return;
-    setModeTransition("out");
-    await new Promise((r) => setTimeout(r, 180));
-    setWindowSize(s);
-    await window.electronAPI.setSize(s);
-    setModeTransition("in");
-    setTimeout(() => setModeTransition("idle"), 200);
-  };
-  // Latest refs so the one-time intro effect can call goSize / read size
-  // without re-running when they change.
-  const goSizeRef = useRef(goSize);
-  goSizeRef.current = goSize;
-  const sizeRef = useRef(size);
-  sizeRef.current = size;
 
   const confirmSignOut = () => {
     if (window.confirm(t("footer.confirmSignOut"))) {
@@ -302,6 +283,12 @@ export function AppShell({
     reset: clearTimerFields,
     hydrate: hydrateTimer,
   } = useTimer();
+  const { goSize, goSizeRef, sizeRef, modeTransition } = useGoSize({
+    size,
+    setWindowSize,
+    tRun,
+    setTab,
+  });
   // Silent background save for crash-safety. Upserts the current timer into a
   // server draft entry; later saves update the same id so we don't spawn duplicates.
   const draftIdRef = useRef<string | null>(null);
