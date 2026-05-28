@@ -173,3 +173,47 @@ export const isoWeekKey = (d: Date): string => {
   const week = Math.ceil(((+x - +yearStart) / 86400000 + 1) / 7);
   return `${x.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 };
+
+interface SaveDelta {
+  hours: number;
+  invoice: boolean;
+  cid: string;
+  prid: string;
+  weekKey: string;
+}
+
+// Fold a freshly-saved entry into the running achievement-stats snapshot.
+// Pure — no React, no I/O. Client / project ids dedupe; the weekly billable
+// total resets if the entry is the first one in a new ISO week.
+export function nextAchStats(prev: AchStats, delta: SaveDelta): AchStats {
+  return {
+    entriesCount: prev.entriesCount + 1,
+    totalH: +(prev.totalH + delta.hours).toFixed(2),
+    totalBillableH: +(
+      prev.totalBillableH + (delta.invoice ? delta.hours : 0)
+    ).toFixed(2),
+    clientIds: prev.clientIds.includes(delta.cid)
+      ? prev.clientIds
+      : [...prev.clientIds, delta.cid],
+    projectIds: prev.projectIds.includes(delta.prid)
+      ? prev.projectIds
+      : [...prev.projectIds, delta.prid],
+    currentWeekKey: delta.weekKey,
+    currentWeekBillableH: +(
+      (prev.currentWeekKey === delta.weekKey ? prev.currentWeekBillableH : 0) +
+      (delta.invoice ? delta.hours : 0)
+    ).toFixed(2),
+  };
+}
+
+// Find achievements whose predicates pass against `ctx` and aren't already in
+// `unlocked`. Order matches the ACHS list.
+export function findNewlyUnlocked(unlocked: string[], ctx: AchCtx): Ach[] {
+  const out: Ach[] = [];
+  for (const a of ACHS) {
+    if (unlocked.includes(a.id)) continue;
+    const fn = CHECKS[a.id];
+    if (fn && fn(ctx)) out.push(a);
+  }
+  return out;
+}

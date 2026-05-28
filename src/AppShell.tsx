@@ -30,20 +30,18 @@ import {
   roundUpToQuarter,
 } from "./lib/hours";
 import {
-  ACHS,
-  CHECKS,
+  findNewlyUnlocked,
   isoWeekKey,
-  type Ach,
+  nextAchStats,
   type AchCtx,
-  type AchStats,
 } from "./lib/achievements";
+import { streakAfterLog } from "./lib/streak";
 import { pickRandomMessage } from "./lib/funMessages";
 import { pickTip } from "./lib/productivityTips";
 import {
   emptyTodayMessage,
   saveCheer,
 } from "./lib/personality";
-import { getHolidays, isWorkingDay } from "./lib/swedishHolidays";
 import { Lang, useTranslation } from "./lib/i18n";
 import { useLogForm } from "./lib/useLogForm";
 import { useTimer } from "./lib/useTimer";
@@ -917,23 +915,17 @@ export function AppShell({
     });
 
     // Streak: bump if this is the first log of today.
-    // "Previous" means the most recent working day before today
-    // (so weekends and Swedish holidays don't break the streak).
     const nowDate = new Date();
     const todayISO = formatLocalDate(nowDate);
-    const lastLogged = await window.electronAPI.storeGet("lastLoggedDate");
-    let effectiveStreak = streak;
-    if (lastLogged !== todayISO) {
-      const hols = getHolidays(nowDate.getFullYear());
-      const prev = new Date(nowDate);
-      do {
-        prev.setDate(prev.getDate() - 1);
-      } while (!isWorkingDay(prev, hols));
-      const prevWDISO = formatLocalDate(prev);
-      effectiveStreak = lastLogged === prevWDISO ? streak + 1 : 1;
-      setStreak(effectiveStreak);
+    const lastLogged = (await window.electronAPI.storeGet(
+      "lastLoggedDate",
+    )) as string | null | undefined;
+    const streakResult = streakAfterLog(streak, lastLogged, nowDate);
+    if (streakResult.bumped) {
+      setStreak(streakResult.streak);
       await window.electronAPI.storeSet("lastLoggedDate", todayISO);
     }
+    const effectiveStreak = streakResult.streak;
 
     const earned = Math.round(10 + hours * 8);
     setXp((x) => x + earned);
@@ -951,24 +943,14 @@ export function AppShell({
     const savedDay = entryDate.getDay();
     const savedIsWeekend = savedDay === 0 || savedDay === 6;
     const weekKey = isoWeekKey(nowDate);
-    const nextStats: AchStats = {
-      entriesCount: achStats.entriesCount + 1,
-      totalH: +(achStats.totalH + hours).toFixed(2),
-      totalBillableH: +(achStats.totalBillableH + (inv ? hours : 0)).toFixed(2),
-      clientIds: achStats.clientIds.includes(cid)
-        ? achStats.clientIds
-        : [...achStats.clientIds, cid],
-      projectIds: achStats.projectIds.includes(prid)
-        ? achStats.projectIds
-        : [...achStats.projectIds, prid],
-      currentWeekKey: weekKey,
-      currentWeekBillableH: +(
-        (achStats.currentWeekKey === weekKey
-          ? achStats.currentWeekBillableH
-          : 0) + (inv ? hours : 0)
-      ).toFixed(2),
-    };
-    setAchStats(nextStats);
+    const stats = nextAchStats(achStats, {
+      hours,
+      invoice: inv,
+      cid,
+      prid,
+      weekKey,
+    });
+    setAchStats(stats);
 
     const todaysEntries = entries.filter(
       (e) => formatLocalDate(new Date(e.task_date)) === todayISOStr,
@@ -994,7 +976,7 @@ export function AppShell({
       : 0;
 
     const ctx: AchCtx = {
-      stats: nextStats,
+      stats,
       streak: effectiveStreak,
       todayH: savedIsToday ? todayH + hours : todayH,
       clientsToday,
@@ -1008,14 +990,8 @@ export function AppShell({
       weekDaysAtGoal,
     };
 
-    // Fire any newly-passed predicates. Queue toasts so stacked unlocks don't
-    // clobber each other.
-    const newly: Ach[] = [];
-    for (const a of ACHS) {
-      if (unlocked.includes(a.id)) continue;
-      const fn = CHECKS[a.id];
-      if (fn && fn(ctx)) newly.push(a);
-    }
+    // Queue toasts so stacked unlocks don't clobber each other.
+    const newly = findNewlyUnlocked(unlocked, ctx);
     if (newly.length > 0) {
       setUnlocked((u) => [...u, ...newly.map((a) => a.id)]);
       setXp((x) => x + newly.reduce((s, a) => s + a.xp, 0));
