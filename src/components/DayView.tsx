@@ -229,7 +229,7 @@ export function DayView({
                     title={t("entry.doubleClickEdit")}
                     style={{
                       background: vars.background.surface,
-                      border: `1px solid ${isPending ? "#ef4444" : vars.border.soft}`,
+                      border: `1px solid ${isPending ? vars.typography.error : vars.border.soft}`,
                       borderRadius: 11,
                       padding: "9px 11px",
                       borderBottomLeftRadius: isPending ? 0 : 11,
@@ -329,14 +329,18 @@ export function DayView({
                             width: 24,
                             height: 24,
                             borderRadius: "50%",
-                            background: isPending ? "rgba(239,68,68,0.10)" : "transparent",
-                            border: isPending ? "1px solid #ef4444" : `1px solid ${vars.border.soft}`,
+                            background: isPending
+                              ? `color-mix(in srgb, ${vars.typography.error} 10%, transparent)`
+                              : "transparent",
+                            border: isPending
+                              ? `1px solid ${vars.typography.error}`
+                              : `1px solid ${vars.border.soft}`,
                             display: "inline-flex",
                             alignItems: "center",
                             justifyContent: "center",
                             cursor: "pointer",
                             padding: 0,
-                            color: isPending ? "#ef4444" : vars.typography.tertiary,
+                            color: isPending ? vars.typography.error : vars.typography.tertiary,
                             transition: "all .15s ease",
                           }}
                         >
@@ -357,7 +361,7 @@ export function DayView({
                         display: "flex",
                         borderRadius: "0 0 11px 11px",
                         overflow: "hidden",
-                        border: `1px solid #ef4444`,
+                        border: `1px solid ${vars.typography.error}`,
                         borderTop: "none",
                       }}
                     >
@@ -384,7 +388,7 @@ export function DayView({
                         style={{
                           flex: 1,
                           padding: "10px 0",
-                          background: "#ef4444",
+                          background: vars.typography.error,
                           border: "none",
                           color: "#fff",
                           fontSize: 12,

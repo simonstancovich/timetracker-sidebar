@@ -193,7 +193,7 @@ export function WeekView({ goal, referenceDate, onPickDay, onBackfillDay, firstN
                 : h > 0
                   ? '#d97706'
                   : isWorkday
-                    ? '#ef4444'
+                    ? vars.typography.error
                     : vars.typography.faint
           return (
             <button
@@ -438,7 +438,7 @@ export function WeekView({ goal, referenceDate, onPickDay, onBackfillDay, firstN
             fontFamily: MONO,
             fontSize: 9,
             fontWeight: 600,
-            color: '#f59e0b',
+            color: vars.typography.warning,
             letterSpacing: 2.2,
             textTransform: 'uppercase',
           }}>

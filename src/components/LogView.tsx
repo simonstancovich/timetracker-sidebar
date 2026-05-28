@@ -82,11 +82,11 @@ export function LogView({
   const pickedDate = editingDate ?? selectedDate;
   const save = async () => {
     if (!fCo || !fPr || !fD.trim()) {
-      addFloat(t("form.fillFirst"), "#ef4444");
+      addFloat(t("form.fillFirst"), vars.typography.error);
       return;
     }
     if (!co || !prObj) {
-      addFloat(t("form.saveFailed", { err: "missing client/project" }), "#ef4444");
+      addFloat(t("form.saveFailed", { err: "missing client/project" }), vars.typography.error);
       return;
     }
     // Commit any pending input by parsing fHInput so a user who clicks Save

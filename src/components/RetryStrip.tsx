@@ -21,8 +21,8 @@ export function RetryStrip({ label, onRetry }: Props) {
         gap: 8,
         padding: "7px 10px",
         borderRadius: 8,
-        background: "#ef44441a",
-        border: "1px solid #ef444440",
+        background: `color-mix(in srgb, ${vars.typography.error} 10%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${vars.typography.error} 25%, transparent)`,
       }}
     >
       <span

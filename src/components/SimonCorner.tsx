@@ -1,3 +1,5 @@
+import { vars } from "../theme";
+
 interface Props {
   active: boolean;
   onTap: () => void;
@@ -26,7 +28,7 @@ export function SimonCorner({ active, onTap }: Props) {
             width: 5,
             height: 5,
             borderRadius: "50%",
-            background: "#10b981",
+            background: vars.typography.green,
             opacity: 0.7,
           }}
         />

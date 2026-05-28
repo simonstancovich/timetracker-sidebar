@@ -146,10 +146,10 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
             monthClosure?.setClosed(year, month, true)
             notify?.(t('month.closeSuccess'), vars.typography.green)
           } else {
-            notify?.(t('month.closeError'), '#ef4444')
+            notify?.(t('month.closeError'), vars.typography.error)
           }
         } catch {
-          notify?.(t('month.closeError'), '#ef4444')
+          notify?.(t('month.closeError'), vars.typography.error)
         } finally {
           setClosing(false)
         }

@@ -21,6 +21,7 @@ import {
   type PendingEntry,
 } from "./pendingEntries";
 import type { CurrentUser } from "./useCurrentUser";
+import { vars } from "../theme";
 
 interface UseAbsenceArgs {
   companies: Company[];
@@ -86,7 +87,7 @@ export function useAbsence({
     if (!project) return;
     const days = workingDaysInRange(fromISO, toISO);
     if (days.length === 0) {
-      addFloat(t("absence.noDays"), "#f59e0b");
+      addFloat(t("absence.noDays"), vars.typography.warning);
       return;
     }
     setSaving(true);
@@ -141,7 +142,7 @@ export function useAbsence({
         /* best-effort refresh */
       }
     }
-    if (count > 0) addFloat(t("absence.done", { n: count }), "#10b981");
+    if (count > 0) addFloat(t("absence.done", { n: count }), vars.typography.green);
   };
 
   return {

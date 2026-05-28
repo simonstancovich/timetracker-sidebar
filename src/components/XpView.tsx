@@ -234,7 +234,7 @@ export function XpView({ xp, xpCoach, weekTotal, weekH, todayI, unlocked, mode, 
                     fontSize: 8,
                     fontWeight: 700,
                     color: empty
-                      ? "#ef4444"
+                      ? vars.typography.error
                       : isToday
                         ? vars.typography.accent
                         : isFut

@@ -46,7 +46,7 @@ export function LoginScreen({ onAuthed, onOpenBrowser }: Props) {
     width: "100%",
     padding: "10px 12px",
     background: vars.background.surface,
-    border: `1px solid ${error ? "#ef4444" : vars.border.soft}`,
+    border: `1px solid ${error ? vars.typography.error : vars.border.soft}`,
     borderRadius: 10,
     color: vars.typography.primary,
     fontSize: 14,
@@ -96,7 +96,7 @@ export function LoginScreen({ onAuthed, onOpenBrowser }: Props) {
           style={inputStyle}
         />
         {error && (
-          <span style={{ color: "#ef4444", fontSize: 12, textAlign: "center" }}>
+          <span style={{ color: vars.typography.error, fontSize: 12, textAlign: "center" }}>
             {error}
           </span>
         )}

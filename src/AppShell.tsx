@@ -339,7 +339,7 @@ export function AppShell({
 
   const stopAndLogCurrent = async () => {
     if (!tCo || !tPr || !tD.trim()) {
-      addFloat(t("form.fillFirst"), "#ef4444");
+      addFloat(t("form.fillFirst"), vars.typography.error);
       return;
     }
     const h = Math.max(1, Math.ceil(tSec / 60)) / 60;
@@ -788,7 +788,7 @@ export function AppShell({
     }
     if (kind === "offline" || kind === "timeout") setOnline(false);
     const human = t(apiErrorKey(kind));
-    addFloat(wrapKey ? t(wrapKey, { err: human }) : human, "#ef4444");
+    addFloat(wrapKey ? t(wrapKey, { err: human }) : human, vars.typography.error);
     return kind;
   };
 
@@ -808,7 +808,7 @@ export function AppShell({
     if (!co || !pr) {
       addFloat(
         t("form.saveFailed", { err: "missing client/project" }),
-        "#ef4444",
+        vars.typography.error,
       );
       return;
     }
@@ -840,13 +840,13 @@ export function AppShell({
         n[todayI] = +(n[todayI] + hours).toFixed(2);
         return n;
       });
-      addFloat(t("offline.queued"), "#f59e0b");
+      addFloat(t("offline.queued"), vars.typography.warning);
     };
 
     // Editing an existing entry needs the server (can't safely queue an edit).
     if (!online) {
       if (existingId) {
-        addFloat(t("error.api.offline"), "#ef4444");
+        addFloat(t("error.api.offline"), vars.typography.error);
         return;
       }
       queueOffline();

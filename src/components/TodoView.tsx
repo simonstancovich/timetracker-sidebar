@@ -41,7 +41,7 @@ const fmtDate = (iso: string) =>
 const levelColor = (level: TodoLevel): string => {
   switch (level) {
     case "overdue":
-      return "#ef4444";
+      return vars.typography.error;
     case "urgent":
       return "#ea580c";
     case "soon":

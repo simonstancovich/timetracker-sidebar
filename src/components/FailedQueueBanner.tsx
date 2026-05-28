@@ -1,5 +1,6 @@
 import { useTranslation } from "../lib/i18n";
 import { MONO } from "../lib/fonts";
+import { vars } from "../theme";
 import { Button } from "../primitives/Button/Button";
 
 interface Props {
@@ -19,10 +20,10 @@ export function FailedQueueBanner({ count, onRetry }: Props) {
         alignItems: "center",
         gap: 8,
         padding: "7px 14px",
-        background: "#ef44441a",
-        borderTop: `1px solid #ef444440`,
-        borderBottom: `1px solid #ef444440`,
-        color: "#ef4444",
+        background: `color-mix(in srgb, ${vars.typography.error} 10%, transparent)`,
+        borderTop: `1px solid color-mix(in srgb, ${vars.typography.error} 25%, transparent)`,
+        borderBottom: `1px solid color-mix(in srgb, ${vars.typography.error} 25%, transparent)`,
+        color: vars.typography.error,
         fontFamily: MONO,
         fontSize: 10,
         fontWeight: 700,

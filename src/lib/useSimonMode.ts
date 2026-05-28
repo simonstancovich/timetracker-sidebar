@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { vars } from "../theme";
 
 // Hidden dev gate: triple-click the secret corner within 1.5s to toggle a
 // flag that reveals features kept deactivated for tester/demo builds.
@@ -29,7 +30,7 @@ export function useSimonMode(
       window.electronAPI.storeSet("simonMode", next);
       addFloat(
         next ? "Simon mode ON" : "Simon mode OFF",
-        next ? "#10b981" : "#ef4444",
+        next ? vars.typography.green : vars.typography.error,
       );
       return next;
     });

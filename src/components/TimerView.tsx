@@ -145,7 +145,7 @@ export function TimerView({
   const canStart = !!(tCo && tPr && tD.trim());
   const stop = async () => {
     if (!canStart) {
-      addFloat(t("form.fillFirst"), "#ef4444");
+      addFloat(t("form.fillFirst"), vars.typography.error);
       return;
     }
     const h = Math.max(1, Math.ceil(tSec / 60)) / 60;
@@ -867,12 +867,12 @@ export function TimerView({
               height: 40,
               borderRadius: "50%",
               background: pendingCancelTimer
-                ? "rgba(239,68,68,0.12)"
+                ? `color-mix(in srgb, ${vars.typography.error} 12%, transparent)`
                 : "transparent",
               border: pendingCancelTimer
-                ? "1px solid #ef4444"
+                ? `1px solid ${vars.typography.error}`
                 : `1px solid ${vars.border.soft}`,
-              color: pendingCancelTimer ? "#ef4444" : vars.typography.tertiary,
+              color: pendingCancelTimer ? vars.typography.error : vars.typography.tertiary,
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
@@ -1029,12 +1029,12 @@ export function TimerView({
               padding: 0,
               borderRadius: "50%",
               background: pendingCancelTimer
-                ? "rgba(239,68,68,0.10)"
+                ? `color-mix(in srgb, ${vars.typography.error} 10%, transparent)`
                 : "transparent",
               border: pendingCancelTimer
-                ? "1px solid #ef4444"
+                ? `1px solid ${vars.typography.error}`
                 : `1px solid ${vars.border.soft}`,
-              color: pendingCancelTimer ? "#ef4444" : vars.typography.faint,
+              color: pendingCancelTimer ? vars.typography.error : vars.typography.faint,
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",

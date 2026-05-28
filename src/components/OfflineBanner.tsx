@@ -14,7 +14,7 @@ export function OfflineBanner({ online, pendingCount, syncing, mode }: Props) {
   if (online && pendingCount === 0) return null;
 
   const syncMode = online;
-  const accent = syncMode ? vars.typography.accent : "#f59e0b";
+  const accent = syncMode ? vars.typography.accent : vars.typography.warning;
   const text = !online
     ? pendingCount > 0
       ? t("offline.banner", { n: pendingCount })

@@ -400,7 +400,7 @@ export function TodayView({
                         title={t("entry.doubleClickEdit")}
                         style={{
                           background: vars.background.surface,
-                          border: `1px solid ${isPending ? "#ef4444" : vars.border.soft}`,
+                          border: `1px solid ${isPending ? vars.typography.error : vars.border.soft}`,
                           borderRadius: 11,
                           padding: "9px 11px",
                           borderBottomLeftRadius: isPending ? 0 : 11,
@@ -567,9 +567,9 @@ export function TodayView({
                                     fontWeight: 700,
                                     letterSpacing: 0.5,
                                     textTransform: "uppercase",
-                                    background: "#ef444426",
-                                    color: "#ef4444",
-                                    border: `1px solid #ef444455`,
+                                    background: `color-mix(in srgb, ${vars.typography.error} 15%, transparent)`,
+                                    color: vars.typography.error,
+                                    border: `1px solid color-mix(in srgb, ${vars.typography.error} 33%, transparent)`,
                                   }}
                                 >
                                   {t("offline.failedBadge")}
@@ -586,9 +586,9 @@ export function TodayView({
                                     fontWeight: 700,
                                     letterSpacing: 0.5,
                                     textTransform: "uppercase",
-                                    background: "#f59e0b26",
+                                    background: `color-mix(in srgb, ${vars.typography.warning} 15%, transparent)`,
                                     color: mode === "dark" ? "#fbbf24" : "#b45309",
-                                    border: `1px solid #f59e0b55`,
+                                    border: `1px solid color-mix(in srgb, ${vars.typography.warning} 33%, transparent)`,
                                   }}
                                 >
                                   {t("offline.pendingBadge")}
@@ -720,7 +720,7 @@ export function TodayView({
                                 style={{
                                   background: "none",
                                   border: "none",
-                                  color: isPending ? "#ef4444" : vars.typography.tertiary,
+                                  color: isPending ? vars.typography.error : vars.typography.tertiary,
                                   fontSize: 12,
                                   cursor: "pointer",
                                   padding: "2px 4px",
@@ -745,7 +745,7 @@ export function TodayView({
                             display: "flex",
                             borderRadius: "0 0 11px 11px",
                             overflow: "hidden",
-                            border: `1px solid #ef4444`,
+                            border: `1px solid ${vars.typography.error}`,
                             borderTop: "none",
                           }}
                         >
@@ -772,7 +772,7 @@ export function TodayView({
                             style={{
                               flex: 1,
                               padding: "10px 0",
-                              background: "#ef4444",
+                              background: vars.typography.error,
                               border: "none",
                               color: "#fff",
                               fontSize: 12,
