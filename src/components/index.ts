@@ -20,6 +20,7 @@ export * from "./RetryStrip";
 export * from "./Spotlight";
 export * from "./StatChip";
 export * from "./TimerView";
+export * from "./TodayView";
 export * from "./TodoView";
 export * from "./TourTooltip";
 export * from "./WeekView";
