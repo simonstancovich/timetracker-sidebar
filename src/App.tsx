@@ -90,6 +90,7 @@ import {
   type Todo,
 } from "./lib/todos";
 import { useTodos } from "./lib/useTodos";
+import { useEntries } from "./lib/useEntries";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 import {
@@ -222,7 +223,6 @@ export default function App() {
     _user_id: string;
     username: string;
   } | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companiesError, setCompaniesError] = useState(false);
   const [projectErrors, setProjectErrors] = useState<Record<string, boolean>>(
@@ -231,8 +231,14 @@ export default function App() {
   const [projectCache, setProjectCache] = useState<Record<string, Project[]>>(
     {},
   );
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [entriesLoading, setEntriesLoading] = useState(true);
+  // Entry storage + today-load (cohesive hook). Save/delete/edit orchestrate
+  // through these setters but live in App because they touch XP/achievements/queues.
+  const onUnauthenticated = useCallback(() => setAuthed(false), []);
+  const {
+    entries, setEntries,
+    entriesLoading, setEntriesLoading,
+    pendingDeleteId, setPendingDeleteId,
+  } = useEntries({ authed, nowTick, onUnauthenticated });
   const [weekH, setWeekH] = useState<number[]>([0, 0, 0, 0, 0]);
 
   const [xp, setXp] = useState(0);
@@ -634,7 +640,7 @@ export default function App() {
     setCurrentUser(null);
     setTimerLoaded(false);
     setLogFormLoaded(false);
-  }, [authed, clearTimerFields, resetLogForm, setFHInput]);
+  }, [authed, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading]);
 
   // ─── Persisted: mode, xp, unlocked, streak, timer ──────────────────────
   useEffect(() => {
@@ -959,30 +965,6 @@ export default function App() {
       }
     })();
   }, [authed]);
-
-  // ─── Load entries for today ────────────────────────────────────────────
-  // Today view is always today; History view loads its own entries per week/month.
-  // `nowTick` re-runs this at local-midnight so the day rolls over cleanly.
-  useEffect(() => {
-    if (!authed) return;
-    let cancelled = false;
-    setEntriesLoading(true);
-    loadTimeEntries(new Date())
-      .then((list) => {
-        if (!cancelled) {
-          setEntries(list);
-          setEntriesLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setEntriesLoading(false);
-        if (err.message === "NOT_AUTHENTICATED") setAuthed(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [authed, nowTick]);
 
   useEffect(() => {
     if (!authed) return;
@@ -1528,7 +1510,7 @@ export default function App() {
         /* refresh is best-effort */
       }
     }
-  }, [setOnline]);
+  }, [setOnline, setEntries]);
 
   // Flush whenever we're online with a non-empty queue (reconnect or new item).
   useEffect(() => {
