@@ -83,6 +83,7 @@ import {
 } from "./lib/useRotatingMessages";
 import { useGoSize } from "./lib/useGoSize";
 import { useAutoSaveDraft } from "./lib/useAutoSaveDraft";
+import { useSimonMode } from "./lib/useSimonMode";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 
@@ -245,11 +246,7 @@ export function AppShell({
     ensureProjects,
     reload: reloadCompanies,
   } = useCompanies({ authed, onOnlineChange: setOnline });
-  // Simon mode â€” hidden dev gate. Triple-click the secret corner to toggle.
-  // Reveals features we keep deactivated for tester/demo builds. Persisted.
-  const [simonMode, setSimonMode] = useState(false);
-  const simonClicksRef = useRef(0);
-  const simonResetRef = useRef<number | null>(null);
+  const { simonMode, tapCorner: tapSimonCorner } = useSimonMode(addFloat);
   // Offline save queue (cohesive hook): pending + failed + flushPending + retryFailed
   // + the 4 load/persist effects + flush-on-reconnect + retry-on-interval.
   const {
@@ -705,10 +702,6 @@ export function AppShell({
     };
   }, []);
 
-  useEffect(() => {
-    window.electronAPI.storeGet("simonMode").then((v) => setSimonMode(v === true));
-  }, []);
-
   // The To-do feature lives behind Simon mode; bounce off the tab when it's off.
   useEffect(() => {
     if (!simonMode && tab === "todo") setTab("today");
@@ -828,26 +821,6 @@ export function AppShell({
       run: true,
       todoId: todo.id,
       landingTab: "today",
-    });
-  };
-
-  // Secret corner: 3 clicks within 1.5s toggles Simon mode.
-  const tapSimonCorner = () => {
-    simonClicksRef.current += 1;
-    if (simonResetRef.current) clearTimeout(simonResetRef.current);
-    simonResetRef.current = window.setTimeout(() => {
-      simonClicksRef.current = 0;
-    }, 1500);
-    if (simonClicksRef.current < 3) return;
-    simonClicksRef.current = 0;
-    setSimonMode((m) => {
-      const next = !m;
-      window.electronAPI.storeSet("simonMode", next);
-      addFloat(
-        next ? "Simon mode ON" : "Simon mode OFF",
-        next ? "#10b981" : "#ef4444",
-      );
-      return next;
     });
   };
 
