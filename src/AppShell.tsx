@@ -19,7 +19,6 @@ import {
 } from "./api";
 import { classifyApiError, apiErrorKey } from "./lib/apiError";
 import {
-  LIVE_SESSION_ID,
   isPendingId,
   makePendingEntry,
   type PendingEntry,
@@ -78,6 +77,7 @@ import { useIntro } from "./lib/useIntro";
 import { useCurrentUser } from "./lib/useCurrentUser";
 import { useNowTick } from "./lib/useNowTick";
 import { useDayEntries } from "./lib/useDayEntries";
+import { useTodayDerivations } from "./lib/useTodayDerivations";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 
@@ -723,35 +723,24 @@ export function AppShell({
     return () => clearInterval(h);
   }, [tRun]);
 
-  // â”€â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Cheap; recompute each render so it's always the real current weekday.
-  const todayI = (() => {
-    const now = new Date();
-    const mon = mondayOf(now);
-    return Math.max(0, Math.min(4, Math.floor((+now - +mon) / 86400000)));
-  })();
-  // Single source of truth for what shows today: server rows plus any locally
-  // queued (pending) or quarantined (failed) entries for today, deduped by id.
-  // Survives restarts â€” queued entries are reloaded from the store.
-  const liveTodayEntries = useMemo(() => {
-    const todayISO = formatLocalDate(new Date());
-    const ids = new Set(entries.map((e) => e.id));
-    const extras = [...pendingQueue, ...failedQueue]
-      .filter((x) => x.entry.task_date === todayISO && !ids.has(x.entry.id))
-      .map((x) => x.entry);
-    return [...extras, ...entries];
-  }, [entries, pendingQueue, failedQueue]);
-  const failedIds = useMemo(
-    () => new Set(failedQueue.map((f) => f.entry.id)),
-    [failedQueue],
-  );
-
-  // Committed total (saved + queued) â€” drives goal/celebration, never the
-  // unsaved running timer.
-  const todayH = useMemo(
-    () => liveTodayEntries.reduce((s, e) => s + parseFloat(e.hour || "0"), 0),
-    [liveTodayEntries],
-  );
+  const {
+    todayI,
+    liveTodayEntries,
+    failedIds,
+    todayH,
+    liveTodayH,
+    groups,
+    done,
+    liveDone,
+  } = useTodayDerivations({
+    entries,
+    pendingQueue,
+    failedQueue,
+    timer: { tSec, tCo, tPr, tD, tNote, tInv, draftId },
+    companies,
+    projectCache,
+    goal: GOAL,
+  });
 
   // Volatile timer values for the ambient insight â€” read via ref so the message
   // recomputes on the interval / language change rather than on every tick.
@@ -775,52 +764,6 @@ export function AppShell({
     return () => clearInterval(id);
   }, [currentUser, lang, entries.length]);
 
-  // What the Today list renders: committed entries with the in-progress session
-  // folded in live â€” overriding the continued entry's hour, or added as a
-  // synthetic LIVE row. The hero and the list Total both derive from this, so
-  // they can't disagree.
-  const displayTodayEntries = useMemo(() => {
-    if (!(tSec > 0 && tCo && tPr && tD.trim())) return liveTodayEntries;
-    const liveHour = String(tSec / 3600);
-    const idx = liveTodayEntries.findIndex((r) => r.id === draftId);
-    if (idx >= 0) {
-      return liveTodayEntries.map((r, i) =>
-        i === idx ? { ...r, hour: liveHour } : r,
-      );
-    }
-    const co = companies.find((c) => c.id === tCo);
-    const pr = (projectCache[tCo] || []).find((p) => p.id === tPr);
-    const liveRow: TimeEntry = {
-      id: LIVE_SESSION_ID,
-      _user_id: "",
-      _project_id: tPr,
-      _company_id: tCo,
-      task_date: formatLocalDate(new Date()),
-      description: tD.trim(),
-      internal_description: tNote.trim(),
-      hour: liveHour,
-      invoice_hours: liveHour,
-      invoice: tInv ? "1" : "0",
-      no_flex: "0",
-      hour_price: pr?.hour_price || "0",
-      username: "",
-      company: co?.name || tCo,
-      project: pr?.name || "",
-      create_date: "",
-    };
-    return [liveRow, ...liveTodayEntries];
-  }, [
-    liveTodayEntries,
-    tSec,
-    tCo,
-    tPr,
-    tD,
-    tNote,
-    tInv,
-    draftId,
-    companies,
-    projectCache,
-  ]);
   const weekTotal = useMemo(() => weekH.reduce((s, h) => s + h, 0), [weekH]);
 
   const xpIntoLevel = xp % 1000;
@@ -845,18 +788,7 @@ export function AppShell({
     return () => clearInterval(id);
   }, [currentUser, lang]);
 
-  const done = todayH >= GOAL;
   const gpct = Math.min((todayH / GOAL) * 100, 100);
-
-  // Live total for the displayed clock = sum of the rows actually shown on
-  // Today (incl. the in-progress session), so the hero and the list Total are
-  // identical. `done`/celebration above stay on committed hours so confetti
-  // only fires on a real logged 8h.
-  const liveTodayH = useMemo(
-    () => displayTodayEntries.reduce((s, e) => s + parseFloat(e.hour || "0"), 0),
-    [displayTodayEntries],
-  );
-  const liveDone = liveTodayH >= GOAL;
 
   // Save flash â€” auto-dismiss after 2.1s.
   useEffect(() => {
@@ -1424,19 +1356,6 @@ export function AppShell({
     }
     if (count > 0) addFloat(t("absence.done", { n: count }), "#10b981");
   };
-
-  // Group entries by company for Today view
-  const groups = useMemo(() => {
-    const g: Record<string, { cid: string; h: number; entries: TimeEntry[] }> =
-      {};
-    displayTodayEntries.forEach((e) => {
-      const key = e.company;
-      if (!g[key]) g[key] = { cid: e._company_id, h: 0, entries: [] };
-      g[key].h = +(g[key].h + parseFloat(e.hour || "0")).toFixed(2);
-      g[key].entries.push(e);
-    });
-    return g;
-  }, [displayTodayEntries]);
 
   // currentUser may still be loading on first render; show a themed spinner.
   const spinner = (
