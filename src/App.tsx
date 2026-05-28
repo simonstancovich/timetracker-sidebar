@@ -42,7 +42,6 @@ import { pickRandomMessage } from "./lib/funMessages";
 import { pickTip } from "./lib/productivityTips";
 import { pickGreeting } from "./lib/greetingMessages";
 import { getTimerInsight } from "./lib/timerInsights";
-import { getTimerVibe } from "./lib/timerVibe";
 import {
   emptyTodayMessage,
   goalDoneCheer,
@@ -66,9 +65,6 @@ import * as prim from "./primitives";
 
 import { SunIcon } from "./icons/SunIcon";
 import { MoonIcon } from "./icons/MoonIcon";
-import { PauseIcon } from "./icons/PauseIcon";
-import { StopIcon } from "./icons/StopIcon";
-import { XIcon } from "./icons/XIcon";
 import { PlusIcon } from "./icons/PlusIcon";
 
 import { MONO, SERIF } from "./lib/fonts";
@@ -306,7 +302,7 @@ export default function App() {
     ensureProjects,
     reload: reloadCompanies,
   } = useCompanies({ authed, onOnlineChange: setOnline });
-  // Simon mode — hidden dev gate. Triple-click the secret corner to toggle.
+  // Simon mode â€” hidden dev gate. Triple-click the secret corner to toggle.
   // Reveals features we keep deactivated for tester/demo builds. Persisted.
   const [simonMode, setSimonMode] = useState(false);
   const simonClicksRef = useRef(0);
@@ -425,7 +421,7 @@ export default function App() {
       draftId: draftIdRef.current,
       coName,
     });
-    // Fresh blank timer, running immediately — details filled later.
+    // Fresh blank timer, running immediately â€” details filled later.
     setTCo("");
     setTPr("");
     setTD("");
@@ -450,7 +446,7 @@ export default function App() {
     draftIdRef.current = stashedTimer.draftId;
     setStashedTimer(null);
     setTimerFormOpen(false);
-    setTRun(false); // restored paused — user taps resume
+    setTRun(false); // restored paused â€” user taps resume
   };
 
   const [pendingCancelTimer, setPendingCancelTimer] = useState(false);
@@ -458,14 +454,14 @@ export default function App() {
     setPendingCancelTimer(false);
     const id = draftIdRef.current;
     if (stashedTimer) {
-      // Abandoning a side quest — pop the main timer back instead of clearing.
+      // Abandoning a side quest â€” pop the main timer back instead of clearing.
       restoreStashedTimer();
     } else {
       resetTimer();
     }
     if (id) {
       // Best-effort: remove the crash-safe draft from the server. Swallow
-      // errors — the local state is already cleared, so the user's intent
+      // errors â€” the local state is already cleared, so the user's intent
       // has been honored even if the round-trip fails.
       try {
         await deleteTimeEntry(id);
@@ -556,7 +552,7 @@ export default function App() {
     };
 
     if (tRun && canSaveCurrent) {
-      // Timer is actively running → confirm before saving & switching.
+      // Timer is actively running â†’ confirm before saving & switching.
       setConfirmation({
         title: t("timer.confirmSwitchTitle"),
         body: t("timer.confirmSwitchBody"),
@@ -564,7 +560,7 @@ export default function App() {
         onConfirm: saveCurrentAndSwitch,
       });
     } else if (canSaveCurrent) {
-      // Paused with unsaved progress → save silently, then switch.
+      // Paused with unsaved progress â†’ save silently, then switch.
       saveCurrentAndSwitch();
     } else {
       applySwitch();
@@ -591,7 +587,7 @@ export default function App() {
     setLogOpen(true);
   };
 
-  // ─── Auth gating ───────────────────────────────────────────────────────
+  // â”€â”€â”€ Auth gating â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     window.electronAPI.checkAuth().then(setAuthed);
     const unsubs = [
@@ -639,8 +635,8 @@ export default function App() {
     setLogFormLoaded(false);
   }, [authed, clearProgress, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading]);
 
-  // ─── Persisted: mode, lang, timer ──────────────────────────────────────
-  // (Player progression — xp / unlocked / streak / achStats — loads via useProgress.)
+  // â”€â”€â”€ Persisted: mode, lang, timer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // (Player progression â€” xp / unlocked / streak / achStats â€” loads via useProgress.)
   useEffect(() => {
     if (!authed) return;
     (async () => {
@@ -740,7 +736,7 @@ export default function App() {
 
   useEffect(() => {
     if (!showIntro) return;
-    // Any client / project works — not restricted to DevCore / Utbildning —
+    // Any client / project works â€” not restricted to DevCore / Utbildning â€”
     // so the tour continues for tenants without those exact names.
     const at = (key: string) => introStep === introIndex[key];
     if (at("openTimer") && tab === "timer") setIntroStep(introIndex.startClock);
@@ -784,7 +780,7 @@ export default function App() {
 
   const emptyMsg = useMemo(() => emptyTodayMessage(lang), [lang]);
 
-  // Persist timer on control/field changes (NOT on tSec tick — startedAt covers elapsed).
+  // Persist timer on control/field changes (NOT on tSec tick â€” startedAt covers elapsed).
   useEffect(() => {
     if (!authed || !timerLoaded) return;
     window.electronAPI.storeSet("timer", {
@@ -826,7 +822,7 @@ export default function App() {
   }, [authed, logFormLoaded, fCo, fPr, fH, fD, fNote, fInv]);
 
 
-  // ─── Resolve current user (prefer cache; else infer from entries + user.load) ─
+  // â”€â”€â”€ Resolve current user (prefer cache; else infer from entries + user.load) â”€
   useEffect(() => {
     if (!authed) return;
     (async () => {
@@ -875,7 +871,7 @@ export default function App() {
     monthClosure.ensure(selectedDate.getFullYear(), selectedDate.getMonth());
   }, [authed, selectedDate, monthClosure]);
 
-  // ─── Load entries for History → Daily drill-down ──────────────────────
+  // â”€â”€â”€ Load entries for History â†’ Daily drill-down â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!authed || historyScale !== "day" || tab !== "history") return;
     let cancelled = false;
@@ -895,10 +891,10 @@ export default function App() {
     };
   }, [authed, historyScale, tab, selectedDate, entries]);
 
-  // ─── Load week hours (Mon–Fri containing selectedDate) ─────────────────
+  // â”€â”€â”€ Load week hours (Monâ€“Fri containing selectedDate) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!authed) return;
-    // Always show the current week — independent of selectedDate
+    // Always show the current week â€” independent of selectedDate
     const mon = mondayOf(new Date());
     const days = [0, 1, 2, 3, 4].map((i) => {
       const d = new Date(mon);
@@ -917,8 +913,8 @@ export default function App() {
   }, [authed, entries, setWeekH]);
 
 
-  // ─── Auto-save draft every 5 min while running ─────────────────────────
-  // Only depend on tRun — we read the latest fields through a ref so typing
+  // â”€â”€â”€ Auto-save draft every 5 min while running â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Only depend on tRun â€” we read the latest fields through a ref so typing
   // into the description doesn't restart the 5-minute clock.
   const autoSaveRef = useRef<() => Promise<void>>(() => Promise.resolve());
   useEffect(() => {
@@ -932,7 +928,7 @@ export default function App() {
     return () => clearInterval(h);
   }, [tRun]);
 
-  // ─── Derived ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Derived â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Cheap; recompute each render so it's always the real current weekday.
   const todayI = (() => {
     const now = new Date();
@@ -941,7 +937,7 @@ export default function App() {
   })();
   // Single source of truth for what shows today: server rows plus any locally
   // queued (pending) or quarantined (failed) entries for today, deduped by id.
-  // Survives restarts — queued entries are reloaded from the store.
+  // Survives restarts â€” queued entries are reloaded from the store.
   const liveTodayEntries = useMemo(() => {
     const todayISO = formatLocalDate(new Date());
     const ids = new Set(entries.map((e) => e.id));
@@ -955,14 +951,14 @@ export default function App() {
     [failedQueue],
   );
 
-  // Committed total (saved + queued) — drives goal/celebration, never the
+  // Committed total (saved + queued) â€” drives goal/celebration, never the
   // unsaved running timer.
   const todayH = useMemo(
     () => liveTodayEntries.reduce((s, e) => s + parseFloat(e.hour || "0"), 0),
     [liveTodayEntries],
   );
 
-  // Volatile timer values for the ambient insight — read via ref so the message
+  // Volatile timer values for the ambient insight â€” read via ref so the message
   // recomputes on the interval / language change rather than on every tick.
   const insightInputRef = useRef({ tRun, tSec, tCo, tPr, tD, todayH, streak });
   insightInputRef.current = { tRun, tSec, tCo, tPr, tD, todayH, streak };
@@ -985,7 +981,7 @@ export default function App() {
   }, [currentUser, lang, entries.length]);
 
   // What the Today list renders: committed entries with the in-progress session
-  // folded in live — overriding the continued entry's hour, or added as a
+  // folded in live â€” overriding the continued entry's hour, or added as a
   // synthetic LIVE row. The hero and the list Total both derive from this, so
   // they can't disagree.
   const displayTodayEntries = useMemo(() => {
@@ -1067,14 +1063,14 @@ export default function App() {
   );
   const liveDone = liveTodayH >= GOAL;
 
-  // Save flash — auto-dismiss after 2.1s.
+  // Save flash â€” auto-dismiss after 2.1s.
   useEffect(() => {
     if (!saveToast) return;
     const t = window.setTimeout(() => setSaveToast(null), 2100);
     return () => clearTimeout(t);
   }, [saveToast]);
 
-  // Window focus tracking — pauses decorative animations (marquee, shimmer)
+  // Window focus tracking â€” pauses decorative animations (marquee, shimmer)
   // when the window is blurred or hidden, saving battery on idle top-bar.
   useEffect(() => {
     const onFocus = () => setWindowFocused(true);
@@ -1093,7 +1089,7 @@ export default function App() {
   // Connection tracking lives in useConnection() above.
 
   // Log stray errors / rejected promises (e.g. storage failures) for support.
-  // Intentionally no toast — background failures shouldn't alarm the user.
+  // Intentionally no toast â€” background failures shouldn't alarm the user.
   useEffect(() => {
     const onErr = (e: ErrorEvent) =>
       console.error("[window-error]", e.error || e.message);
@@ -1116,7 +1112,7 @@ export default function App() {
     if (!simonMode && tab === "todo") setTab("today");
   }, [simonMode, tab]);
 
-  // Streak increment — pop animation when streak goes up after first hydration.
+  // Streak increment â€” pop animation when streak goes up after first hydration.
   useEffect(() => {
     const prev = prevStreakRef.current;
     prevStreakRef.current = streak;
@@ -1127,7 +1123,7 @@ export default function App() {
     }
   }, [streak]);
 
-  // 8h goal celebration — fires once per calendar day on first crossing.
+  // 8h goal celebration â€” fires once per calendar day on first crossing.
   useEffect(() => {
     if (!authed || !done) return;
     const today = formatLocalDate(new Date());
@@ -1193,7 +1189,7 @@ export default function App() {
   };
 
   // Key of the task currently running (if any), so to-do rows can show a live
-  // "Running" state by matching their own task — independent of activeTodoId.
+  // "Running" state by matching their own task â€” independent of activeTodoId.
   const activeTaskKey = tRun ? taskKey(tCo, tPr, tD) : null;
 
   // Start a to-do in place: track that exact task immediately and stay on the
@@ -1225,7 +1221,7 @@ export default function App() {
         formatLocalDate(new Date(e.task_date)) === todayISO,
     );
     if (match) {
-      // Already the running entry — just surface the tracker, don't restart.
+      // Already the running entry â€” just surface the tracker, don't restart.
       if (tRun && draftIdRef.current === match.id) {
         setTab("today");
         return;
@@ -1283,7 +1279,7 @@ export default function App() {
 
   // Turn a raw API error into a clear message + side effects (sign-out on auth
   // expiry, flip the offline banner on network trouble). Returns the kind so
-  // callers can wrap the message (e.g. "Couldn't save — …"). `wrapKey` lets a
+  // callers can wrap the message (e.g. "Couldn't save â€” â€¦"). `wrapKey` lets a
   // caller prefix the human message with a contextual form key.
   const handleApiError = (err: unknown, wrapKey?: string): string => {
     const kind = classifyApiError(err);
@@ -1395,7 +1391,7 @@ export default function App() {
         .then(setDayEntries)
         .catch(() => {});
     }
-    // Only bump weekH for today's entries (weekH is current week Mon–Fri)
+    // Only bump weekH for today's entries (weekH is current week Monâ€“Fri)
     setWeekH((w) => {
       if (savedDateISO !== todayISOStr) return w;
       const n = [...w];
@@ -1430,7 +1426,7 @@ export default function App() {
       xp: earned,
     });
 
-    // Skip achievement evaluation on edits — only fresh entries advance stats.
+    // Skip achievement evaluation on edits â€” only fresh entries advance stats.
     if (existingId) return saved?.id || existingId || null;
 
     // Build post-save stats snapshot and the evaluation context.
@@ -1551,7 +1547,7 @@ export default function App() {
   });
 
   const delEntry = async (id: string) => {
-    // Queued / quarantined rows only live locally — drop from the queues.
+    // Queued / quarantined rows only live locally â€” drop from the queues.
     if (isPendingId(id)) {
       setPendingQueue((q) => q.filter((x) => x.localId !== id));
       setFailedQueue((f) => f.filter((x) => x.localId !== id));
@@ -1565,13 +1561,13 @@ export default function App() {
     }
   };
 
-  // The "Frånvaro" client (absence) — a normal client in the list.
+  // The "FrÃ¥nvaro" client (absence) â€” a normal client in the list.
   const fravaroCompany = useMemo(
-    () => companies.find((c) => /fr[åa]nvaro/i.test(c.name)) || null,
+    () => companies.find((c) => /fr[Ã¥a]nvaro/i.test(c.name)) || null,
     [companies],
   );
 
-  // DevCore is internal work — its entries are always non-billable.
+  // DevCore is internal work â€” its entries are always non-billable.
   const isInternalCompany = (companyId: string) =>
     /devcore/i.test(companies.find((c) => c.id === companyId)?.name || "");
 
@@ -1589,7 +1585,7 @@ export default function App() {
     setAbsenceOpen(true);
   };
 
-  // Bulk-log 8h absence for each working day in the range, under the Frånvaro
+  // Bulk-log 8h absence for each working day in the range, under the FrÃ¥nvaro
   // client + chosen project. Rides the offline queue like any other save.
   const reportAbsence = async (
     projectId: string,
@@ -1675,7 +1671,7 @@ export default function App() {
     return g;
   }, [displayTodayEntries]);
 
-  // Vanilla-extract theme class — applied to every top-level return so CSS
+  // Vanilla-extract theme class â€” applied to every top-level return so CSS
   // custom properties resolve correctly in both early-return branches and the
   // main app render.
   const themeClass = mode === "dark" ? darkTheme : lightTheme;
@@ -1698,9 +1694,9 @@ export default function App() {
     );
   if (!currentUser) return spinner;
 
-  // ─── Shared UI helpers ────────────────────────────────────────────────
+  // â”€â”€â”€ Shared UI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const locale = lang === "sv" ? "sv-SE" : "en-GB";
-  // Live clock: weekday · day · month · hh:mm. Re-renders once per minute via
+  // Live clock: weekday Â· day Â· month Â· hh:mm. Re-renders once per minute via
   // the nowTick state (which uses `nowTick` as a dep to force revaluation).
   void nowTick;
   const now = new Date();
@@ -1714,7 +1710,7 @@ export default function App() {
     minute: "2-digit",
   });
 
-  // ─── Header ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const hdr = (
     <ui.AppHeader
       tab={tab}
@@ -1732,7 +1728,7 @@ export default function App() {
     />
   );
 
-  // ─── Today view ────────────────────────────────────────────────────────
+  // â”€â”€â”€ Today view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const todayView = (() => {
     const firstName = currentUser.username.trim().split(/\s+/)[0];
     const hr = new Date().getHours();
@@ -2155,8 +2151,8 @@ export default function App() {
                               <span
                                 title={
                                   e.invoice === "1"
-                                    ? "Billable — shows up on invoice"
-                                    : "Internal — not billed"
+                                    ? "Billable â€” shows up on invoice"
+                                    : "Internal â€” not billed"
                                 }
                                 style={{
                                   display: "inline-flex",
@@ -2277,7 +2273,7 @@ export default function App() {
                                     title={
                                       isActive
                                         ? "Pause the running timer"
-                                        : "Continue this task — timer resumes from logged hours"
+                                        : "Continue this task â€” timer resumes from logged hours"
                                     }
                                     style={{
                                       width: 22,
@@ -2351,7 +2347,7 @@ export default function App() {
                                     fontWeight: isPending ? 700 : 400,
                                   }}
                                 >
-                                  ✕
+                                  âœ•
                                 </button>
                               )}
                             </div>
@@ -2529,972 +2525,46 @@ export default function App() {
     );
   })();
 
-  // ─── Timer view ────────────────────────────────────────────────────────
-  const timerView = (() => {
-    const coObj = companies.find((c) => c.id === tCo);
-    const prList = projectCache[tCo] || [];
-    const prObj = prList.find((p) => p.id === tPr);
-    const hasCtx = !!(tCo && tPr);
-    const sessXP = Math.round((tSec / 3600) * 8 + 2);
-
-    const canStart = !!(tCo && tPr && tD.trim());
-    const stop = async () => {
-      if (!canStart) {
-        addFloat(t("form.fillFirst"), "#ef4444");
-        return;
-      }
-      const h = Math.max(1, Math.ceil(tSec / 60)) / 60;
-      await saveNewEntry(
-        tCo,
-        tPr,
-        h,
-        tD.trim(),
-        tInv,
-        tNote.trim(),
-        new Date(),
-        draftId,
-      );
-      accrueTodoHours(activeTodoId, h);
-      setActiveTodoId(null);
-      if (stashedTimer) {
-        // Side quest logged — pop the main timer back (paused).
-        restoreStashedTimer();
-      } else {
-        resetTimer();
-        setTab("today");
-      }
-    };
-
-    const timerHint = tRun
-      ? t("page.timerRunning")
-      : tSec > 0
-        ? t("page.timerPaused")
-        : t("page.timerIdle");
-    return (
-      <ui.Page title={t("page.timer")} hint={timerHint} gap={10} minHeight="100%">
-        {stashedTimer && (
-          <button
-            type="button"
-            onClick={restoreStashedTimer}
-            title={t("timer.returnToMain")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 10,
-              padding: "9px 12px",
-              borderRadius: 12,
-              background: vars.background.accent,
-              border: `1px solid ${vars.border.soft}`,
-              cursor: "pointer",
-              textAlign: "left",
-              width: "100%",
-            }}
-          >
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "baseline",
-                gap: 8,
-                minWidth: 0,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 8,
-                  fontWeight: 700,
-                  color: vars.typography.faint,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.6,
-                  flexShrink: 0,
-                }}
-              >
-                {t("timer.mainPaused")}
-              </span>
-              <span
-                style={{
-                  fontFamily: SERIF,
-                  fontStyle: "italic",
-                  fontSize: 15,
-                  color: vars.typography.accentInk,
-                  letterSpacing: -0.1,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  minWidth: 0,
-                }}
-              >
-                {stashedTimer.coName}
-              </span>
-            </span>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: vars.typography.secondary,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {fmtClock(stashedTimer.sec)}
-              </span>
-              <span
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 8,
-                  fontWeight: 700,
-                  color: vars.typography.accent,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.4,
-                }}
-              >
-                {t("timer.returnShort")} ↩
-              </span>
-            </span>
-          </button>
-        )}
-
-        <div
-          className="timer-dial-zone"
-          style={{ padding: "12px 0 6px" }}
-        >
-          <div className="timer-dial-content">
-          <prim.ActivityRing
-            progress={GOAL > 0 ? todayH / GOAL : 0}
-            done={done}
-            size={210}
-            stroke={3}
-            withTicks
-          >
-            <div style={{ textAlign: "center", padding: "0 8px" }}>
-              <div
-                style={{
-                  fontFamily: SERIF,
-                  fontSize: 38,
-                  fontWeight: 400,
-                  color: tRun ? vars.typography.primary : vars.typography.tertiary,
-                  letterSpacing: -1.5,
-                  lineHeight: 0.95,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {fmtClock(tSec)}
-              </div>
-              <div
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 8,
-                  color: tRun ? vars.typography.pink : vars.typography.faint,
-                  fontWeight: 700,
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  marginTop: 8,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                {tRun && (
-                  <span
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: vars.typography.pink,
-                      animation: "pulse 1.2s ease-in-out infinite",
-                    }}
-                  />
-                )}
-                {tRun
-                  ? t("timer.recording")
-                  : tSec > 0
-                    ? t("status.paused")
-                    : t("status.idle")}
-              </div>
-            </div>
-          </prim.ActivityRing>
-          </div>
-          {tRun && (
-            <div className="timer-dial-controls">
-              <button
-                type="button"
-                onClick={() => setTRun(false)}
-                aria-label={t("timer.pause")}
-                title={t("timer.pause")}
-                className="timer-dial-btn"
-                style={{
-                  background: vars.background.surface,
-                  border: `1px solid ${vars.border.soft}`,
-                  color: vars.typography.primary,
-                }}
-              >
-                <PauseIcon size={22} />
-              </button>
-              <button
-                type="button"
-                onClick={stop}
-                aria-label={t("timer.stopLog")}
-                title={t("timer.stopLog")}
-                className="timer-dial-btn"
-                style={{
-                  background: vars.background.button,
-                  color: "#fff",
-                  boxShadow: vars.shadow.button,
-                }}
-              >
-                <StopIcon size={22} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {!tRun &&
-          (() => {
-            const v = getTimerVibe(tSec, tRun, lang);
-            return (
-              <div
-                style={{
-                  textAlign: "center",
-                  fontFamily: SERIF,
-                  fontStyle: "italic",
-                  fontSize: 15,
-                  color: vars.typography.tertiary,
-                  lineHeight: 1.3,
-                  padding: "0 8px",
-                }}
-              >
-                {v.text}
-                {v.icon && <span style={{ marginLeft: 6 }}>{v.icon}</span>}
-              </div>
-            );
-          })()}
-        {!tRun && timerInsight && (
-          <div
-            style={{
-              textAlign: "center",
-              fontFamily: SERIF,
-              fontStyle: "italic",
-              fontSize: 13,
-              color: vars.typography.faint,
-              padding: "0 18px",
-              lineHeight: 1.4,
-            }}
-          >
-            {timerInsight}
-          </div>
-        )}
-
-        {(!tRun || !hasCtx || timerFormOpen) && (
-        <div
-          style={{
-            padding: "4px 0 0",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          {tRun && !canStart && (
-            <div
-              style={{
-                fontFamily: SERIF,
-                fontStyle: "italic",
-                fontSize: 14,
-                color: vars.typography.pink,
-                textAlign: "center",
-                padding: "4px 8px",
-                lineHeight: 1.4,
-              }}
-            >
-              {t("timer.runningNeedFields")}
-            </div>
-          )}
-          {!tRun &&
-            (tSec > 0 && canStart ? (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 8,
-                }}
-              >
-                <button
-                  onClick={() => setTRun(true)}
-                  style={{
-                    height: 44,
-                    background: "transparent",
-                    border: `1px solid ${vars.border.soft}`,
-                    borderRadius: 999,
-                    color: vars.typography.primary,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: 1.4,
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                  }}
-                >
-                  {t("timer.resume")}
-                </button>
-                <button
-                  onClick={() => void stopAndLogCurrent()}
-                  style={{
-                    height: 44,
-                    background: vars.background.button,
-                    border: "1px solid transparent",
-                    borderRadius: 999,
-                    color: "#fff",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: 1.4,
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                    boxShadow: vars.shadow.button,
-                  }}
-                >
-                  {t("timer.stopLog")}
-                </button>
-              </div>
-            ) : (
-              <button
-                data-tour="timer-start"
-                onClick={() => setTRun(true)}
-                style={{
-                  width: "100%",
-                  height: 44,
-                  background: vars.background.button,
-                  border: "1px solid transparent",
-                  borderRadius: 999,
-                  color: "#fff",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: 1.4,
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  boxShadow: vars.shadow.button,
-                }}
-              >
-                {tSec > 0 ? t("timer.resume") : t("timer.start")}
-              </button>
-            ))}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              margin: "20px 0 14px",
-            }}
-          >
-            <prim.Divider grow />
-            <span
-              style={{
-                fontSize: 10,
-                color: vars.typography.secondary,
-                fontWeight: 700,
-                letterSpacing: 1.4,
-                textTransform: "uppercase",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {t("timer.whatWorking")}
-            </span>
-            <prim.Divider grow />
-          </div>
-
-          {companiesError && companies.length === 0 && (
-            <ui.RetryStrip
-              label={t("error.loadClients")}
-              onRetry={reloadCompanies}
-            />
-          )}
-          <div data-tour="timer-company">
-            <ui.Combobox
-              value={tCo}
-              items={companies}
-              placeholder={`${t("form.searchClient")} (${companies.length})`}
-                onChange={async (id) => {
-                setTCo(id);
-                setTPr("");
-                if (isInternalCompany(id)) setTInv(false);
-                if (id) await ensureProjects(id);
-              }}
-            />
-          </div>
-
-          {tCo &&
-            (projectErrors[tCo] && prList.length === 0 ? (
-              <ui.RetryStrip
-                label={t("error.loadProjects")}
-                onRetry={() => void ensureProjects(tCo)}
-              />
-            ) : (
-              <div data-tour="timer-project">
-                <ui.Combobox
-                  value={tPr}
-                  items={prList}
-                  placeholder={
-                    prList.length
-                      ? `${t("form.searchProject")} (${prList.length})`
-                      : t("form.loadingProjects")
-                  }
-                  onChange={setTPr}
-                />
-              </div>
-            ))}
-
-          {tCo && tPr && (
-            <>
-              <input
-                data-tour="timer-description"
-                value={tD}
-                onChange={(e) => setTD(e.target.value)}
-                placeholder={t("timer.taskDescription")}
-                style={{
-                  padding: "8px 6px",
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: `1px solid ${tD.trim() ? vars.typography.accent : vars.border.soft}`,
-                  borderRadius: 8,
-                  color: vars.typography.primary,
-                  fontSize: 14,
-                  outline: "none",
-                  width: "100%",
-                }}
-              />
-              {(() => {
-                const recentDescs = Array.from(
-                  new Set(
-                    entries
-                      .filter((e) => e._project_id === tPr && e.description?.trim())
-                      .map((e) => e.description.trim()),
-                  ),
-                ).slice(0, 3);
-                if (recentDescs.length === 0) return null;
-                return (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: -2 }}>
-                    {recentDescs.map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setTD(d)}
-                        title={d}
-                        style={{
-                          display: "inline-flex",
-                          padding: "4px 10px",
-                          borderRadius: 999,
-                          background: "transparent",
-                          border: `1px solid ${vars.border.soft}`,
-                          color: vars.typography.tertiary,
-                          fontFamily: SERIF,
-                          fontStyle: "italic",
-                          fontSize: 12,
-                          cursor: "pointer",
-                          maxWidth: 220,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          lineHeight: 1.2,
-                        }}
-                      >
-                        &ldquo;{d}&rdquo;
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
-              <textarea
-                data-tour="timer-note"
-                value={tNote}
-                onChange={(e) => setTNote(e.target.value)}
-                placeholder={t("timer.internalNotes")}
-                rows={2}
-                style={{
-                  padding: "8px 6px",
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: `1px solid ${vars.border.soft}`,
-                  borderRadius: 8,
-                  color: vars.typography.primary,
-                  fontSize: 13,
-                  outline: "none",
-                  width: "100%",
-                  resize: "none",
-                  fontFamily: "inherit",
-                }}
-              />
-              <button
-                type="button"
-                data-tour="timer-invoiceable"
-                role="switch"
-                aria-checked={tInv}
-                aria-label={t("timer.invoiceable")}
-                onClick={() => setTInv((v) => !v)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  padding: "8px 2px",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  font: "inherit",
-                  color: "inherit",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: vars.typography.secondary,
-                    textTransform: "uppercase",
-                    letterSpacing: 1.4,
-                    fontWeight: 600,
-                  }}
-                >
-                  {t("timer.invoiceable")}
-                </span>
-                <div
-                  style={{
-                    width: 28,
-                    height: 16,
-                    borderRadius: 999,
-                    background: tInv ? vars.typography.accent : vars.border.soft,
-                    display: "flex",
-                    alignItems: "center",
-                    padding: 2,
-                    transition: "background .2s",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: "#fff",
-                      transform: `translateX(${tInv ? 12 : 0}px)`,
-                      transition: "transform .2s",
-                    }}
-                  />
-                </div>
-              </button>
-            </>
-          )}
-          {tRun && canStart && (
-            <button
-              type="button"
-              data-tour="timer-done"
-              onClick={() => setTimerFormOpen(false)}
-              style={{
-                alignSelf: "center",
-                marginTop: 8,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "10px 22px",
-                borderRadius: 999,
-                background: vars.background.button,
-                border: "none",
-                color: "#fff",
-                cursor: "pointer",
-                fontFamily: MONO,
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 1.4,
-                textTransform: "uppercase",
-                boxShadow: vars.shadow.button,
-              }}
-            >
-              {t("timer.formDone")}
-            </button>
-          )}
-        </div>
-        )}
-
-        {tRun && hasCtx && !timerFormOpen && (
-          <div style={{ textAlign: "center", padding: "4px 14px" }}>
-            <div
-              style={{
-                fontFamily: SERIF,
-                fontSize: 24,
-                color: vars.typography.primary,
-                letterSpacing: -0.3,
-                lineHeight: 1.1,
-              }}
-            >
-              {coObj?.name}
-            </div>
-            {prObj?.name && (
-              <div
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 10,
-                  color: vars.typography.faint,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.8,
-                  fontWeight: 600,
-                  marginTop: 6,
-                }}
-              >
-                {prObj.name}
-              </div>
-            )}
-            {tD && (
-              <div
-                style={{
-                  fontFamily: SERIF,
-                  fontStyle: "italic",
-                  fontSize: 15,
-                  color: vars.typography.tertiary,
-                  marginTop: 14,
-                  padding: "0 6px",
-                  lineHeight: 1.45,
-                }}
-              >
-                &ldquo;{tD}&rdquo;
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
-              <button
-                type="button"
-                data-tour="timer-switch"
-                onClick={() => setTimerFormOpen(true)}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 999,
-                  background: "transparent",
-                  border: `1px solid ${vars.border.soft}`,
-                  color: vars.typography.tertiary,
-                  fontFamily: MONO,
-                  fontSize: 9,
-                  fontWeight: 600,
-                  letterSpacing: 1.6,
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  transition: "all .15s ease",
-                }}
-              >
-                {t("timer.switchTask")}
-              </button>
-              {tRun && !stashedTimer && (
-                <button
-                  type="button"
-                  data-tour="timer-sidequest"
-                  onClick={startSideQuest}
-                  title={t("timer.sideQuestHint")}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 999,
-                    background: "transparent",
-                    border: `1px solid color-mix(in srgb, ${vars.typography.accent} 33%, transparent)`,
-                    color: vars.typography.accent,
-                    fontFamily: MONO,
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: 1.6,
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                    transition: "all .15s ease",
-                  }}
-                >
-                  ↯ {t("timer.sideQuest")}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {tRun && (
-          <div
-            data-tour="timer-controls"
-            style={{
-              marginTop: "auto",
-              display: "flex",
-              justifyContent: "center",
-              gap: 18,
-              paddingBottom: 16,
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setTRun(false)}
-              aria-label={t("timer.pause")}
-              title={t("timer.pause")}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: "transparent",
-                border: `1px solid ${vars.border.soft}`,
-                color: vars.typography.primary,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all .15s ease",
-              }}
-            >
-              <PauseIcon size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={stop}
-              aria-label={t("timer.stopLog")}
-              title={t("timer.stopLog")}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: vars.background.button,
-                border: "none",
-                color: "#fff",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: vars.shadow.button,
-                transition: "all .15s ease",
-              }}
-            >
-              <StopIcon size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setPendingCancelTimer((v) => !v)}
-              aria-label={t("timer.cancel")}
-              title={t("timer.cancel")}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: pendingCancelTimer
-                  ? "rgba(239,68,68,0.12)"
-                  : "transparent",
-                border: pendingCancelTimer
-                  ? "1px solid #ef4444"
-                  : `1px solid ${vars.border.soft}`,
-                color: pendingCancelTimer ? "#ef4444" : vars.typography.tertiary,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all .15s ease",
-              }}
-            >
-              <XIcon size={14} />
-            </button>
-          </div>
-        )}
-
-        {tRun && pendingCancelTimer && (
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              padding: "0 0 12px",
-              justifyContent: "center",
-            }}
-          >
-            <button
-              onClick={() => setPendingCancelTimer(false)}
-              style={{
-                padding: "9px 18px",
-                background: "transparent",
-                border: `1px solid ${vars.border.soft}`,
-                borderRadius: 999,
-                color: vars.typography.secondary,
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: 1.4,
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              {t("entry.cancel")}
-            </button>
-            <button
-              onClick={() => void cancelTimer()}
-              style={{
-                padding: "9px 18px",
-                background: "#ef4444",
-                border: "none",
-                borderRadius: 999,
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 1.4,
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              {t("timer.cancelDiscard")}
-            </button>
-          </div>
-        )}
-
-        {tRun && (
-          <div
-            data-tour="timer-stats"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: 8,
-              paddingTop: 18,
-              borderTop: `1px solid ${vars.border.soft}`,
-              textAlign: "center",
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontFamily: SERIF,
-                  fontSize: 24,
-                  color: vars.typography.primary,
-                  lineHeight: 1,
-                  letterSpacing: -0.4,
-                }}
-              >
-                +{sessXP}
-              </div>
-              <div
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 8,
-                  color: vars.typography.faint,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.6,
-                  fontWeight: 600,
-                  marginTop: 3,
-                }}
-              >
-                {t("timer.statSessionXp")}
-              </div>
-            </div>
-            <div>
-              <div
-                style={{
-                  fontFamily: SERIF,
-                  fontSize: 24,
-                  color: done ? vars.typography.green : vars.typography.primary,
-                  lineHeight: 1,
-                  letterSpacing: -0.4,
-                }}
-              >
-                {fmtHours(todayH)}
-              </div>
-              <div
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 8,
-                  color: vars.typography.faint,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.6,
-                  fontWeight: 600,
-                  marginTop: 3,
-                }}
-              >
-                {t("timer.statToday")}
-              </div>
-            </div>
-            <div>
-              <div
-                style={{
-                  fontFamily: SERIF,
-                  fontSize: 24,
-                  color: vars.typography.pink,
-                  lineHeight: 1,
-                  letterSpacing: -0.4,
-                }}
-              >
-                {streak}
-                <span style={{ fontSize: 16, opacity: 0.7 }}>d</span>
-              </div>
-              <div
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 8,
-                  color: vars.typography.faint,
-                  textTransform: "uppercase",
-                  letterSpacing: 1.6,
-                  fontWeight: 600,
-                  marginTop: 3,
-                }}
-              >
-                {t("timer.statStreak")}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!tRun && tSec > 0 && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: 14,
-              paddingTop: 4,
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setPendingCancelTimer((v) => !v)}
-              aria-label={t("timer.cancel")}
-              title={t("timer.cancel")}
-              style={{
-                width: 32,
-                height: 32,
-                padding: 0,
-                borderRadius: "50%",
-                background: pendingCancelTimer
-                  ? "rgba(239,68,68,0.10)"
-                  : "transparent",
-                border: pendingCancelTimer
-                  ? "1px solid #ef4444"
-                  : `1px solid ${vars.border.soft}`,
-                color: pendingCancelTimer ? "#ef4444" : vars.typography.faint,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all .15s ease",
-              }}
-            >
-              <XIcon size={14} />
-            </button>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={openAbsence}
-          style={{
-            alignSelf: "center",
-            marginTop: 4,
-            padding: "8px 16px",
-            borderRadius: 999,
-            background: "transparent",
-            color: vars.typography.tertiary,
-            border: `1px solid ${vars.border.soft}`,
-            fontFamily: MONO,
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: 1.4,
-            textTransform: "uppercase",
-            cursor: "pointer",
-          }}
-        >
-          {t("absence.button")}
-        </button>
-      </ui.Page>
-    );
-  })();
+  // â”€â”€â”€ Timer view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const timerView = (
+    <ui.TimerView
+      timer={{
+        tCo, tPr, tD, tNote, tInv, tSec, tRun, draftId,
+        setTCo, setTPr, setTD, setTNote, setTInv, setTRun,
+      }}
+      todos={{ activeTodoId, setActiveTodoId, accrueTodoHours }}
+      companies={{
+        list: companies,
+        cache: projectCache,
+        error: companiesError,
+        projectErrors,
+        ensure: ensureProjects,
+        reload: reloadCompanies,
+      }}
+      entries={entries}
+      saveNewEntry={saveNewEntry}
+      stopAndLogCurrent={stopAndLogCurrent}
+      cancelTimer={cancelTimer}
+      startSideQuest={startSideQuest}
+      restoreStashedTimer={restoreStashedTimer}
+      resetTimer={resetTimer}
+      addFloat={addFloat}
+      isInternalCompany={isInternalCompany}
+      setTab={setTab}
+      timerFormOpen={timerFormOpen}
+      setTimerFormOpen={setTimerFormOpen}
+      pendingCancelTimer={pendingCancelTimer}
+      setPendingCancelTimer={setPendingCancelTimer}
+      stashedTimer={stashedTimer}
+      todayH={todayH}
+      streak={streak}
+      done={done}
+      goal={GOAL}
+      lang={lang}
+      timerInsight={timerInsight}
+      openAbsence={openAbsence}
+    />
+  );
 
   const pickDayForView = (d: Date) => {
     setSelectedDate(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -3932,7 +3002,7 @@ export default function App() {
                 (() => {
                   const msg =
                     tSec > 0 ? t("status.pausedTask") : t("status.notTracking");
-                  const sep = "   •   ";
+                  const sep = "   â€¢   ";
                   const half = (msg + sep).repeat(30);
                   return (
                     <div className="status-marquee" style={{ zIndex: 1 }}>
@@ -3997,7 +3067,7 @@ export default function App() {
                               minWidth: 0,
                             }}
                           >
-                            · {prObj.name}
+                            Â· {prObj.name}
                           </span>
                         )}
                       </>
@@ -4194,7 +3264,7 @@ export default function App() {
 
             <button
               onClick={() => goSize("full")}
-              title={lang === "sv" ? "Öppna sidomenyn" : "Open sidebar"}
+              title={lang === "sv" ? "Ã–ppna sidomenyn" : "Open sidebar"}
               style={{
                 height: 22,
                 padding: "0 12px",
@@ -4211,7 +3281,7 @@ export default function App() {
                 transition: "all .15s ease",
               }}
             >
-              {lang === "sv" ? "Öppna" : "Open"}
+              {lang === "sv" ? "Ã–ppna" : "Open"}
             </button>
           </div>
         </div>
@@ -4268,7 +3338,7 @@ export default function App() {
         {(!online || pendingQueue.length > 0) &&
           (() => {
             const n = pendingQueue.length;
-            const syncMode = online; // online with a queue → syncing
+            const syncMode = online; // online with a queue â†’ syncing
             const accent = syncMode ? vars.typography.accent : "#f59e0b";
             const text = !online
               ? n > 0
@@ -4432,7 +3502,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                {m === "light" ? "☀️" : "🌙"}
+                {m === "light" ? "â˜€ï¸" : "ðŸŒ™"}
               </button>
             ))}
           </div>
@@ -4454,7 +3524,7 @@ export default function App() {
               justifyContent: "center",
             }}
           >
-            {lang === "en" ? "🇸🇪" : "🇬🇧"}
+            {lang === "en" ? "ðŸ‡¸ðŸ‡ª" : "ðŸ‡¬ðŸ‡§"}
           </button>
           <button
             type="button"
@@ -4477,7 +3547,7 @@ export default function App() {
               justifyContent: "center",
             }}
           >
-            📌
+            ðŸ“Œ
           </button>
           <button
             data-tour="footer-help"
@@ -4513,7 +3583,7 @@ export default function App() {
             }}
           >
             <span>{t("footer.signOut")}</span>
-            <span style={{ fontSize: 13 }}>⎋</span>
+            <span style={{ fontSize: 13 }}>âŽ‹</span>
           </button>
         </div>
 
@@ -4752,7 +3822,7 @@ export default function App() {
                     letterSpacing: 0.3,
                   }}
                 >
-                  +{saveToast.hours}  ·  +{saveToast.xp} XP
+                  +{saveToast.hours}  Â·  +{saveToast.xp} XP
                 </div>
               </div>
             </div>
