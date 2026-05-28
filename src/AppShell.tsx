@@ -76,6 +76,8 @@ import { useFloats } from "./lib/useFloats";
 import { useProgressFeedback } from "./lib/useProgressFeedback";
 import { useIntro } from "./lib/useIntro";
 import { useCurrentUser } from "./lib/useCurrentUser";
+import { useNowTick } from "./lib/useNowTick";
+import { useDayEntries } from "./lib/useDayEntries";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 
@@ -114,8 +116,6 @@ export function AppShell({
     "week",
   );
   const [logOpen, setLogOpen] = useState(false);
-  const [dayEntries, setDayEntries] = useState<TimeEntry[]>([]);
-  const [dayEntriesLoading, setDayEntriesLoading] = useState(false);
   const monthClosure = useMonthClosure();
 
   const stepHistoryDate = (dir: 1 | -1) => {
@@ -156,27 +156,7 @@ export function AppShell({
   })();
   const jumpHistoryToCurrent = () => setSelectedDate(new Date());
 
-  // Bump at the start of every minute so the header clock ticks forward, and
-  // so midnight-derived values (`todayI`, greetings) recompute automatically.
-  const [nowTick, setNowTick] = useState(0);
-  useEffect(() => {
-    let id = 0;
-    const schedule = () => {
-      const now = new Date();
-      const nextMinute = new Date(now);
-      nextMinute.setSeconds(0, 0);
-      nextMinute.setMinutes(nextMinute.getMinutes() + 1);
-      id = window.setTimeout(
-        () => {
-          setNowTick((n) => n + 1);
-          schedule();
-        },
-        Math.max(200, +nextMinute - +now),
-      );
-    };
-    schedule();
-    return () => clearTimeout(id);
-  }, []);
+  const nowTick = useNowTick();
 
   const [funMessage, setFunMessage] = useState<string | null>(null);
   const [greetingMsg, setGreetingMsg] = useState<string>("");
@@ -699,25 +679,12 @@ export function AppShell({
     monthClosure.ensure(selectedDate.getFullYear(), selectedDate.getMonth());
   }, [authed, selectedDate, monthClosure]);
 
-  // â”€â”€â”€ Load entries for History â†’ Daily drill-down â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  useEffect(() => {
-    if (!authed || historyScale !== "day" || tab !== "history") return;
-    let cancelled = false;
-    setDayEntriesLoading(true);
-    loadTimeEntries(selectedDate)
-      .then((list) => {
-        if (!cancelled) {
-          setDayEntries(list);
-          setDayEntriesLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setDayEntriesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [authed, historyScale, tab, selectedDate, entries]);
+  const { dayEntries, setDayEntries, dayEntriesLoading } = useDayEntries({
+    authed,
+    active: historyScale === "day" && tab === "history",
+    selectedDate,
+    reloadKey: entries,
+  });
 
   // â”€â”€â”€ Load week hours (Monâ€“Fri containing selectedDate) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
