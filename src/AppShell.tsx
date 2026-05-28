@@ -24,7 +24,7 @@ import {
   makePendingEntry,
   type PendingEntry,
 } from "./lib/pendingEntries";
-import { formatLocalDate, mondayOf } from "./lib/date";
+import { formatLocalDate, isOnCurrent, mondayOf } from "./lib/date";
 import {
   fmtClock,
   fmtHours,
@@ -141,25 +141,7 @@ export function AppShell({
       setSelectedDate((d) => new Date(d.getFullYear(), d.getMonth() + dir, 1));
     }
   };
-  const historyIsOnCurrent = (() => {
-    const now = new Date();
-    if (historyScale === "day") {
-      return formatLocalDate(selectedDate) === formatLocalDate(now);
-    }
-    if (historyScale === "week") {
-      const monA = new Date(selectedDate);
-      monA.setDate(monA.getDate() - ((monA.getDay() + 6) % 7));
-      monA.setHours(0, 0, 0, 0);
-      const monB = new Date(now);
-      monB.setDate(monB.getDate() - ((monB.getDay() + 6) % 7));
-      monB.setHours(0, 0, 0, 0);
-      return +monA === +monB;
-    }
-    return (
-      selectedDate.getFullYear() === now.getFullYear() &&
-      selectedDate.getMonth() === now.getMonth()
-    );
-  })();
+  const historyIsOnCurrent = isOnCurrent(historyScale, selectedDate);
   const jumpHistoryToCurrent = () => setSelectedDate(new Date());
 
   const nowTick = useNowTick();

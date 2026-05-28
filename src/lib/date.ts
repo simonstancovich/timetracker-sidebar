@@ -13,3 +13,22 @@ export function mondayOf(d: Date): Date {
   r.setHours(0, 0, 0, 0)
   return r
 }
+
+// True when `selectedDate` falls within the current calendar day / week / month.
+// Drives the "jump to current" button in the History tab.
+export function isOnCurrent(
+  scale: 'day' | 'week' | 'month',
+  selectedDate: Date,
+): boolean {
+  const now = new Date()
+  if (scale === 'day') {
+    return formatLocalDate(selectedDate) === formatLocalDate(now)
+  }
+  if (scale === 'week') {
+    return +mondayOf(selectedDate) === +mondayOf(now)
+  }
+  return (
+    selectedDate.getFullYear() === now.getFullYear() &&
+    selectedDate.getMonth() === now.getMonth()
+  )
+}
