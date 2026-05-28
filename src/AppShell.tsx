@@ -82,6 +82,7 @@ import {
   useXpCoach,
 } from "./lib/useRotatingMessages";
 import { useGoSize } from "./lib/useGoSize";
+import { useAutoSaveDraft } from "./lib/useAutoSaveDraft";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 
@@ -632,21 +633,6 @@ export function AppShell({
   }, [authed, entries, setWeekH]);
 
 
-  // â”€â”€â”€ Auto-save draft every 5 min while running â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Only depend on tRun â€” we read the latest fields through a ref so typing
-  // into the description doesn't restart the 5-minute clock.
-  const autoSaveRef = useRef<() => Promise<void>>(() => Promise.resolve());
-  useEffect(() => {
-    if (!tRun) return;
-    const h = window.setInterval(
-      () => {
-        void autoSaveRef.current();
-      },
-      5 * 60 * 1000,
-    );
-    return () => clearInterval(h);
-  }, [tRun]);
-
   const {
     todayI,
     liveTodayEntries,
@@ -1124,9 +1110,7 @@ export function AppShell({
       /* silent: local state is still persisted */
     }
   };
-  useEffect(() => {
-    autoSaveRef.current = autoSaveDraft;
-  });
+  useAutoSaveDraft(tRun, autoSaveDraft);
 
   const delEntry = async (id: string) => {
     // Queued / quarantined rows only live locally â€” drop from the queues.
