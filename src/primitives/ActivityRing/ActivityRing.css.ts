@@ -15,7 +15,7 @@ export const svg = style({
 });
 
 export const track = style({
-  stroke: vars.border.soft,
+  stroke: vars.border.strong,
 });
 
 const ringTransition = `stroke-dashoffset ${duration.medium}ms cubic-bezier(.34,1.08,.64,1), stroke 240ms ${easing.inOut}`;
@@ -37,7 +37,7 @@ export const ringDone = style({
 });
 
 export const tick = style({
-  stroke: vars.border.soft,
+  stroke: vars.border.strong,
   strokeWidth: 0.7,
   strokeLinecap: "round",
   opacity: 0.6,

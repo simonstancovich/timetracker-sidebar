@@ -35,5 +35,5 @@ export const divider = style({
   right: 14,
   bottom: 0,
   height: 1,
-  background: vars.border.soft,
+  background: vars.border.strong,
 });
