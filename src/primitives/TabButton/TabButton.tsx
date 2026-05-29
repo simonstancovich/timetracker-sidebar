@@ -4,7 +4,7 @@ import * as s from "./TabButton.css";
 
 interface Props extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
-  "type" | "style" | "role" | "aria-selected"
+  "type" | "style" | "role" | "aria-selected" | "tabIndex"
 > {
   selected: boolean;
   children: ReactNode;
@@ -21,6 +21,7 @@ export function TabButton({ selected, className, children, ...rest }: Props) {
       type="button"
       role="tab"
       aria-selected={selected}
+      tabIndex={selected ? 0 : -1}
       className={classes}
       {...rest}
     >

@@ -14,6 +14,12 @@ export const root = style({
   letterSpacing: letterSpacing.looser,
   cursor: 'pointer',
   transition: transitions.interactive,
+  selectors: {
+    '&:disabled': {
+      opacity: 0.5,
+      cursor: 'not-allowed',
+    },
+  },
 })
 
 export const state = styleVariants({
@@ -24,5 +30,10 @@ export const state = styleVariants({
   },
   unselected: {
     color: vars.typography.tertiary,
+    selectors: {
+      '&:hover:not(:disabled)': {
+        color: vars.typography.secondary,
+      },
+    },
   },
 })

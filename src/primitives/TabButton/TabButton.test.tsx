@@ -43,4 +43,13 @@ describe('<TabButton />', () => {
     )
     expect((container.firstChild as HTMLElement).className).toContain('extra')
   })
+
+  it('roving tabindex: selected=0, unselected=-1', () => {
+    const { rerender, container } = render(<TabButton selected>Today</TabButton>)
+    const btn = container.querySelector('button')!
+    expect(btn.tabIndex).toBe(0)
+
+    rerender(<TabButton selected={false}>Today</TabButton>)
+    expect(btn.tabIndex).toBe(-1)
+  })
 })
