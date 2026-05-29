@@ -10,10 +10,19 @@ describe('<Text />', () => {
     expect(screen.getByText('hello')).toBeInTheDocument()
   })
 
-  it('renders a <span> when inline is set', () => {
-    const { container } = render(<Text inline>hello</Text>)
+  it('renders the tag specified by the as prop', () => {
+    const { container } = render(<Text as="span">hello</Text>)
     expect(container.querySelector('span')).toBeInTheDocument()
     expect(container.querySelector('p')).toBeNull()
+  })
+
+  it('forwards id and aria-* attributes', () => {
+    const { container } = render(
+      <Text id="foo" aria-label="bar">hello</Text>,
+    )
+    const el = container.firstChild as HTMLElement
+    expect(el.id).toBe('foo')
+    expect(el.getAttribute('aria-label')).toBe('bar')
   })
 
   it('defaults to size=base, weight=normal, color=primary, align=left', () => {

@@ -54,12 +54,8 @@ export const tracking = styleVariants(letterSpacing, (v) => ({
 
 export const italic = style({ fontStyle: "italic" });
 
-// Preserve newlines in the text (collapsing runs of spaces) — for copy that
-// uses "\n\n" paragraph breaks.
 export const preLine = style({ whiteSpace: "pre-line" });
 
-// Single-line ellipsis. `minWidth: 0` is the un-obvious requirement that lets
-// a flex child actually shrink and trigger the ellipsis.
 export const truncate = style({
   whiteSpace: "nowrap",
   overflow: "hidden",

@@ -132,7 +132,7 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
       gap="sm"
       paddingY="xs"
     >
-      <prim.Text inline size="sm" color="secondary" truncate>
+      <prim.Text as="span" size="sm" color="secondary" truncate>
         {m.subject || t('cal.noSubject')}
       </prim.Text>
       <prim.MonoText size="sm" color="tertiary" weight="normal">
@@ -151,7 +151,7 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
     >
       <prim.Stack direction="row" justify="spaceBetween" align="center">
         <prim.Text
-          inline
+          as="span"
           size="2xs"
           weight="bold"
           color="tertiary"
@@ -234,7 +234,7 @@ function NextMeetingCard({ meeting, now, locale, t, onStartForMeeting }: NextMee
     >
       <prim.Stack direction="row" justify="spaceBetween" align="center" gap="sm">
         <prim.Text
-          inline
+          as="span"
           size="2xs"
           weight="black"
           color={labelColor}

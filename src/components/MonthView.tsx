@@ -286,7 +286,7 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
       const deltaColor = monthDelta > 0 ? 'green' : 'warning'
       deltaContent = (
         <>
-          <prim.Text inline weight="bold" color={deltaColor}>{prefix}{fmtHours(monthDelta)}</prim.Text>
+          <prim.Text as="span" weight="bold" color={deltaColor}>{prefix}{fmtHours(monthDelta)}</prim.Text>
           {' '}{t('month.vsLast')}
         </>
       )

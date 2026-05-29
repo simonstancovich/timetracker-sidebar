@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { HTMLAttributes, ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import * as s from './Text.css'
 
@@ -9,8 +9,9 @@ export type TextAlign = keyof typeof s.align
 export type TextMaxWidth = keyof typeof s.maxWidth
 export type TextTransform = keyof typeof s.transform
 export type TextTracking = keyof typeof s.tracking
+export type TextTag = 'p' | 'span' | 'label' | 'small' | 'div'
 
-interface Props {
+interface Props extends Omit<HTMLAttributes<HTMLElement>, 'style' | 'children'> {
   size?: TextSize
   weight?: TextWeight
   color?: TextColor
@@ -19,14 +20,9 @@ interface Props {
   transform?: TextTransform
   tracking?: TextTracking
   italic?: boolean
-  // Preserve "\n" line breaks in the content.
   preLine?: boolean
-  // Single-line ellipsis when overflowing.
   truncate?: boolean
-  // `true` renders as an inline <span> (e.g. for inline labels inside a flex
-  // row); default is a block <p>.
-  inline?: boolean
-  className?: string
+  as?: TextTag
   children: ReactNode
 }
 
@@ -41,9 +37,10 @@ export function Text({
   italic = false,
   preLine = false,
   truncate = false,
-  inline = false,
+  as: Tag = 'p',
   className,
   children,
+  ...rest
 }: Props) {
   const classes = cx(
     s.root,
@@ -59,6 +56,5 @@ export function Text({
     truncate && s.truncate,
     className,
   )
-  const Tag = inline ? 'span' : 'p'
-  return <Tag className={classes}>{children}</Tag>
+  return <Tag {...rest} className={classes}>{children}</Tag>
 }

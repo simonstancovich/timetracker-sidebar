@@ -53,11 +53,9 @@ export function ConfirmationModal({ request, onDismiss }: Props) {
         }}
       >
         <prim.Stack gap="xs">
-          <div id="confirmation-title">
-            <prim.Text size="lg" weight="bold" color="primary">
-              {request.title}
-            </prim.Text>
-          </div>
+          <prim.Text id="confirmation-title" size="lg" weight="bold" color="primary">
+            {request.title}
+          </prim.Text>
           <prim.Text size="base" color="tertiary">
             {request.body}
           </prim.Text>
