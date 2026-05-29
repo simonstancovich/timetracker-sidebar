@@ -1,21 +1,25 @@
 import { formatLocalDate } from './lib/date'
+import { ApiError, classifyApiError } from './lib/apiError'
 
 const api = window.electronAPI
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+export type WireBoolIn = '0' | '1'
+export type WireBoolOut = 'true' | 'false'
+export type HoursString = string
+export type IsoDate = string
 
 export interface TimeEntry {
   id: string
   _user_id: string
   _project_id: string
   _company_id: string
-  task_date: string
+  task_date: IsoDate
   description: string
   internal_description: string
-  hour: string
-  invoice_hours: string
-  invoice: string
-  no_flex: string
+  hour: HoursString
+  invoice_hours: HoursString
+  invoice: WireBoolIn
+  no_flex: WireBoolIn
   hour_price: string
   username: string
   company: string
@@ -42,40 +46,53 @@ export interface Project {
   company: string
   projecttype: string
   hour_price: string
-  invoice: string
+  invoice: WireBoolIn
 }
 
 export interface SaveEntryPayload {
-  id: string           // '-1' for new
+  id: string
   company: string
   project: string
   description: string
   internal_description: string
-  hour: string
-  invoice_hours: string
-  invoice: string
-  no_flex: string
+  hour: HoursString
+  invoice_hours: HoursString
+  invoice: WireBoolOut
+  no_flex: WireBoolOut
   username: string
   _user_id: string
   _company_id: string
   _project_id: string
   hour_price: string
-  task_date: string
+  task_date: IsoDate
   create_date: string
-  admin_ok: string
+  admin_ok: WireBoolOut
   _admin_id: string
   admin_date: string
-  ignore_flex: string
-  invoiced: string
-  show_customer: string
+  ignore_flex: WireBoolOut
+  invoiced: WireBoolOut
+  show_customer: WireBoolOut
   _invoicer_id: string
   invoicer: string
   verifier: string
-  delete: string
-  companyadmin: string
+  delete: WireBoolOut
+  companyadmin: WireBoolOut
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const SERVER_REQUIRED_DEFAULTS = {
+  no_flex: 'false',
+  admin_ok: 'false',
+  _admin_id: '',
+  admin_date: '',
+  ignore_flex: 'false',
+  invoiced: 'false',
+  show_customer: 'false',
+  _invoicer_id: '',
+  invoicer: '',
+  verifier: '',
+  delete: 'false',
+  companyadmin: 'false',
+} as const satisfies Partial<SaveEntryPayload>
 
 export function buildSavePayload(opts: {
   company: Company
@@ -88,8 +105,7 @@ export function buildSavePayload(opts: {
   entryDate: Date
   existingId: string | null
 }): SaveEntryPayload {
-  const h = opts.hours.toString()
-  const nowIso = new Date().toISOString().slice(0, 19)
+  const h: HoursString = opts.hours.toString()
   return {
     id: opts.existingId || '-1',
     company: opts.company.name,
@@ -99,36 +115,24 @@ export function buildSavePayload(opts: {
     hour: h,
     invoice_hours: h,
     invoice: opts.invoice ? 'true' : 'false',
-    no_flex: 'false',
     username: opts.user.username,
     _user_id: opts.user._user_id,
     _company_id: opts.company.id,
     _project_id: opts.project.id,
     hour_price: opts.project.hour_price || '0',
     task_date: formatLocalDate(opts.entryDate),
-    create_date: nowIso,
-    admin_ok: 'false',
-    _admin_id: '',
-    admin_date: '',
-    ignore_flex: 'false',
-    invoiced: 'false',
-    show_customer: 'false',
-    _invoicer_id: '',
-    invoicer: '',
-    verifier: '',
-    delete: 'false',
-    companyadmin: 'false',
+    create_date: new Date().toISOString().slice(0, 19),
+    ...SERVER_REQUIRED_DEFAULTS,
   }
 }
 
 async function call<T>(params: Record<string, string>, body?: Record<string, string>): Promise<T> {
   const result = await api.apiCall(params, body ?? null)
-  if (result.error === 'not_authenticated') throw new Error('NOT_AUTHENTICATED')
-  if (result.error) throw new Error(result.error)
+  if (result.error) {
+    throw new ApiError(classifyApiError(result.error), result.error)
+  }
   return result.data as T
 }
-
-// ─── API methods ──────────────────────────────────────────────────────────────
 
 export async function loadTimeEntries(date: Date): Promise<TimeEntry[]> {
   const res = await call<{ count: number; rows: TimeEntry[] }>(
@@ -139,13 +143,10 @@ export async function loadTimeEntries(date: Date): Promise<TimeEntry[]> {
 }
 
 export async function saveTimeEntry(payload: SaveEntryPayload): Promise<{ success: boolean; id?: string }> {
-  console.log('[save] payload:', JSON.stringify(payload))
-  const res = await call<{ success: boolean; id?: string }>(
+  return call<{ success: boolean; id?: string }>(
     { c: 'time', m: 'save' },
-    payload as unknown as Record<string, string>
+    payload as unknown as Record<string, string>,
   )
-  console.log('[save] response:', JSON.stringify(res))
-  return res
 }
 
 export async function deleteTimeEntry(id: string): Promise<void> {
@@ -160,13 +161,12 @@ export async function loadCompanies(): Promise<Company[]> {
 }
 
 export async function loadUsers(): Promise<User[]> {
-  // Endpoint returns every user (incl. plaintext password field we ignore).
-  const res = await call<{ count: number | string; rows: any[] }>({ c: 'user', m: 'load' })
+  const res = await call<{ count: number | string; rows: Record<string, unknown>[] }>({ c: 'user', m: 'load' })
   return (res.rows || []).map((r) => ({
     id: String(r.id),
-    username: r.username || '',
-    name: r.name || '',
-    email: r.email || '',
+    username: typeof r.username === 'string' ? r.username : '',
+    name: typeof r.name === 'string' ? r.name : '',
+    email: typeof r.email === 'string' ? r.email : '',
   }))
 }
 
