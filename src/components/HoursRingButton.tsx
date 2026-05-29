@@ -33,7 +33,7 @@ export function HoursRingButton({
         : "status.noTimer",
   );
   const statusDotColor: prim.StatusDotColor =
-    status === "running" ? "pink" : status === "paused" ? "amber" : "red";
+    status === "running" ? "pink" : status === "paused" ? "warning" : "error";
   const hoursColor = done ? "green" : todayH > 0 ? "primary" : "faint";
 
   return (

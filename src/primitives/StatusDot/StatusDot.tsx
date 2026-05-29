@@ -7,9 +7,7 @@ export type StatusDotColor = keyof typeof s.color
 interface Props {
   color: StatusDotColor
   size?: StatusDotSize
-  // Adds a same-hue halo; used to draw attention to "live" states.
   glow?: boolean
-  // Pulsing fade — typically paired with `glow` for running indicators.
   pulse?: boolean
   className?: string
 }

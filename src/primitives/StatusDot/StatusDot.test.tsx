@@ -19,10 +19,10 @@ describe('<StatusDot />', () => {
   })
 
   it('respects size and color overrides', () => {
-    const { container } = render(<StatusDot color="amber" size="lg" />)
+    const { container } = render(<StatusDot color="warning" size="lg" />)
     const cls = (container.firstChild as HTMLElement).className
     expect(cls).toContain(s.size.lg)
-    expect(cls).toContain(s.color.amber)
+    expect(cls).toContain(s.color.warning)
   })
 
   it('attaches the matching glow class only when glow is true', () => {

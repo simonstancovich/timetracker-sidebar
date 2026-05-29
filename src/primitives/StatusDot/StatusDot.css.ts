@@ -18,29 +18,23 @@ export const size = styleVariants({
   lg: { width: 10, height: 10 },
 })
 
-// Semantic status hues. `amber` and `red` are the only non-token values here —
-// they're pure state signals (warning / error) that don't ride on theme
-// typography.
-export const color = styleVariants({
-  pink: { background: vars.typography.pink },
-  accent: { background: vars.typography.accent },
-  green: { background: vars.typography.green },
-  muted: { background: vars.typography.tertiary },
-  amber: { background: '#f59e0b' },
-  red: { background: '#ef4444' },
-})
+const STATUS_COLORS = {
+  pink: vars.typography.pink,
+  accent: vars.typography.accent,
+  green: vars.typography.green,
+  muted: vars.typography.tertiary,
+  warning: vars.typography.warning,
+  error: vars.typography.error,
+} as const
 
-// When `glow` is true we overlay a same-hue shadow. Bound to the same keys as
-// `color` so the glow always matches.
-export const glow = styleVariants({
-  pink: { boxShadow: `0 0 6px ${vars.typography.pink}` },
-  accent: { boxShadow: `0 0 6px ${vars.typography.accent}` },
-  green: { boxShadow: `0 0 6px ${vars.typography.green}` },
-  muted: { boxShadow: `0 0 6px ${vars.typography.tertiary}` },
-  amber: { boxShadow: '0 0 6px #f59e0b' },
-  red: { boxShadow: '0 0 6px #ef4444' },
-})
+export const color = styleVariants(STATUS_COLORS, (v) => ({ background: v }))
+export const glow = styleVariants(STATUS_COLORS, (v) => ({ boxShadow: `0 0 6px ${v}` }))
 
 export const pulseClass = style({
   animation: `${pulse} 1.2s ease-in-out infinite`,
+  '@media': {
+    '(prefers-reduced-motion: reduce)': {
+      animation: 'none',
+    },
+  },
 })
