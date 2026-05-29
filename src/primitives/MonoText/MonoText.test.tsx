@@ -1,3 +1,4 @@
+import { createRef } from 'react'
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MonoText } from './MonoText'
@@ -51,5 +52,38 @@ describe('<MonoText />', () => {
     const el = container.firstChild as HTMLElement
     expect(el.className).toContain(s.transform.uppercase)
     expect(el.className).toContain(s.tracking.loosest)
+  })
+
+  it('applies tabular and align variants when requested', () => {
+    const { container } = render(
+      <MonoText tabular align="right">x</MonoText>,
+    )
+    const el = container.firstChild as HTMLElement
+    expect(el.className).toContain(s.tabular)
+    expect(el.className).toContain(s.align.right)
+  })
+
+  it('renders the tag specified by the as prop', () => {
+    const { container } = render(
+      <MonoText as="time" dateTime="2026-05-29T13:00">13:00</MonoText>,
+    )
+    const el = container.firstChild as HTMLElement
+    expect(el.tagName).toBe('TIME')
+    expect(el.getAttribute('datetime')).toBe('2026-05-29T13:00')
+  })
+
+  it('forwards id and aria-* attributes', () => {
+    const { container } = render(
+      <MonoText id="clock" aria-label="Current time">13:00</MonoText>,
+    )
+    const el = container.firstChild as HTMLElement
+    expect(el.id).toBe('clock')
+    expect(el.getAttribute('aria-label')).toBe('Current time')
+  })
+
+  it('forwards ref to the underlying element', () => {
+    const ref = createRef<HTMLElement>()
+    const { container } = render(<MonoText ref={ref}>x</MonoText>)
+    expect(ref.current).toBe(container.firstChild)
   })
 })

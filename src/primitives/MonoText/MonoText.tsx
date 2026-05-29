@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
 import { cx } from "../../lib/cx";
 import * as s from "./MonoText.css";
 
@@ -8,8 +8,9 @@ export type MonoTextColor = keyof typeof s.color;
 export type MonoTextTracking = keyof typeof s.tracking;
 export type MonoTextTransform = keyof typeof s.transform;
 export type MonoTextAlign = keyof typeof s.align;
+export type MonoTextTag = "span" | "time" | "code" | "kbd" | "samp";
 
-interface Props {
+interface Props extends Omit<HTMLAttributes<HTMLElement>, "style" | "children"> {
   size?: MonoTextSize;
   weight?: MonoTextWeight;
   color?: MonoTextColor;
@@ -17,21 +18,27 @@ interface Props {
   transform?: MonoTextTransform;
   align?: MonoTextAlign;
   tabular?: boolean;
-  className?: string;
+  as?: MonoTextTag;
+  dateTime?: string;
   children: ReactNode;
 }
 
-export function MonoText({
-  size = "base",
-  weight = "bold",
-  color = "primary",
-  tracking = "normal",
-  transform,
-  align,
-  tabular = false,
-  className,
-  children,
-}: Props) {
+export const MonoText = forwardRef<HTMLElement, Props>(function MonoText(
+  {
+    size = "base",
+    weight = "bold",
+    color = "primary",
+    tracking = "normal",
+    transform,
+    align,
+    tabular = false,
+    as: Tag = "span",
+    className,
+    children,
+    ...rest
+  },
+  ref,
+) {
   const classes = cx(
     s.root,
     s.size[size],
@@ -43,5 +50,9 @@ export function MonoText({
     tabular && s.tabular,
     className,
   );
-  return <span className={classes}>{children}</span>;
-}
+  return (
+    <Tag ref={ref as never} {...rest} className={classes}>
+      {children}
+    </Tag>
+  );
+});
