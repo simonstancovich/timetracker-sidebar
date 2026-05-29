@@ -1,7 +1,6 @@
 import { style, styleVariants } from "@vanilla-extract/css";
 import { vars, radii } from "../../theme";
 
-// Non-interactive tinted pill (the display sibling of Pill), for stat chips.
 export const root = style({
   display: "inline-flex",
   alignItems: "center",

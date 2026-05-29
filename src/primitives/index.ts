@@ -44,7 +44,6 @@ export {
 } from './MonoText/MonoText'
 export { MenuItem } from './MenuItem/MenuItem'
 export { Overlay, type OverlayZIndex, type OverlayTone } from './Overlay/Overlay'
-export { Pill, type PillHighlight } from './Pill/Pill'
 export { Popover } from './Popover/Popover'
 export { StatusDot, type StatusDotColor, type StatusDotSize } from './StatusDot/StatusDot'
 export { Skeleton, type SkeletonHeight, type SkeletonWidth, type SkeletonRadius } from './Skeleton/Skeleton'
