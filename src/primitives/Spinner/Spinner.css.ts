@@ -5,8 +5,6 @@ const spin = keyframes({
   to: { transform: 'rotate(360deg)' },
 })
 
-// Outer wrapper — either inline (sits where it's dropped) or fills the
-// viewport so a pre-auth or pre-data render shows a centered loading state.
 const wrapperBase = style({
   display: 'flex',
   flexDirection: 'column',
@@ -27,14 +25,17 @@ export const wrapper = styleVariants({
   ],
 })
 
-// The spinning disc. Base style owns the animation; size variants set width,
-// height, and border thickness so the disc scales cleanly.
 export const disc = style({
   borderStyle: 'solid',
   borderColor: vars.border.soft,
   borderTopColor: vars.typography.accent,
   borderRadius: '50%',
   animation: `${spin} ${duration.slow}ms ${easing.linear} infinite`,
+  '@media': {
+    '(prefers-reduced-motion: reduce)': {
+      animation: 'none',
+    },
+  },
 })
 
 export const size = styleVariants({
