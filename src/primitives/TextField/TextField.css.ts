@@ -1,8 +1,6 @@
 import { style } from "@vanilla-extract/css";
 import { vars, radii, fontSize } from "../../theme";
 
-// Bordered, transparent, mono form input. Distinct from TextInput (the filled
-// search-box style); color-scheme for date pickers is set on the theme class.
 export const root = style({
   width: "100%",
   padding: "8px 10px",
@@ -13,16 +11,33 @@ export const root = style({
   fontSize: fontSize.md,
   fontFamily: vars.font.mono,
   outline: "none",
+  selectors: {
+    "&::placeholder": {
+      color: vars.typography.tertiary,
+    },
+    "&:focus-visible": {
+      outline: `2px solid ${vars.border.accent}`,
+      outlineOffset: 2,
+    },
+  },
 });
 
-// Free-text "note"/"task" treatment.
 export const serif = style({
   fontFamily: vars.font.display,
   fontStyle: "italic",
   fontSize: fontSize.xl,
 });
 
-// Solid fill for when the input sits on a tinted (editing) card.
 export const filled = style({
   background: vars.background.surface,
+});
+
+export const invalid = style({
+  borderColor: vars.typography.error,
+  selectors: {
+    "&:focus-visible": {
+      outline: `2px solid ${vars.typography.error}`,
+      outlineOffset: 2,
+    },
+  },
 });
