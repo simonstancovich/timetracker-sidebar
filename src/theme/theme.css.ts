@@ -41,6 +41,7 @@ export const vars = createThemeContract({
     green: null,
     warning: null,
     skeleton: null,
+    scrim: null,
     button: null,
   },
   border: {
@@ -108,6 +109,7 @@ export const lightTheme = createTheme(vars, {
     green: pickColor("background", "green", "light"),
     warning: pickColor("background", "warning", "light"),
     skeleton: pickColor("background", "skeleton", "light"),
+    scrim: pickColor("background", "scrim", "light"),
     button: colors.brand.violet400,
   },
   border: {
@@ -161,6 +163,7 @@ export const darkTheme = createTheme(vars, {
     green: pickColor("background", "green", "dark"),
     warning: pickColor("background", "warning", "dark"),
     skeleton: pickColor("background", "skeleton", "dark"),
+    scrim: pickColor("background", "scrim", "dark"),
     button: colors.brand.violet300,
   },
   border: {

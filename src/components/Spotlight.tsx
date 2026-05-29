@@ -1,5 +1,7 @@
 import type { CSSProperties, SyntheticEvent } from "react";
 import { vars } from "../theme";
+import { cx } from "../lib/cx";
+import { layer as overlayLayer } from "../primitives/Overlay/Overlay.css";
 
 export interface HoleRect {
   top: number;
@@ -16,10 +18,6 @@ interface Props {
   onDismiss: (e: SyntheticEvent) => void;
 }
 
-// A coachmark cutout: four masks dim everything except the hole, an optional
-// transparent layer blocks interaction with read-only targets, and a pulsing
-// ring frames the highlighted element. Positions are runtime pixel geometry,
-// so they stay inline; shared static styling lives in the .intro-* classes.
 export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
   const { top, left, right, bottom, width, height } = hole;
   const maskPanels: CSSProperties[] = [
@@ -34,7 +32,7 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
       {maskPanels.map((pos, i) => (
         <div
           key={i}
-          className="overlay-layer intro-mask"
+          className={cx(overlayLayer, "intro-mask")}
           style={pos}
           onClick={onDismiss}
           onMouseDown={onDismiss}
@@ -43,7 +41,7 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
 
       {readOnly && (
         <div
-          className="overlay-layer intro-block"
+          className={cx(overlayLayer, "intro-block")}
           style={{ top, left, width, height }}
           onClick={onDismiss}
           onMouseDown={onDismiss}
@@ -51,7 +49,7 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
       )}
 
       <div
-        className="overlay-layer intro-ring"
+        className={cx(overlayLayer, "intro-ring")}
         style={{
           top,
           left,

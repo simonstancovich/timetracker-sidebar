@@ -18,7 +18,7 @@ export const Overlay = forwardRef<HTMLDivElement, Props>(function Overlay(
   return (
     <div
       ref={ref}
-      className={cx("overlay-layer", s.root, s.zIndex[zIndex], s.tone[tone], className)}
+      className={cx(s.layer, s.root, s.zIndex[zIndex], s.tone[tone], className)}
       {...rest}
     >
       {children}

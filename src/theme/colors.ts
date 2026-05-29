@@ -82,6 +82,8 @@ export const colors = {
     warningDark: "rgba(245,158,11,0.08)",
     skeletonLight: "rgba(140,140,160,0.18)",
     skeletonDark: "rgba(140,140,160,0.18)",
+    scrimLight: "rgba(0,0,0,0.6)",
+    scrimDark: "rgba(0,0,0,0.6)",
   },
 
   border: {
@@ -163,7 +165,8 @@ type BgName =
   | "pinkPaper"
   | "green"
   | "warning"
-  | "skeleton";
+  | "skeleton"
+  | "scrim";
 
 const BACKGROUND_MAP: Record<
   BgName,
@@ -180,6 +183,7 @@ const BACKGROUND_MAP: Record<
   green: { light: "greenLight", dark: "greenDark" },
   warning: { light: "warningLight", dark: "warningDark" },
   skeleton: { light: "skeletonLight", dark: "skeletonDark" },
+  scrim: { light: "scrimLight", dark: "scrimDark" },
 };
 
 type BorderName = "soft" | "strong" | "green" | "pink" | "accent" | "warning";

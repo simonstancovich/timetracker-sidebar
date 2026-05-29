@@ -234,9 +234,6 @@ input, textarea, select {
   mix-blend-mode: overlay;
   z-index: 0;
 }
-/* Lift content above the grain ::before. Skip full-screen overlays so they
-   keep their own position:absolute/fixed instead of being forced relative. */
-.mode-root > *:not(.overlay-layer) { position: relative; z-index: 1; }
 @keyframes floatUp {
   0% { opacity: 1; transform: translateY(0) scale(1); }
   70% { opacity: 1; transform: translateY(-52px) scale(1.06); }

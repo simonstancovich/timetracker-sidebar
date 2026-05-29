@@ -1,5 +1,12 @@
-import { style, styleVariants } from "@vanilla-extract/css";
+import { globalStyle, style, styleVariants } from "@vanilla-extract/css";
 import { spacing, vars, zIndex as z } from "../../theme";
+
+export const layer = style({});
+
+globalStyle(`.mode-root > *:not(.${layer})`, {
+  position: "relative",
+  zIndex: 1,
+});
 
 export const root = style({
   position: "absolute",
@@ -22,12 +29,9 @@ export const root = style({
 export const zIndex = styleVariants(z, (v) => ({ zIndex: v }));
 
 export const tone = styleVariants({
-  // No backdrop — caller supplies one via className (e.g. the dark glow).
   none: {},
-  // Theme page gradient; resolves per active theme.
   screen: {
     background: `linear-gradient(180deg, ${vars.background.page} 0%, ${vars.background.raised} 100%)`,
   },
-  // Dark dimming backdrop behind a modal / spotlight.
-  scrim: { background: "rgba(0, 0, 0, 0.6)" },
+  scrim: { background: vars.background.scrim },
 });
