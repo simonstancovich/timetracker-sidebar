@@ -43,7 +43,8 @@
     "streak": "streak",
     "now": "Nu",
     "jumpCurrentTitle": "Gå till aktuell {{scale}}",
-    "minimizeTopBar": "Docka som topplist"
+    "minimizeTopBar": "Docka som topplist",
+    "tabs": "Vyer"
   },
   "goal": {
     "eyebrow": "Dagen klar"

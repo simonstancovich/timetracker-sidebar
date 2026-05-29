@@ -43,7 +43,8 @@
     "streak": "streak",
     "now": "Now",
     "jumpCurrentTitle": "Jump to current {{scale}}",
-    "minimizeTopBar": "Dock as top bar"
+    "minimizeTopBar": "Dock as top bar",
+    "tabs": "Views"
   },
   "goal": {
     "eyebrow": "Day complete"

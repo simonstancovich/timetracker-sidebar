@@ -83,7 +83,7 @@ export function AppHeader({
         </prim.Stack>
       </prim.Stack>
 
-      <prim.TabList>
+      <prim.TabList aria-label={t('header.tabs')}>
         {tabs.map(([v, labelKey]) => (
           <prim.TabButton
             key={v}
