@@ -74,6 +74,8 @@ import { useSimonMode } from "./lib/useSimonMode";
 import { useAbsence } from "./lib/useAbsence";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
+import { useWindowFocus } from "./lib/useWindowFocus";
+import { useGlobalErrorLogging } from "./lib/useGlobalErrorLogging";
 
 const GOAL = 8;
 
@@ -144,13 +146,13 @@ export function AppShell({
   const onCannotResolveUser = useCallback(() => {
     window.electronAPI.signOut();
   }, []);
-  const { currentUser, setCurrentUser } = useCurrentUser({
+  const { currentUser } = useCurrentUser({
     authed,
     onUnresolvable: onCannotResolveUser,
   });
   const {
     entries, setEntries,
-    entriesLoading, setEntriesLoading,
+    entriesLoading,
     pendingDeleteId, setPendingDeleteId,
   } = useEntries({ authed, nowTick, onUnauthenticated });
   const {
@@ -162,7 +164,6 @@ export function AppShell({
     lastCelebratedDate, setLastCelebratedDate,
     ach,
     setPendingAchs,
-    clear: clearProgress,
   } = useProgress({ authed });
 
   useEffect(() => {
@@ -197,9 +198,7 @@ export function AppShell({
     estimatedTodoFor,
     resetTodoForm,
   } = useTodos(authed);
-  const [windowFocused, setWindowFocused] = useState(
-    typeof document === "undefined" ? true : !document.hidden,
-  );
+  const windowFocused = useWindowFocus();
   const { online, setOnline } = useConnection();
   const {
     companies,
@@ -280,10 +279,8 @@ export function AppShell({
     fD, setFD,
     fNote, setFNote,
     fInv, setFInv,
-    setFHInput,
     setEditingId,
     setEditingDate,
-    reset: resetLogForm,
     hydrate: hydrateLogForm,
   } = logFormApi;
   const [logFormLoaded, setLogFormLoaded] = useState(false);
@@ -425,21 +422,6 @@ export function AppShell({
   };
 
   useEffect(() => {
-    if (authed) return;
-    clearProgress();
-    setEntries([]);
-    setEntriesLoading(true);
-    clearTimerFields();
-    setPendingCancelTimer(false);
-    resetLogForm();
-    setFHInput("1:00");
-    setCurrentUser(null);
-    setTimerLoaded(false);
-    setLogFormLoaded(false);
-  }, [authed, clearProgress, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading, setCurrentUser, setPendingCancelTimer]);
-
-  useEffect(() => {
-    if (!authed) return;
     (async () => {
       const t = await window.electronAPI.storeGet("timer");
       if (t && typeof t === "object") {
@@ -448,7 +430,7 @@ export function AppShell({
       }
       setTimerLoaded(true);
     })();
-  }, [authed, hydrateTimer, ensureProjects]);
+  }, [hydrateTimer, ensureProjects]);
 
   useEffect(() => {
     const r = document.documentElement.style;
@@ -482,15 +464,15 @@ export function AppShell({
   }, [showIntro, devcoreId, ensureProjects]);
 
   useEffect(() => {
-    window.electronAPI.setBlurCollapseDisabled(showIntro || !authed || pinned);
-  }, [showIntro, authed, pinned]);
+    window.electronAPI.setBlurCollapseDisabled(showIntro || pinned);
+  }, [showIntro, pinned]);
 
   const greetingMsg = useGreetingMessage(currentUser, lang);
 
   const emptyMsg = useMemo(() => emptyTodayMessage(lang), [lang]);
 
   useEffect(() => {
-    if (!authed || !timerLoaded) return;
+    if (!timerLoaded) return;
     window.electronAPI.storeSet("timer", {
       tCo,
       tPr,
@@ -502,10 +484,9 @@ export function AppShell({
       startedAt: tRun ? Date.now() - tSecRef.current * 1000 : null,
       draftId,
     });
-  }, [authed, timerLoaded, tCo, tPr, tD, tNote, tInv, tRun, draftId, tSecRef]);
+  }, [timerLoaded, tCo, tPr, tD, tNote, tInv, tRun, draftId, tSecRef]);
 
   useEffect(() => {
-    if (!authed) return;
     (async () => {
       const f = await window.electronAPI.storeGet("logForm");
       if (f && typeof f === "object") {
@@ -514,10 +495,10 @@ export function AppShell({
       }
       setLogFormLoaded(true);
     })();
-  }, [authed, hydrateLogForm, ensureProjects]);
+  }, [hydrateLogForm, ensureProjects]);
 
   useEffect(() => {
-    if (!authed || !logFormLoaded) return;
+    if (!logFormLoaded) return;
     window.electronAPI.storeSet("logForm", {
       fCo: fCo,
       fPr: fPr,
@@ -526,12 +507,11 @@ export function AppShell({
       fNote: fNote,
       fInv: fInv,
     });
-  }, [authed, logFormLoaded, fCo, fPr, fH, fD, fNote, fInv]);
+  }, [logFormLoaded, fCo, fPr, fH, fD, fNote, fInv]);
 
   useEffect(() => {
-    if (!authed) return;
     monthClosure.ensure(selectedDate.getFullYear(), selectedDate.getMonth());
-  }, [authed, selectedDate, monthClosure]);
+  }, [selectedDate, monthClosure]);
 
   const { dayEntries, setDayEntries, dayEntriesLoading } = useDayEntries({
     authed,
@@ -541,7 +521,6 @@ export function AppShell({
   });
 
   useEffect(() => {
-    if (!authed) return;
     const mon = mondayOf(new Date());
     const days = [0, 1, 2, 3, 4].map((i) => {
       const d = new Date(mon);
@@ -557,7 +536,7 @@ export function AppShell({
         ),
       ),
     );
-  }, [authed, entries, setWeekH]);
+  }, [entries, setWeekH]);
 
   const {
     todayI,
@@ -597,32 +576,7 @@ export function AppShell({
     return () => clearTimeout(t);
   }, [saveToast]);
 
-  useEffect(() => {
-    const onFocus = () => setWindowFocused(true);
-    const onBlur = () => setWindowFocused(false);
-    const onVis = () => setWindowFocused(!document.hidden);
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("blur", onBlur);
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("blur", onBlur);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, []);
-
-  useEffect(() => {
-    const onErr = (e: ErrorEvent) =>
-      console.error("[window-error]", e.error || e.message);
-    const onRej = (e: PromiseRejectionEvent) =>
-      console.error("[unhandled-rejection]", e.reason);
-    window.addEventListener("error", onErr);
-    window.addEventListener("unhandledrejection", onRej);
-    return () => {
-      window.removeEventListener("error", onErr);
-      window.removeEventListener("unhandledrejection", onRej);
-    };
-  }, []);
+  useGlobalErrorLogging();
 
   useEffect(() => {
     if (!simonMode && tab === "todo") setTab("today");
@@ -1003,22 +957,12 @@ export function AppShell({
     />
   );
 
-  const hasCtx = !!(tCo && tPr);
-  const coObj = companies.find((c) => c.id === tCo);
-  const prObj = (projectCache[tCo] || []).find((p) => p.id === tPr);
   const topEstTodo = !simonMode
     ? undefined
     : (activeTodoId
         ? todos.find((td) => td.id === activeTodoId && td.estimateH > 0)
         : undefined) ?? estimatedTodoFor(tCo, tPr, tD);
   const topEstLiveH = topEstTodo ? trackedHForTodo(topEstTodo) : 0;
-
-  const runningXpBonus = tRun ? Math.floor(tSec / 60) : 0;
-  const displaySessionXp = sessionXp + runningXpBonus;
-
-  const topBarBg = tRun ? vars.background.page : tSec > 0 ? "#ff7a00" : "#ff1f1f";
-  const topBarFg = tRun ? vars.typography.primary : vars.typography.onAccent;
-  const topBarMuted = tRun ? vars.typography.tertiary : "rgba(255,255,255,0.8)";
 
   if (size === "top") {
     return (
@@ -1034,7 +978,7 @@ export function AppShell({
         tSec={tSec}
         funMessage={funMessage}
         windowFocused={windowFocused}
-        displaySessionXp={displaySessionXp}
+        sessionXp={sessionXp}
         xpBump={xpBump}
         justBumpedStreak={justBumpedStreak}
         todayH={todayH}
@@ -1043,14 +987,12 @@ export function AppShell({
         goal={GOAL}
         done={done}
         gpct={gpct}
-        hasCtx={hasCtx}
-        coObj={coObj}
-        prObj={prObj}
+        companies={companies}
+        projectCache={projectCache}
+        tCo={tCo}
+        tPr={tPr}
         topEstTodo={topEstTodo}
         topEstLiveH={topEstLiveH}
-        topBarBg={topBarBg}
-        topBarFg={topBarFg}
-        topBarMuted={topBarMuted}
       />
     );
   }

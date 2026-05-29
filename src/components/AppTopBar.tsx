@@ -14,6 +14,10 @@ const DAYS = ["Mo", "Tu", "We", "Th", "Fr"];
 interface Company { id: string; name: string; }
 interface Project { id: string; name: string; }
 
+const PAUSED_WITH_TIME_BG = "#ff7a00";
+const PAUSED_NO_TIME_BG = "#ff1f1f";
+const PAUSED_MUTED_FG = "rgba(255,255,255,0.8)";
+
 interface Props {
   themeClass: string;
   mode: "light" | "dark";
@@ -21,45 +25,44 @@ interface Props {
   lang: Lang;
   goSize: (s: "full" | "top") => void;
   modeOverlay: ReactNode;
-  // timer state
   tRun: boolean;
   setTRun: (next: (prev: boolean) => boolean) => void;
   tSec: number;
-  // session feedback
   funMessage: string | null;
   windowFocused: boolean;
-  displaySessionXp: number;
+  sessionXp: number;
   xpBump: { id: number; delta: number } | null;
   justBumpedStreak: boolean;
-  // progress
   todayH: number;
   streak: number;
   weekH: number[];
   goal: number;
   done: boolean;
   gpct: number;
-  // current task context
-  hasCtx: boolean;
-  coObj?: Company;
-  prObj?: Project;
-  // estimated todo progress
+  companies: Company[];
+  projectCache: Record<string, Project[]>;
+  tCo: string;
+  tPr: string;
   topEstTodo?: Todo;
   topEstLiveH: number;
-  // derived strip colors
-  topBarBg: string;
-  topBarFg: string;
-  topBarMuted: string;
 }
 
 export function AppTopBar({
   themeClass, mode, setMode, lang, goSize, modeOverlay,
   tRun, setTRun, tSec,
-  funMessage, windowFocused, displaySessionXp, xpBump, justBumpedStreak,
+  funMessage, windowFocused, sessionXp, xpBump, justBumpedStreak,
   todayH, streak, weekH, goal, done, gpct,
-  hasCtx, coObj, prObj, topEstTodo, topEstLiveH,
-  topBarBg, topBarFg, topBarMuted,
+  companies, projectCache, tCo, tPr, topEstTodo, topEstLiveH,
 }: Props) {
   const { t } = useTranslation();
+  const coObj = companies.find((c) => c.id === tCo);
+  const prObj = (projectCache[tCo] || []).find((p) => p.id === tPr);
+  const displaySessionXp = sessionXp + (tRun ? Math.floor(tSec / 60) : 0);
+  const topBarBg = tRun
+    ? vars.background.page
+    : tSec > 0 ? PAUSED_WITH_TIME_BG : PAUSED_NO_TIME_BG;
+  const topBarFg = tRun ? vars.typography.primary : vars.typography.onAccent;
+  const topBarMuted = tRun ? vars.typography.tertiary : PAUSED_MUTED_FG;
   return (
     <>
 <div
@@ -222,7 +225,7 @@ export function AppTopBar({
         (() => {
           const msg =
             tSec > 0 ? t("status.pausedTask") : t("status.notTracking");
-          const sep = "   â€¢   ";
+          const sep = "   •   ";
           const half = (msg + sep).repeat(30);
           return (
             <div className="status-marquee" style={{ zIndex: 1 }}>
@@ -254,7 +257,7 @@ export function AppTopBar({
               minWidth: 0,
             }}
           >
-            {hasCtx && coObj ? (
+            {coObj ? (
               <>
                 <span
                   style={{
@@ -287,7 +290,7 @@ export function AppTopBar({
                       minWidth: 0,
                     }}
                   >
-                    Â· {prObj.name}
+                    · {prObj.name}
                   </span>
                 )}
               </>
