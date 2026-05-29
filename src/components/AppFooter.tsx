@@ -55,7 +55,7 @@ export function AppFooter({
           cursor: "pointer",
         }}
       >
-        {m === "light" ? "â˜€ï¸" : "ðŸŒ™"}
+        {m === "light" ? "☀️" : "🌙"}
       </button>
     ))}
   </div>
@@ -77,7 +77,7 @@ export function AppFooter({
       justifyContent: "center",
     }}
   >
-    {lang === "en" ? "ðŸ‡¸ðŸ‡ª" : "ðŸ‡¬ðŸ‡§"}
+    {lang === "en" ? "🇸🇪" : "🇬🇧"}
   </button>
   <button
     type="button"
@@ -100,7 +100,7 @@ export function AppFooter({
       justifyContent: "center",
     }}
   >
-    ðŸ“Œ
+    📌
   </button>
   <button
     data-tour="footer-help"
@@ -136,7 +136,7 @@ export function AppFooter({
     }}
   >
     <span>{t("footer.signOut")}</span>
-    <span style={{ fontSize: 13 }}>âŽ‹</span>
+    <span style={{ fontSize: 13 }}>⎋</span>
   </button>
 </div>
   );

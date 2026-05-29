@@ -100,7 +100,6 @@ export function AppShell({
   themeClass,
   onSignOut,
 }: AppShellProps) {
-  // Always true when AppShell is mounted — App handles the auth gate.
   const authed = true as const;
   const { t } = useTranslation();
   const [tab, setTab] = useState<ui.HeaderTab>("today");
@@ -154,8 +153,6 @@ export function AppShell({
     entriesLoading, setEntriesLoading,
     pendingDeleteId, setPendingDeleteId,
   } = useEntries({ authed, nowTick, onUnauthenticated });
-  // Player progression (cohesive hook): XP, streak, week hours, achievement
-  // stats + unlocks + toast queue. Owns load/persist + dequeue/dismiss effects.
   const {
     xp, setXp,
     streak, setStreak,
@@ -188,9 +185,7 @@ export function AppShell({
       if (hideId) clearTimeout(hideId);
     };
   }, [size, lang]);
-  // Toast-style "floats" (cohesive hook).
   const { floats, addFloat } = useFloats();
-  // To-do state (cohesive hook): items, draft form, active/editing ids, accrual.
   const {
     todos,
     activeTodoId, setActiveTodoId,
@@ -206,7 +201,6 @@ export function AppShell({
     typeof document === "undefined" ? true : !document.hidden,
   );
   const { online, setOnline } = useConnection();
-  // Company catalog + lazy project cache (cohesive hook).
   const {
     companies,
     companiesError,
@@ -216,8 +210,6 @@ export function AppShell({
     reload: reloadCompanies,
   } = useCompanies({ authed, onOnlineChange: setOnline });
   const { simonMode, tapCorner: tapSimonCorner } = useSimonMode(addFloat);
-  // Offline save queue (cohesive hook): pending + failed + flushPending + retryFailed
-  // + the 4 load/persist effects + flush-on-reconnect + retry-on-interval.
   const {
     pendingQueue, setPendingQueue,
     failedQueue, setFailedQueue,
@@ -235,7 +227,6 @@ export function AppShell({
     xp: number;
   } | null>(null);
 
-  // Timer state (cohesive hook)
   const {
     tSec, setTSec, tSecRef,
     tRun, setTRun,
@@ -254,8 +245,6 @@ export function AppShell({
     tRun,
     setTab,
   });
-  // Silent background save for crash-safety. Upserts the current timer into a
-  // server draft entry; later saves update the same id so we don't spawn duplicates.
   const draftIdRef = useRef<string | null>(null);
   useEffect(() => {
     draftIdRef.current = draftId;
@@ -263,7 +252,6 @@ export function AppShell({
   const [timerLoaded, setTimerLoaded] = useState(false);
   const [timerFormOpen, setTimerFormOpen] = useState(true);
 
-  // First-run intro tour (cohesive hook).
   const {
     showIntro, setShowIntro,
     introStep, setIntroStep,
@@ -284,7 +272,6 @@ export function AppShell({
     goSizeRef,
   });
 
-  // Log form state (cohesive hook)
   const logFormApi = useLogForm();
   const {
     fCo, setFCo,
@@ -325,7 +312,6 @@ export function AppShell({
     resetTimer,
     setTimerFormOpen,
   });
-
 
   const stopAndLogCurrent = async () => {
     if (!tCo || !tPr || !tD.trim()) {
@@ -407,7 +393,6 @@ export function AppShell({
     };
 
     if (tRun && canSaveCurrent) {
-      // Timer is actively running â†’ confirm before saving & switching.
       setConfirmation({
         title: t("timer.confirmSwitchTitle"),
         body: t("timer.confirmSwitchBody"),
@@ -415,7 +400,6 @@ export function AppShell({
         onConfirm: saveCurrentAndSwitch,
       });
     } else if (canSaveCurrent) {
-      // Paused with unsaved progress â†’ save silently, then switch.
       saveCurrentAndSwitch();
     } else {
       applySwitch();
@@ -424,8 +408,6 @@ export function AppShell({
 
   const editEntry = async (entry: TimeEntry) => {
     setEditingId(entry.id);
-    // Parse YYYY-MM-DD as a local date so the save keeps the original day
-    // regardless of the calendar's currently-selected date or timezone.
     const [y, mo, d] = (entry.task_date || "").split("-").map(Number);
     setEditingDate(
       Number.isFinite(y) && Number.isFinite(mo) && Number.isFinite(d)
@@ -442,8 +424,6 @@ export function AppShell({
     setLogOpen(true);
   };
 
-  // â”€â”€â”€ Auth gating â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Reset user-scoped state on sign-out so the next user doesn't inherit it.
   useEffect(() => {
     if (authed) return;
     clearProgress();
@@ -458,10 +438,6 @@ export function AppShell({
     setLogFormLoaded(false);
   }, [authed, clearProgress, clearTimerFields, resetLogForm, setFHInput, setEntries, setEntriesLoading, setCurrentUser, setPendingCancelTimer]);
 
-  // â”€â”€â”€ Persisted: mode, lang, timer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // (Player progression â€” xp / unlocked / streak / achStats â€” loads via useProgress.)
-  // Restore a saved running-timer draft on auth (mode/lang/pinned hydrate in App
-  // via the pref-hydration effect; they're already on props by the time we get here).
   useEffect(() => {
     if (!authed) return;
     (async () => {
@@ -513,7 +489,6 @@ export function AppShell({
 
   const emptyMsg = useMemo(() => emptyTodayMessage(lang), [lang]);
 
-  // Persist timer on control/field changes (NOT on tSec tick â€” startedAt covers elapsed).
   useEffect(() => {
     if (!authed || !timerLoaded) return;
     window.electronAPI.storeSet("timer", {
@@ -529,7 +504,6 @@ export function AppShell({
     });
   }, [authed, timerLoaded, tCo, tPr, tD, tNote, tInv, tRun, draftId, tSecRef]);
 
-  // Persist Log form fields too so manual-log inputs survive app restarts.
   useEffect(() => {
     if (!authed) return;
     (async () => {
@@ -554,7 +528,6 @@ export function AppShell({
     });
   }, [authed, logFormLoaded, fCo, fPr, fH, fD, fNote, fInv]);
 
-
   useEffect(() => {
     if (!authed) return;
     monthClosure.ensure(selectedDate.getFullYear(), selectedDate.getMonth());
@@ -567,10 +540,8 @@ export function AppShell({
     reloadKey: entries,
   });
 
-  // â”€â”€â”€ Load week hours (Monâ€“Fri containing selectedDate) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!authed) return;
-    // Always show the current week â€” independent of selectedDate
     const mon = mondayOf(new Date());
     const days = [0, 1, 2, 3, 4].map((i) => {
       const d = new Date(mon);
@@ -587,7 +558,6 @@ export function AppShell({
       ),
     );
   }, [authed, entries, setWeekH]);
-
 
   const {
     todayI,
@@ -621,15 +591,12 @@ export function AppShell({
 
   const gpct = Math.min((todayH / GOAL) * 100, 100);
 
-  // Save flash â€” auto-dismiss after 2.1s.
   useEffect(() => {
     if (!saveToast) return;
     const t = window.setTimeout(() => setSaveToast(null), 2100);
     return () => clearTimeout(t);
   }, [saveToast]);
 
-  // Window focus tracking â€” pauses decorative animations (marquee, shimmer)
-  // when the window is blurred or hidden, saving battery on idle top-bar.
   useEffect(() => {
     const onFocus = () => setWindowFocused(true);
     const onBlur = () => setWindowFocused(false);
@@ -644,10 +611,6 @@ export function AppShell({
     };
   }, []);
 
-  // Connection tracking lives in useConnection() above.
-
-  // Log stray errors / rejected promises (e.g. storage failures) for support.
-  // Intentionally no toast â€” background failures shouldn't alarm the user.
   useEffect(() => {
     const onErr = (e: ErrorEvent) =>
       console.error("[window-error]", e.error || e.message);
@@ -661,12 +624,10 @@ export function AppShell({
     };
   }, []);
 
-  // The To-do feature lives behind Simon mode; bounce off the tab when it's off.
   useEffect(() => {
     if (!simonMode && tab === "todo") setTab("today");
   }, [simonMode, tab]);
 
-  // Animation feedback for player progression (cohesive hook).
   const {
     sessionXp,
     xpBump,
@@ -685,7 +646,6 @@ export function AppShell({
     setLastCelebratedDate,
   });
 
-  // Double-click a to-do to edit it: fill the form and jump to the To-do tab.
   const editTodo = async (todo: Todo) => {
     setEditingTodoId(todo.id);
     setTodoDraft({
@@ -700,23 +660,11 @@ export function AppShell({
     setTab("todo");
   };
 
-  // Hours tracked against a to-do, derived from its actual time entries (the
-  // source of truth, in sync with the per-client totals). The running session
-  // counts live: a resumed entry uses the live clock, and a fresh session not
-  // yet saved is added on top so progress ticks up in real time.
   const trackedHForTodo = (td: Todo) =>
     todoTrackedH(td, entries, { tCo, tPr, tD, tRun, tSec, draftId });
 
-  // Key of the task currently running (if any), so to-do rows can show a live
-  // "Running" state by matching their own task â€” independent of activeTodoId.
   const activeTaskKey = tRun ? taskKey(tCo, tPr, tD) : null;
 
-  // Start a to-do in place: track that exact task immediately and stay on the
-  // current page (a live tracker appears on Today). A running timer is still
-  // saved/confirmed first via the guard. activeTodoId links logged time back.
-  // If today already has an entry for this task, continue it (resume its hours,
-  // keep it as the running entry) instead of starting a fresh, separate session.
-  // To-dos without a client + project fall back to the timer form to pick them.
   const startTodo = (todo: Todo) => {
     if (!todo.companyId || !todo.projectId) {
       setTimerFormOpen(true);
@@ -740,7 +688,6 @@ export function AppShell({
         formatLocalDate(new Date(e.task_date)) === todayISO,
     );
     if (match) {
-      // Already the running entry â€” just surface the tracker, don't restart.
       if (tRun && draftIdRef.current === match.id) {
         setTab("today");
         return;
@@ -766,10 +713,6 @@ export function AppShell({
     });
   };
 
-  // Turn a raw API error into a clear message + side effects (sign-out on auth
-  // expiry, flip the offline banner on network trouble). Returns the kind so
-  // callers can wrap the message (e.g. "Couldn't save â€” â€¦"). `wrapKey` lets a
-  // caller prefix the human message with a contextual form key.
   const handleApiError = (err: unknown, wrapKey?: string): string => {
     const kind = classifyApiError(err);
     if (kind === "auth") {
@@ -803,7 +746,6 @@ export function AppShell({
       return;
     }
 
-    // Billing policy: every save lands on a 15-minute boundary, rounded up.
     hours = roundUpToQuarter(hours);
 
     const payload = buildSavePayload({
@@ -817,8 +759,6 @@ export function AppShell({
       entryDate,
       existingId,
     });
-    // Queue for later sync. Display is derived from the queue (liveTodayEntries
-    // / liveDayEntries), so no optimistic row insertion is needed.
     const queueOffline = () => {
       const item = makePendingEntry(payload);
       setPendingQueue((q) => [...q, item]);
@@ -833,7 +773,6 @@ export function AppShell({
       addFloat(t("offline.queued"), vars.typography.warning);
     };
 
-    // Editing an existing entry needs the server (can't safely queue an edit).
     if (!online) {
       if (existingId) {
         addFloat(t("error.api.offline"), vars.typography.error);
@@ -862,16 +801,12 @@ export function AppShell({
       return;
     }
 
-    // Refresh today's entries if the save landed on today.
-    // History view refetches its own weeks/months on navigation.
     const savedDateISO = formatLocalDate(entryDate);
     const todayISOStr = formatLocalDate(new Date());
     if (savedDateISO === todayISOStr) {
       const fresh = await loadTimeEntries(new Date());
       setEntries(fresh);
     }
-    // If History's Daily drill-down is showing this date, reload it too so
-    // the user sees their just-saved past-day entry immediately.
     if (
       savedDateISO === formatLocalDate(selectedDate) &&
       historyScale === "day"
@@ -880,7 +815,6 @@ export function AppShell({
         .then(setDayEntries)
         .catch(() => {});
     }
-    // Only bump weekH for today's entries (weekH is current week Monâ€“Fri)
     setWeekH((w) => {
       if (savedDateISO !== todayISOStr) return w;
       const n = [...w];
@@ -888,7 +822,6 @@ export function AppShell({
       return n;
     });
 
-    // Streak: bump if this is the first log of today.
     const nowDate = new Date();
     const todayISO = formatLocalDate(nowDate);
     const lastLogged = (await window.electronAPI.storeGet(
@@ -909,10 +842,8 @@ export function AppShell({
       xp: earned,
     });
 
-    // Skip achievement evaluation on edits â€” only fresh entries advance stats.
     if (existingId) return saved?.id || existingId || null;
 
-    // Build post-save stats snapshot and the evaluation context.
     const savedIsToday = savedDateISO === todayISOStr;
     const savedDay = entryDate.getDay();
     const savedIsWeekend = savedDay === 0 || savedDay === 6;
@@ -964,7 +895,6 @@ export function AppShell({
       weekDaysAtGoal,
     };
 
-    // Queue toasts so stacked unlocks don't clobber each other.
     const newly = findNewlyUnlocked(unlocked, ctx);
     if (newly.length > 0) {
       setUnlocked((u) => [...u, ...newly.map((a) => a.id)]);
@@ -1000,13 +930,11 @@ export function AppShell({
         setDraftId(r.id);
       }
     } catch {
-      /* silent: local state is still persisted */
     }
   };
   useAutoSaveDraft(tRun, autoSaveDraft);
 
   const delEntry = async (id: string) => {
-    // Queued / quarantined rows only live locally â€” drop from the queues.
     if (isPendingId(id)) {
       setPendingQueue((q) => q.filter((x) => x.localId !== id));
       setFailedQueue((f) => f.filter((x) => x.localId !== id));
@@ -1020,8 +948,6 @@ export function AppShell({
     }
   };
 
-  // The "FrÃ¥nvaro" client (absence) â€” a normal client in the list.
-  // DevCore is internal work — its entries are always non-billable.
   const isInternalCompany = (companyId: string) =>
     /devcore/i.test(companies.find((c) => c.id === companyId)?.name || "");
 
@@ -1038,29 +964,28 @@ export function AppShell({
     addFloat,
   });
 
-  // currentUser may still be loading on first render; show a themed spinner.
+  const locale = lang === "sv" ? "sv-SE" : "en-GB";
+  const { clockDate, clockTime } = useMemo(() => {
+    void nowTick;
+    const now = new Date();
+    return {
+      clockDate: now.toLocaleDateString(locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }),
+      clockTime: now.toLocaleTimeString(locale, {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+  }, [locale, nowTick]);
+
   const spinner = (
     <prim.Spinner layout="fill" label={t("form.loadingProjects")} className={themeClass} />
   );
   if (!currentUser) return spinner;
 
-  // â”€â”€â”€ Shared UI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const locale = lang === "sv" ? "sv-SE" : "en-GB";
-  // Live clock: weekday Â· day Â· month Â· hh:mm. Re-renders once per minute via
-  // the nowTick state (which uses `nowTick` as a dep to force revaluation).
-  void nowTick;
-  const now = new Date();
-  const clockDate = now.toLocaleDateString(locale, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-  const clockTime = now.toLocaleTimeString(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  // â”€â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const hdr = (
     <ui.AppHeader
       tab={tab}
@@ -1078,12 +1003,9 @@ export function AppShell({
     />
   );
 
-
   const hasCtx = !!(tCo && tPr);
   const coObj = companies.find((c) => c.id === tCo);
   const prObj = (projectCache[tCo] || []).find((p) => p.id === tPr);
-  // Estimate for the running task (if it maps to an estimated to-do), and the
-  // live total tracked against it (committed hours + the current session delta).
   const topEstTodo = !simonMode
     ? undefined
     : (activeTodoId

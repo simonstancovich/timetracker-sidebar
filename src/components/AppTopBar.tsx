@@ -77,7 +77,7 @@ export function AppTopBar({
     padding: 0,
     fontFamily:
       "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
-    borderBottom: `1px solid ${vars.border.soft}`,
+    borderBottom: `1px solid color-mix(in srgb, ${vars.border.soft} 35%, transparent)`,
     position: "relative",
     overflow: "hidden",
   }}

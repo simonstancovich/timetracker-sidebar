@@ -36,7 +36,7 @@ export function StatChip({
           fontFamily: MONO,
           fontSize: 9,
           fontWeight: 600,
-          color: vars.typography.tertiary,
+          color: vars.typography.secondary,
           textTransform: "uppercase",
           letterSpacing: 1.4,
         }}

@@ -18,12 +18,12 @@ export const colors = {
     gray100: "#faf8ff", // dark primary
     gray300: "#d0c9e8", // dark secondary
     gray500: "#968fb0", // dark tertiary
-    gray700: "#757090", // dark faint
+    gray700: "#847e9e", // dark faint
     // Light stack: near-neutral with a barely-warm undertone. Stops the
     // "sandy" effect (warm chrome + warm accent = dune wash) by pulling
     // chrome off the warm axis while the accent stays warm.
-    inkFaint: "#a8a5a0", // light faint
-    inkMuted: "#73706c", // light tertiary
+    inkFaint: "#8e8a85", // light faint
+    inkMuted: "#686561", // light tertiary
     inkSoft: "#484340", // light secondary
     ink: "#1e1a17", // light primary
     violet200: "#ef9b78", // dark accent text (terracotta)
@@ -59,9 +59,9 @@ export const colors = {
     // warm-paper attempt.
     pageLight: "#fdfcfb",
     pageDark: "#0b0910",
-    surfaceLight: "#f6f4f1",
+    surfaceLight: "#f0ebe2",
     surfaceDark: "rgba(255,255,255,0.045)",
-    raisedLight: "#ebe8e3",
+    raisedLight: "#e3dccf",
     raisedDark: "rgba(255,255,255,0.10)",
     glassDark: "rgba(170,150,228,0.08)",
     // Accent tinted bgs stay terracotta.
@@ -82,9 +82,9 @@ export const colors = {
 
   border: {
     // Near-neutral dividers, barely-warm.
-    softLight: "#e5e1db",
+    softLight: "#d4cec4",
     softDark: "rgba(166,146,214,0.17)",
-    strongLight: "#d0ccc4",
+    strongLight: "#bdb6a8",
     strongDark: "rgba(166,146,214,0.30)",
     greenLight: "#bbf7d0",
     greenDark: "rgba(111,212,160,0.25)",
