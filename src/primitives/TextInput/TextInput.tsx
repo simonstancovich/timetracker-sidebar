@@ -3,12 +3,8 @@ import { cx } from '../../lib/cx'
 import * as s from './TextInput.css'
 
 interface Props extends InputHTMLAttributes<HTMLInputElement> {
-  // Visually emphasizes the input — heavier weight, primary text color,
-  // accent border. Drive from parent state (e.g. "has a selection") rather
-  // than relying on `:placeholder-shown`, since the two often diverge.
   filled?: boolean
-  // Reserve extra right padding for an absolutely-positioned trailing
-  // element (e.g. a clear button or icon).
+  invalid?: boolean
   trailingSpace?: boolean
   fullWidth?: boolean
 }
@@ -16,6 +12,7 @@ interface Props extends InputHTMLAttributes<HTMLInputElement> {
 export const TextInput = forwardRef<HTMLInputElement, Props>(function TextInput(
   {
     filled = false,
+    invalid = false,
     trailingSpace = false,
     fullWidth = false,
     type = 'text',
@@ -31,11 +28,13 @@ export const TextInput = forwardRef<HTMLInputElement, Props>(function TextInput(
       className={cx(
         s.root,
         filled && s.filled,
+        invalid && s.invalid,
         trailingSpace && s.trailingSpace,
         fullWidth && s.fullWidth,
         className,
       )}
       {...rest}
+      aria-invalid={invalid || rest['aria-invalid']}
     />
   )
 })

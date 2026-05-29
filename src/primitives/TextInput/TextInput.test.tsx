@@ -46,4 +46,16 @@ describe('<TextInput />', () => {
     const { container } = render(<TextInput className="custom" />)
     expect((container.firstChild as HTMLElement).className).toContain('custom')
   })
+
+  it('toggles invalid class and sets aria-invalid', () => {
+    const { container, rerender } = render(<TextInput />)
+    let el = container.firstChild as HTMLInputElement
+    expect(el.className).not.toContain(s.invalid)
+    expect(el.getAttribute('aria-invalid')).toBeNull()
+
+    rerender(<TextInput invalid />)
+    el = container.firstChild as HTMLInputElement
+    expect(el.className).toContain(s.invalid)
+    expect(el.getAttribute('aria-invalid')).toBe('true')
+  })
 })
