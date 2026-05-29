@@ -25,9 +25,6 @@ export const justify = styleVariants({
 
 export const gap = styleVariants(spacing, (v) => ({ gap: v }));
 
-// Order matters for the cascade: `padding` (all sides) is declared first, then
-// axis (`paddingX`/`paddingY`), then per-side. A more specific prop overrides
-// a less specific one when both are passed.
 export const padding = styleVariants(spacing, (v) => ({ padding: v }));
 export const paddingX = styleVariants(spacing, (v) => ({
   paddingLeft: v,
@@ -64,7 +61,6 @@ export const border = styleVariants({
   all: { border: `1px solid ${vars.border.soft}` },
 });
 
-// Override the border color set by the `border` variant.
 export const borderColor = styleVariants({
   soft: { borderColor: vars.border.soft },
   strong: { borderColor: vars.border.strong },
@@ -74,7 +70,6 @@ export const borderColor = styleVariants({
   warning: { borderColor: vars.border.warning },
 });
 
-// Override the border style set by the `border` variant.
 export const borderStyle = styleVariants({
   solid: { borderStyle: "solid" },
   dashed: { borderStyle: "dashed" },
@@ -96,12 +91,11 @@ export const left = styleVariants(spacing, (v) => ({ left: v }));
 export const fullWidth = style({ width: "100%" });
 export const fullHeight = style({ minHeight: "100vh" });
 
-// For a Stack that lives inside another flex row and shouldn't collapse when
-// its siblings grow.
 export const noShrink = style({ flexShrink: 0 });
 
 export const wrap = style({ flexWrap: "wrap" });
 
-// Lets a flex-item Stack shrink below its content width — required for
-// `<Text truncate>` (or any overflow ellipsis) to work inside a flex row.
 export const minWidth0 = style({ minWidth: 0 });
+
+export const rowGap = styleVariants(spacing, (v) => ({ rowGap: v }));
+export const columnGap = styleVariants(spacing, (v) => ({ columnGap: v }));

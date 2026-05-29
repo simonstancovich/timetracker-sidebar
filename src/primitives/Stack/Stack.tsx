@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from 'react'
+import { forwardRef, type HTMLAttributes, type ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import * as s from './Stack.css'
 
@@ -10,12 +10,15 @@ export type StackBorderColor = keyof typeof s.borderColor
 export type StackBorderStyle = keyof typeof s.borderStyle
 export type StackBorderRadius = keyof typeof s.borderRadius
 export type StackPosition = keyof typeof s.position
+export type StackTag = 'div' | 'section' | 'nav' | 'header' | 'footer' | 'main' | 'aside' | 'ul' | 'ol' | 'li'
 
-interface Props {
+interface Props extends Omit<HTMLAttributes<HTMLElement>, 'style' | 'children'> {
   direction?: keyof typeof s.direction
   align?: keyof typeof s.align
   justify?: keyof typeof s.justify
   gap?: StackGap
+  rowGap?: StackGap
+  columnGap?: StackGap
   padding?: StackPadding
   paddingX?: StackPadding
   paddingY?: StackPadding
@@ -35,23 +38,21 @@ interface Props {
   left?: StackPadding
   fullWidth?: boolean
   fullHeight?: boolean
-  // When the Stack is itself a child of a flex row, `shrink={false}` holds its
-  // intrinsic width against siblings that want to grow.
-  shrink?: boolean
-  // Required on a flex-item Stack whose child wants to truncate — sets
-  // `min-width: 0` so the item can shrink below its content width.
+  noShrink?: boolean
   minWidth0?: boolean
   wrap?: boolean
-  className?: string
+  as?: StackTag
   children: ReactNode
 }
 
-export const Stack = forwardRef<HTMLDivElement, Props>(function Stack(
+export const Stack = forwardRef<HTMLElement, Props>(function Stack(
   {
     direction = 'column',
     align = 'stretch',
     justify = 'start',
     gap = 'none',
+    rowGap,
+    columnGap,
     padding = 'none',
     paddingX,
     paddingY,
@@ -71,11 +72,13 @@ export const Stack = forwardRef<HTMLDivElement, Props>(function Stack(
     left,
     fullWidth = false,
     fullHeight = false,
-    shrink = true,
+    noShrink = false,
     minWidth0 = false,
     wrap = false,
+    as: Tag = 'div',
     className,
     children,
+    ...rest
   },
   ref,
 ) {
@@ -85,6 +88,8 @@ export const Stack = forwardRef<HTMLDivElement, Props>(function Stack(
     s.align[align],
     s.justify[justify],
     s.gap[gap],
+    rowGap && s.rowGap[rowGap],
+    columnGap && s.columnGap[columnGap],
     s.padding[padding],
     paddingX && s.paddingX[paddingX],
     paddingY && s.paddingY[paddingY],
@@ -104,14 +109,14 @@ export const Stack = forwardRef<HTMLDivElement, Props>(function Stack(
     left && s.left[left],
     fullWidth && s.fullWidth,
     fullHeight && s.fullHeight,
-    !shrink && s.noShrink,
+    noShrink && s.noShrink,
     minWidth0 && s.minWidth0,
     wrap && s.wrap,
     className,
   )
   return (
-    <div ref={ref} className={classes}>
+    <Tag ref={ref as never} {...rest} className={classes}>
       {children}
-    </div>
+    </Tag>
   )
 })

@@ -63,7 +63,7 @@ export function AppHeader({
           </prim.MonoText>
         </prim.Stack>
 
-        <prim.Stack direction="row" align="center" gap="sm" shrink={false}>
+        <prim.Stack direction="row" align="center" gap="sm" noShrink>
           <HoursRingButton
             tRun={tRun}
             tSec={tSec}

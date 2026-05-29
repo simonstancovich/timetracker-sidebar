@@ -129,4 +129,36 @@ describe('<Stack />', () => {
     expect(cls).not.toContain(s.background.page)
     expect(cls).not.toContain(s.border.bottom)
   })
+
+  it('renders the tag from the as prop', () => {
+    const { container } = render(<Stack as="section"><span /></Stack>)
+    expect(container.querySelector('section')).toBeInTheDocument()
+    expect(container.querySelector('div')).toBeNull()
+  })
+
+  it('forwards id, aria-* and onClick attributes', () => {
+    const { container } = render(
+      <Stack id="foo" aria-label="bar" role="region"><span /></Stack>,
+    )
+    const el = container.firstChild as HTMLElement
+    expect(el.id).toBe('foo')
+    expect(el.getAttribute('aria-label')).toBe('bar')
+    expect(el.getAttribute('role')).toBe('region')
+  })
+
+  it('applies noShrink class when prop is true', () => {
+    const { container, rerender } = render(<Stack><span /></Stack>)
+    expect((container.firstChild as HTMLElement).className).not.toContain(s.noShrink)
+    rerender(<Stack noShrink><span /></Stack>)
+    expect((container.firstChild as HTMLElement).className).toContain(s.noShrink)
+  })
+
+  it('applies rowGap and columnGap classes', () => {
+    const { container } = render(
+      <Stack direction="row" wrap rowGap="sm" columnGap="lg"><span /></Stack>,
+    )
+    const cls = (container.firstChild as HTMLElement).className
+    expect(cls).toContain(s.rowGap.sm)
+    expect(cls).toContain(s.columnGap.lg)
+  })
 })
