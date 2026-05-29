@@ -41,6 +41,8 @@ export const colors = {
     green500: "#16a34a", // light green
     error: "#ef4444", // tailwind red-500, both modes
     warning: "#f59e0b", // tailwind amber-500, both modes
+    urgent: "#ea580c", // tailwind orange-600, both modes
+    soon: "#d97706", // tailwind amber-600, both modes
     // Error text legible on the translucent-red failstate strip (RetryStrip):
     // darker red on the pale light bg, softer red on the dark bg.
     dangerStrong: "#b91c1c", // light
@@ -124,6 +126,8 @@ type TypoName =
   | "onAccent"
   | "error"
   | "warning"
+  | "urgent"
+  | "soon"
   | "danger";
 
 const TYPOGRAPHY_MAP: Record<
@@ -143,6 +147,8 @@ const TYPOGRAPHY_MAP: Record<
   onAccent: { light: "white", dark: "white" },
   error: { light: "error", dark: "error" },
   warning: { light: "warning", dark: "warning" },
+  urgent: { light: "urgent", dark: "urgent" },
+  soon: { light: "soon", dark: "soon" },
   danger: { light: "dangerStrong", dark: "dangerSoft" },
 };
 

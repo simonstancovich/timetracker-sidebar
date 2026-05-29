@@ -7,10 +7,8 @@ export const track = style({
   overflow: "hidden",
 });
 
-// Flex-fill a row instead of taking full width.
 export const grow = style({ flex: 1 });
 
-// Each size bundles the track height/radius with the matching fill motion.
 export const trackSize = styleVariants({
   thin: { height: 2 },
   mid: { height: 3, borderRadius: 2 },
@@ -19,10 +17,18 @@ export const trackSize = styleVariants({
 
 export const fill = style({ height: "100%" });
 
+const reducedMotion = {
+  "@media": {
+    "(prefers-reduced-motion: reduce)": {
+      transition: "none",
+    },
+  },
+} as const;
+
 export const fillMotion = styleVariants({
-  thin: { transition: "width 500ms cubic-bezier(.22,1,.36,1)" },
-  mid: { transition: "width 400ms cubic-bezier(.22,1,.36,1)" },
-  thick: { transition: "width 400ms cubic-bezier(.22,1,.36,1)" },
+  thin: { transition: "width 500ms cubic-bezier(.22,1,.36,1)", ...reducedMotion },
+  mid: { transition: "width 400ms cubic-bezier(.22,1,.36,1)", ...reducedMotion },
+  thick: { transition: "width 400ms cubic-bezier(.22,1,.36,1)", ...reducedMotion },
 });
 
 export const tone = styleVariants({
@@ -32,7 +38,7 @@ export const tone = styleVariants({
     background: `linear-gradient(90deg, ${vars.typography.accent}, ${vars.typography.pink})`,
   },
   danger: { background: vars.typography.error },
-  urgent: { background: "#ea580c" },
-  soon: { background: "#d97706" },
+  urgent: { background: vars.typography.urgent },
+  soon: { background: vars.typography.soon },
   muted: { background: vars.typography.tertiary },
 });
