@@ -21,11 +21,13 @@ export function Skeleton({
   className,
 }: Props) {
   const classes = cx(
-    'skeleton',
+    s.root,
     s.height[height],
     width && s.width[width],
     s.radius[radius],
     className,
   )
-  return inline ? <span className={classes} /> : <div className={classes} />
+  return inline
+    ? <span aria-hidden className={classes} />
+    : <div aria-hidden className={classes} />
 }
