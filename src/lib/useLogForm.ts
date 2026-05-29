@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { fmtHours } from "./hours";
 
-interface StoredLogForm {
+export interface StoredLogForm {
   fCo?: string;
   fPr?: string;
   fH?: number;

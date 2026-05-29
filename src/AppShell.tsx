@@ -22,7 +22,7 @@ import {
   isPendingId,
   makePendingEntry,
 } from "./lib/pendingEntries";
-import { formatLocalDate, isOnCurrent, mondayOf } from "./lib/date";
+import { formatLocalDate, mondayOf } from "./lib/date";
 import {
   fmtHours,
   roundUpToQuarter,
@@ -34,15 +34,13 @@ import {
   type AchCtx,
 } from "./lib/achievements";
 import { streakAfterLog } from "./lib/streak";
-import { pickRandomMessage } from "./lib/funMessages";
-import { pickTip } from "./lib/productivityTips";
 import {
   emptyTodayMessage,
   saveCheer,
 } from "./lib/personality";
 import { Lang, useTranslation } from "./lib/i18n";
-import { useLogForm } from "./lib/useLogForm";
-import { useTimer } from "./lib/useTimer";
+import { useLogForm, type StoredLogForm } from "./lib/useLogForm";
+import { useTimer, type StoredTimer } from "./lib/useTimer";
 import * as prim from "./primitives";
 
 import {
@@ -76,6 +74,9 @@ import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
 import { useWindowFocus } from "./lib/useWindowFocus";
 import { useGlobalErrorLogging } from "./lib/useGlobalErrorLogging";
+import { useHistoryScale } from "./lib/useHistoryScale";
+import { useTopBarFunMessage } from "./lib/useTopBarFunMessage";
+import { usePersistedStore } from "./lib/usePersistedStore";
 
 const GOAL = 8;
 
@@ -105,36 +106,18 @@ export function AppShell({
   const authed = true as const;
   const { t } = useTranslation();
   const [tab, setTab] = useState<ui.HeaderTab>("today");
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [historyScale, setHistoryScale] = useState<"day" | "week" | "month">(
-    "week",
-  );
   const [logOpen, setLogOpen] = useState(false);
   const monthClosure = useMonthClosure();
-
-  const stepHistoryDate = (dir: 1 | -1) => {
-    if (historyScale === "day") {
-      setSelectedDate((d) => {
-        const n = new Date(d);
-        n.setDate(n.getDate() + dir);
-        return n;
-      });
-    } else if (historyScale === "week") {
-      setSelectedDate((d) => {
-        const n = new Date(d);
-        n.setDate(n.getDate() + 7 * dir);
-        return n;
-      });
-    } else {
-      setSelectedDate((d) => new Date(d.getFullYear(), d.getMonth() + dir, 1));
-    }
-  };
-  const historyIsOnCurrent = isOnCurrent(historyScale, selectedDate);
-  const jumpHistoryToCurrent = () => setSelectedDate(new Date());
+  const {
+    selectedDate, setSelectedDate,
+    historyScale, setHistoryScale,
+    stepHistoryDate,
+    historyIsOnCurrent,
+    jumpHistoryToCurrent,
+  } = useHistoryScale();
 
   const nowTick = useNowTick();
-
-  const [funMessage, setFunMessage] = useState<string | null>(null);
+  const funMessage = useTopBarFunMessage(size, lang);
 
   const confirmSignOut = () => {
     if (window.confirm(t("footer.confirmSignOut"))) {
@@ -166,26 +149,6 @@ export function AppShell({
     setPendingAchs,
   } = useProgress({ authed });
 
-  useEffect(() => {
-    if (size !== "top") {
-      setFunMessage(null);
-      return;
-    }
-    let hideId: number | undefined;
-    let showTip = false;
-    const show = () => {
-      setFunMessage(showTip ? pickTip(lang) : pickRandomMessage(lang));
-      showTip = !showTip;
-      hideId = window.setTimeout(() => setFunMessage(null), 18000);
-    };
-    const initialId = window.setTimeout(show, 5000);
-    const rotateId = window.setInterval(show, 45000);
-    return () => {
-      clearTimeout(initialId);
-      clearInterval(rotateId);
-      if (hideId) clearTimeout(hideId);
-    };
-  }, [size, lang]);
   const { floats, addFloat } = useFloats();
   const {
     todos,
@@ -248,7 +211,6 @@ export function AppShell({
   useEffect(() => {
     draftIdRef.current = draftId;
   }, [draftId]);
-  const [timerLoaded, setTimerLoaded] = useState(false);
   const [timerFormOpen, setTimerFormOpen] = useState(true);
 
   const {
@@ -283,7 +245,6 @@ export function AppShell({
     setEditingDate,
     hydrate: hydrateLogForm,
   } = logFormApi;
-  const [logFormLoaded, setLogFormLoaded] = useState(false);
   const [confirmation, setConfirmation] =
     useState<ConfirmationRequest | null>(null);
 
@@ -422,17 +383,6 @@ export function AppShell({
   };
 
   useEffect(() => {
-    (async () => {
-      const t = await window.electronAPI.storeGet("timer");
-      if (t && typeof t === "object") {
-        hydrateTimer(t);
-        if (t.tCo) void ensureProjects(t.tCo);
-      }
-      setTimerLoaded(true);
-    })();
-  }, [hydrateTimer, ensureProjects]);
-
-  useEffect(() => {
     const r = document.documentElement.style;
     r.setProperty("--rec-color", vars.typography.pink);
     r.setProperty("--scrollbar-thumb", vars.border.soft);
@@ -471,43 +421,34 @@ export function AppShell({
 
   const emptyMsg = useMemo(() => emptyTodayMessage(lang), [lang]);
 
-  useEffect(() => {
-    if (!timerLoaded) return;
-    window.electronAPI.storeSet("timer", {
-      tCo,
-      tPr,
-      tD,
-      tNote,
-      tInv,
-      tSec: tRun ? 0 : tSecRef.current,
-      running: tRun,
-      startedAt: tRun ? Date.now() - tSecRef.current * 1000 : null,
-      draftId,
-    });
-  }, [timerLoaded, tCo, tPr, tD, tNote, tInv, tRun, draftId, tSecRef]);
+  const timerPayload = useMemo(() => ({
+    tCo, tPr, tD, tNote, tInv,
+    tSec: tRun ? 0 : tSecRef.current,
+    running: tRun,
+    startedAt: tRun ? Date.now() - tSecRef.current * 1000 : null,
+    draftId,
+  }), [tCo, tPr, tD, tNote, tInv, tRun, draftId, tSecRef]);
+  usePersistedStore({
+    key: "timer",
+    payload: timerPayload,
+    hydrate: (t: StoredTimer) => {
+      hydrateTimer(t);
+      if (t.tCo) void ensureProjects(t.tCo);
+    },
+  });
 
-  useEffect(() => {
-    (async () => {
-      const f = await window.electronAPI.storeGet("logForm");
-      if (f && typeof f === "object") {
-        hydrateLogForm(f);
-        if (f.fCo) void ensureProjects(f.fCo);
-      }
-      setLogFormLoaded(true);
-    })();
-  }, [hydrateLogForm, ensureProjects]);
-
-  useEffect(() => {
-    if (!logFormLoaded) return;
-    window.electronAPI.storeSet("logForm", {
-      fCo: fCo,
-      fPr: fPr,
-      fH: fH,
-      fD: fD,
-      fNote: fNote,
-      fInv: fInv,
-    });
-  }, [logFormLoaded, fCo, fPr, fH, fD, fNote, fInv]);
+  const logFormPayload = useMemo(
+    () => ({ fCo, fPr, fH, fD, fNote, fInv }),
+    [fCo, fPr, fH, fD, fNote, fInv],
+  );
+  usePersistedStore({
+    key: "logForm",
+    payload: logFormPayload,
+    hydrate: (f: StoredLogForm) => {
+      hydrateLogForm(f);
+      if (f.fCo) void ensureProjects(f.fCo);
+    },
+  });
 
   useEffect(() => {
     monthClosure.ensure(selectedDate.getFullYear(), selectedDate.getMonth());

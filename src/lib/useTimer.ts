@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface StoredTimer {
+export interface StoredTimer {
   tCo?: string;
   tPr?: string;
   tD?: string;
