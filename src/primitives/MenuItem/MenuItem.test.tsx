@@ -1,3 +1,4 @@
+import { createRef } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -40,5 +41,22 @@ describe('<MenuItem />', () => {
   it('merges a consumer-supplied className', () => {
     render(<MenuItem className="extra">Acme</MenuItem>)
     expect(screen.getByRole('option').className).toContain('extra')
+  })
+
+  it('forwards id and aria-* attributes', () => {
+    render(
+      <MenuItem id="opt-7" aria-describedby="hint-7">
+        Acme
+      </MenuItem>,
+    )
+    const opt = screen.getByRole('option')
+    expect(opt.id).toBe('opt-7')
+    expect(opt.getAttribute('aria-describedby')).toBe('hint-7')
+  })
+
+  it('forwards ref to the underlying element', () => {
+    const ref = createRef<HTMLDivElement>()
+    render(<MenuItem ref={ref}>Acme</MenuItem>)
+    expect(ref.current).toBe(screen.getByRole('option'))
   })
 })
