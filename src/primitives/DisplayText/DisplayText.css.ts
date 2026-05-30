@@ -49,7 +49,6 @@ export const tracking = styleVariants(letterSpacing, (v) => ({
 
 export const italic = style({ fontStyle: "italic" });
 
-// Tabular figures so numbers don't jitter as they change (stat counters).
 export const tabular = style({ fontVariantNumeric: "tabular-nums" });
 
 export const truncate = style({
