@@ -7,6 +7,7 @@ export const root = style({
   gap: 6,
   padding: "6px 12px 6px 9px",
   borderRadius: radii.pill,
+  boxShadow: vars.shadow.engrave,
 });
 
 export const tone = styleVariants({

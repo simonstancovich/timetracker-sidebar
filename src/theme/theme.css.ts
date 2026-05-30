@@ -62,6 +62,7 @@ export const vars = createThemeContract({
     brand: null,
     heavy: null,
     button: null,
+    engrave: null,
   },
   font: {
     body: null,
@@ -121,7 +122,12 @@ export const lightTheme = createTheme(vars, {
     warning: pickColor("border", "warning", "light"),
   },
   chart: { "0": chartL[0], "1": chartL[1], "2": chartL[2], "3": chartL[3] },
-  shadow: { brand: shadows.brand, heavy: shadows.heavy, button: shadows.brand },
+  shadow: {
+    brand: shadows.brand,
+    heavy: shadows.heavy,
+    button: shadows.brand,
+    engrave: "inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 0 rgba(0,0,0,0.025)",
+  },
   font: {
     body: fontFamily.body,
     display: fontFamily.display,
@@ -175,7 +181,12 @@ export const darkTheme = createTheme(vars, {
     warning: pickColor("border", "warning", "dark"),
   },
   chart: { "0": chartD[0], "1": chartD[1], "2": chartD[2], "3": chartD[3] },
-  shadow: { brand: shadows.brand, heavy: shadows.heavy, button: shadows.heavy },
+  shadow: {
+    brand: shadows.brand,
+    heavy: shadows.heavy,
+    button: shadows.heavy,
+    engrave: "inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 0 rgba(0,0,0,0.42)",
+  },
   font: {
     body: fontFamily.body,
     display: fontFamily.display,
