@@ -23,17 +23,24 @@ const ringRotate = {
   transform: "rotate(-90deg)",
   transformOrigin: "center",
 } as const;
+const reducedMotion = {
+  "@media": {
+    "(prefers-reduced-motion: reduce)": { transition: "none" },
+  },
+} as const;
 
 export const ring = style({
   stroke: vars.typography.accent,
   transition: ringTransition,
   ...ringRotate,
+  ...reducedMotion,
 });
 
 export const ringDone = style({
   stroke: vars.typography.green,
   transition: ringTransition,
   ...ringRotate,
+  ...reducedMotion,
 });
 
 export const tick = style({
