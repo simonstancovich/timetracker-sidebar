@@ -29,8 +29,7 @@ export const align = styleVariants({
   right: { textAlign: "right" },
 });
 
-// Hairline rules above and below — a delimited horizontal band.
 export const borderY = style({
-  borderTop: `1px solid ${vars.border.soft}`,
-  borderBottom: `1px solid ${vars.border.soft}`,
+  borderTop: `1px solid ${vars.border.strong}`,
+  borderBottom: `1px solid ${vars.border.strong}`,
 });
