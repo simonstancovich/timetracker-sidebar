@@ -83,12 +83,10 @@ export const shape = styleVariants({
   pill: { borderRadius: radii.pill },
 });
 
-// Editorial CTA label treatment: monospace, uppercase, wide tracking.
 export const mono = style({
   fontFamily: vars.font.mono,
   textTransform: "uppercase",
   letterSpacing: letterSpacing.loosest,
 });
 
-// Lets the button grow inside a flex row (e.g. equal-share with sibling).
 export const grow = style({ flex: 1 });
