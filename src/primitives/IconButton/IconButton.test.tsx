@@ -1,3 +1,4 @@
+import { createRef } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -43,9 +44,27 @@ describe('<IconButton />', () => {
     expect(btn).toHaveAttribute('title', 'Dock as top bar')
   })
 
-  it('respects disabled', () => {
-    render(<IconButton aria-label="Min" disabled>▼</IconButton>)
-    expect(screen.getByRole('button')).toBeDisabled()
+  it('respects disabled and blocks onClick when disabled', async () => {
+    const onClick = vi.fn()
+    render(
+      <IconButton aria-label="Min" onClick={onClick} disabled>
+        ▼
+      </IconButton>,
+    )
+    const btn = screen.getByRole('button')
+    expect(btn).toBeDisabled()
+    await userEvent.click(btn)
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('forwards ref to the underlying button', () => {
+    const ref = createRef<HTMLButtonElement>()
+    render(
+      <IconButton aria-label="Min" ref={ref}>
+        ▼
+      </IconButton>,
+    )
+    expect(ref.current).toBe(screen.getByRole('button'))
   })
 
   it('merges a consumer-supplied className', () => {
