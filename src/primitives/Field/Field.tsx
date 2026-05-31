@@ -1,20 +1,20 @@
-import type { ReactNode } from "react";
-import { FieldLabel, type FieldLabelTone } from "../FieldLabel/FieldLabel";
+import { forwardRef, type HTMLAttributes, type ReactNode } from 'react'
+import { FieldLabel, type FieldLabelTone } from '../FieldLabel/FieldLabel'
 
-// A labelled form field: the mono micro-caption stacked over its control.
-export function Field({
-  label,
-  tone,
-  children,
-}: {
-  label: string;
-  tone?: FieldLabelTone;
-  children: ReactNode;
-}) {
+interface Props extends Omit<HTMLAttributes<HTMLDivElement>, 'style' | 'children'> {
+  label: string
+  tone?: FieldLabelTone
+  children: ReactNode
+}
+
+export const Field = forwardRef<HTMLDivElement, Props>(function Field(
+  { label, tone, children, ...rest },
+  ref,
+) {
   return (
-    <div>
+    <div ref={ref} {...rest}>
       <FieldLabel tone={tone}>{label}</FieldLabel>
       {children}
     </div>
-  );
-}
+  )
+})
