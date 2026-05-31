@@ -1,12 +1,12 @@
 import { style, styleVariants } from "@vanilla-extract/css";
-import { vars, spacing, fontWeight } from "../../theme";
+import { vars, spacing, fontSize, fontWeight, letterSpacing } from "../../theme";
 
 export const root = style({
   display: "block",
   fontFamily: vars.font.mono,
-  fontSize: 8, // off-scale: the smallest micro-caption, below the 2xs (9) token
+  fontSize: fontSize["3xs"],
   fontWeight: fontWeight.bold,
-  letterSpacing: 1.6,
+  letterSpacing: letterSpacing.loosest,
   textTransform: "uppercase",
   marginBottom: spacing.xs,
 });
