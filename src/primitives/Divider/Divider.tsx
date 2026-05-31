@@ -1,17 +1,24 @@
-import { cx } from "../../lib/cx";
-import * as s from "./Divider.css";
+import { forwardRef, type HTMLAttributes } from 'react'
+import { cx } from '../../lib/cx'
+import * as s from './Divider.css'
 
-export type DividerTone = keyof typeof s.tone;
+export type DividerTone = keyof typeof s.tone
 
-// A 1px hairline rule. `grow` makes it flex-fill a row.
-export function Divider({
-  tone = "soft",
-  grow = false,
-  className,
-}: {
-  tone?: DividerTone;
-  grow?: boolean;
-  className?: string;
-}) {
-  return <div aria-hidden className={cx(s.root, s.tone[tone], grow && s.grow, className)} />;
+interface Props extends Omit<HTMLAttributes<HTMLDivElement>, 'style' | 'children'> {
+  tone?: DividerTone
+  grow?: boolean
 }
+
+export const Divider = forwardRef<HTMLDivElement, Props>(function Divider(
+  { tone = 'soft', grow = false, className, 'aria-hidden': ariaHidden = true, ...rest },
+  ref,
+) {
+  return (
+    <div
+      ref={ref}
+      {...rest}
+      aria-hidden={ariaHidden}
+      className={cx(s.root, s.tone[tone], grow && s.grow, className)}
+    />
+  )
+})

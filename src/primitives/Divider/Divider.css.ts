@@ -8,5 +8,4 @@ export const tone = styleVariants({
   raised: { background: vars.background.raised },
 });
 
-// Fill the available width inside a flex row.
 export const grow = style({ flex: 1 });
