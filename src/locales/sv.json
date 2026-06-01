@@ -231,7 +231,10 @@
     "confirmSignOut": "Är du säker på att du vill logga ut?",
     "showIntro": "Visa introduktionen",
     "pinSidebar": "Fäst sidofältet (inaktivera auto-minimering)",
-    "unpinSidebar": "Sidofältet är fäst — klicka för att tillåta auto-minimering"
+    "unpinSidebar": "Sidofältet är fäst — klicka för att tillåta auto-minimering",
+    "theme": "Tema",
+    "lightMode": "Ljust läge",
+    "darkMode": "Mörkt läge"
   },
   "login": {
     "pitch": "Logga in med ditt DevCore-konto för att börja spåra tid.",
