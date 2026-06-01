@@ -80,7 +80,9 @@ function createMainWindow() {
 
   if (isDev) {
     mainWindow.loadURL("http://localhost:5180");
-    mainWindow.webContents.openDevTools({ mode: "detach" });
+    if (!process.env.PLAYWRIGHT_TEST) {
+      mainWindow.webContents.openDevTools({ mode: "detach" });
+    }
   } else {
     mainWindow.loadFile(path.join(__dirname, "dist-renderer/index.html"));
   }
@@ -91,6 +93,7 @@ function createMainWindow() {
 
   mainWindow.on("blur", () => {
     if (!mainWindow) return;
+    if (process.env.PLAYWRIGHT_TEST) return;
     if (blurCollapseDisabled) return;
     if (Date.now() < displayChangeSilenceUntil) return;
     if (mainWindow.webContents.isDevToolsFocused()) return;

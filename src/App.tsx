@@ -8,18 +8,22 @@ import {
   useTranslation,
   setLang as setI18nLang,
 } from "./lib/i18n";
+import { isTestMode } from "./lib/testMode";
 
 type WindowSize = "full" | "top";
 
+const TEST_MODE = isTestMode();
+
 export default function App() {
   const { t } = useTranslation();
-  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [authed, setAuthed] = useState<boolean | null>(TEST_MODE ? true : null);
   const [mode, setMode] = useState<"light" | "dark">("light");
   const [lang, setLang] = useState<Lang>("en");
   const [pinned, setPinned] = useState(false);
   const [size, setWindowSize] = useState<WindowSize>("full");
 
   useEffect(() => {
+    if (TEST_MODE) return;
     window.electronAPI.checkAuth().then(setAuthed);
     const unsubs = [
       window.electronAPI.onAuthSuccess(() => setAuthed(true)),

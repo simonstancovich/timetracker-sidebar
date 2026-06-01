@@ -6,6 +6,8 @@ const subscribe = (channel, mapArgs) => (cb) => {
   return () => ipcRenderer.removeListener(channel, listener)
 }
 
+contextBridge.exposeInMainWorld('__PLAYWRIGHT_TEST__', process.env.PLAYWRIGHT_MOCK_API === '1')
+
 contextBridge.exposeInMainWorld('electronAPI', {
   // Auth
   checkAuth: () => ipcRenderer.invoke('check-auth'),
