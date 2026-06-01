@@ -17,6 +17,7 @@ if (isTestMode()) {
   FakeDate.parse = RealDate.parse.bind(RealDate)
   FakeDate.UTC = RealDate.UTC.bind(RealDate)
   globalThis.Date = FakeDate
+  Math.random = () => 0.5
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
