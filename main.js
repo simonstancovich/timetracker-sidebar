@@ -517,7 +517,7 @@ ipcMain.handle("graph-meetings", async (_e, opts) => {
   }
 });
 
-if (!app.requestSingleInstanceLock()) {
+if (!process.env.PLAYWRIGHT_TEST && !app.requestSingleInstanceLock()) {
   app.exit(0);
 } else {
   app.on("second-instance", () => {

@@ -1,0 +1,16 @@
+import { defineConfig } from '@playwright/test'
+
+export default defineConfig({
+  testDir: './tests/visual',
+  fullyParallel: false,
+  workers: 1,
+  reporter: 'list',
+  use: {
+    actionTimeout: 10_000,
+  },
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.005,
+    },
+  },
+})
