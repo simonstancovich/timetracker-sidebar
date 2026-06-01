@@ -1,4 +1,34 @@
+import type { CurrentUser } from './lib/useCurrentUser'
+import type { Todo } from './lib/todos'
+import type { PendingEntry } from './lib/pendingEntries'
+import type { AchStats } from './lib/achievements'
+import type { StoredLogForm } from './lib/useLogForm'
+
 declare global {
+  interface StoreSchema {
+    mode: 'light' | 'dark'
+    lang: 'en' | 'sv'
+    pinned: boolean
+    currentUser: CurrentUser
+    intro_seen: boolean
+    xp: number
+    unlocked: string[]
+    streak: number
+    lastLoggedDate: string
+    lastCelebratedDate: string
+    achStats: AchStats
+    simonMode: boolean
+    todos: Todo[]
+    pendingEntries: PendingEntry[]
+    failedEntries: PendingEntry[]
+    logForm: StoredLogForm
+  }
+
+  interface ApiCallResult<T> {
+    data?: T
+    error?: string
+  }
+
   interface ElectronAPI {
     checkAuth: () => Promise<boolean>
     ping: () => Promise<{ reachable: boolean }>
@@ -8,9 +38,18 @@ declare global {
     onAuthSuccess: (cb: () => void) => () => void
     onSignedOut: (cb: () => void) => () => void
     onSessionLost: (cb: () => void) => () => void
-    apiCall: (params: Record<string, string>, body: Record<string, string> | null) => Promise<{ data?: any; error?: string }>
-    storeGet: (key: string) => Promise<any>
-    storeSet: (key: string, value: any) => Promise<void>
+    apiCall: <T = unknown>(
+      params: Record<string, string>,
+      body: Record<string, string> | null,
+    ) => Promise<ApiCallResult<T>>
+    storeGet: {
+      <K extends keyof StoreSchema>(key: K): Promise<StoreSchema[K] | undefined>
+      (key: string): Promise<unknown>
+    }
+    storeSet: {
+      <K extends keyof StoreSchema>(key: K, value: StoreSchema[K]): Promise<void>
+      (key: string, value: unknown): Promise<void>
+    }
     setSize: (size: 'full' | 'top') => Promise<void>
     onForcedSize: (cb: (size: 'full' | 'top') => void) => () => void
     setBlurCollapseDisabled: (disabled: boolean) => Promise<void>
