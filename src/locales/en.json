@@ -231,7 +231,10 @@
     "confirmSignOut": "Are you sure you want to sign out?",
     "showIntro": "Show intro",
     "pinSidebar": "Pin sidebar open (disable auto-collapse)",
-    "unpinSidebar": "Sidebar pinned — click to allow auto-collapse"
+    "unpinSidebar": "Sidebar pinned — click to allow auto-collapse",
+    "theme": "Theme",
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode"
   },
   "login": {
     "pitch": "Sign in with your DevCore account to start tracking time.",
