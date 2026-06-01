@@ -1,21 +1,20 @@
-import type { ReactNode } from "react";
-import { vars } from "../theme";
+import type { ReactNode } from 'react'
+import { cx } from '../lib/cx'
+import * as prim from '../primitives'
+import * as s from './AppLayout.css'
 
 interface Props {
-  themeClass: string;
-  mode: "light" | "dark";
-  topLeftCorner?: ReactNode;
-  header: ReactNode;
-  banners?: ReactNode;
-  footer: ReactNode;
-  overlays?: ReactNode;
-  modeOverlay?: ReactNode;
-  children: ReactNode;
+  themeClass: string
+  mode: 'light' | 'dark'
+  topLeftCorner?: ReactNode
+  header: ReactNode
+  banners?: ReactNode
+  footer: ReactNode
+  overlays?: ReactNode
+  modeOverlay?: ReactNode
+  children: ReactNode
 }
 
-// Structural chrome for the running app: a flex-column with header + banners
-// + scrolling main + footer, plus an overlay slot for toasts/modals and an
-// outer-sibling slot for the cross-mode transition overlay.
 export function AppLayout({
   themeClass,
   mode,
@@ -29,29 +28,27 @@ export function AppLayout({
 }: Props) {
   return (
     <>
-      <div
+      <prim.Stack
         key="mode-full"
-        className={`mode-root ${themeClass} ${mode === "dark" ? "app-dark-glow" : ""}`}
-        style={{
-          height: "100vh",
-          background: mode === "dark" ? undefined : vars.background.page,
-          fontFamily:
-            "-apple-system,'Segoe UI Variable','Segoe UI',system-ui,sans-serif",
-          color: vars.typography.primary,
-          position: "relative",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}
+        position="relative"
+        viewportHeight
+        overflowY="hidden"
+        className={cx(
+          s.root,
+          s.modeVariant[mode],
+          themeClass,
+          'mode-root',
+          mode === 'dark' && 'app-dark-glow',
+        )}
       >
         {topLeftCorner}
         {header}
         {banners}
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>{children}</div>
+        <prim.Stack flex1 minHeight0 overflowY="auto">{children}</prim.Stack>
         {footer}
         {overlays}
-      </div>
+      </prim.Stack>
       {modeOverlay}
     </>
-  );
+  )
 }
