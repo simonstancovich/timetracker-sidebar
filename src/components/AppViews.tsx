@@ -142,7 +142,7 @@ interface Props {
   jumpHistoryToCurrent: () => void;
   selectedDate: Date;
   setSelectedDate: Dispatch<SetStateAction<Date>>;
-  setEditingDate: Dispatch<SetStateAction<Date | null>>;
+  openForNew: (date: Date) => void;
   // UI
   setTab: (t: HeaderTab) => void;
   setTD: Dispatch<SetStateAction<string>>;
@@ -177,7 +177,12 @@ export function AppViews(p: Props) {
   };
   const onBackfillDay = (d: Date) => {
     const [y, mo, da] = [d.getFullYear(), d.getMonth(), d.getDate()];
-    p.setEditingDate(new Date(y, mo, da));
+    p.openForNew(new Date(y, mo, da));
+    p.setTab("timer");
+    p.setLogOpen(true);
+  };
+  const onLogPastToday = () => {
+    p.openForNew(new Date());
     p.setTab("timer");
     p.setLogOpen(true);
   };
@@ -200,7 +205,7 @@ export function AppViews(p: Props) {
           p.selectedDate.getMonth(),
           p.selectedDate.getDate(),
         ];
-        p.setEditingDate(new Date(y, mo, da));
+        p.openForNew(new Date(y, mo, da));
         p.setLogOpen(true);
       }}
     />
@@ -261,7 +266,7 @@ export function AppViews(p: Props) {
           todoTrackedH={p.todoTrackedH}
           setTab={p.setTab}
           setTD={p.setTD}
-          setLogOpen={p.setLogOpen}
+          onLogPastToday={onLogPastToday}
           startTodo={p.startTodo}
           editTodo={p.editTodo}
           editEntry={p.editEntry}
