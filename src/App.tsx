@@ -8,16 +8,17 @@ import {
   useTranslation,
   setLang as setI18nLang,
 } from "./lib/i18n";
-import { isTestMode } from "./lib/testMode";
+import { isTestMode, testModeOverrideMode } from "./lib/testMode";
 
 type WindowSize = "full" | "top";
 
 const TEST_MODE = isTestMode();
+const TEST_MODE_INITIAL = testModeOverrideMode();
 
 export default function App() {
   const { t } = useTranslation();
   const [authed, setAuthed] = useState<boolean | null>(TEST_MODE ? true : null);
-  const [mode, setMode] = useState<"light" | "dark">("light");
+  const [mode, setMode] = useState<"light" | "dark">(TEST_MODE_INITIAL ?? "light");
   const [lang, setLang] = useState<Lang>("en");
   const [pinned, setPinned] = useState(false);
   const [size, setWindowSize] = useState<WindowSize>("full");

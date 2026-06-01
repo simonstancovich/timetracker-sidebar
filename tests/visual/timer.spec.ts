@@ -1,25 +1,25 @@
 import { test, expect } from '@playwright/test'
 import { launchApp, skipTourIfPresent } from './harness'
 
-test('TodayView populated, light mode', async () => {
+test('TimerView idle, light mode', async () => {
   const { win, cleanup } = await launchApp({ mockApi: true, mode: 'light' })
   try {
     await skipTourIfPresent(win)
-    await win.getByText('Wireframes for homepage').waitFor({ timeout: 15_000 })
+    await win.getByRole('tab', { name: 'Timer' }).click()
     await win.waitForTimeout(1000)
-    await expect(win).toHaveScreenshot('today-light-populated.png', { fullPage: true })
+    await expect(win).toHaveScreenshot('timer-idle-light.png', { fullPage: true })
   } finally {
     await cleanup()
   }
 })
 
-test('TodayView populated, dark mode', async () => {
+test('TimerView idle, dark mode', async () => {
   const { win, cleanup } = await launchApp({ mockApi: true, mode: 'dark' })
   try {
     await skipTourIfPresent(win)
-    await win.getByText('Wireframes for homepage').waitFor({ timeout: 15_000 })
+    await win.getByRole('tab', { name: 'Timer' }).click()
     await win.waitForTimeout(1000)
-    await expect(win).toHaveScreenshot('today-dark-populated.png', { fullPage: true })
+    await expect(win).toHaveScreenshot('timer-idle-dark.png', { fullPage: true })
   } finally {
     await cleanup()
   }

@@ -7,6 +7,10 @@ const subscribe = (channel, mapArgs) => (cb) => {
 }
 
 contextBridge.exposeInMainWorld('__PLAYWRIGHT_TEST__', process.env.PLAYWRIGHT_MOCK_API === '1')
+contextBridge.exposeInMainWorld(
+  '__PLAYWRIGHT_MODE__',
+  process.env.PLAYWRIGHT_MODE === 'dark' ? 'dark' : process.env.PLAYWRIGHT_MODE === 'light' ? 'light' : null,
+)
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Auth
