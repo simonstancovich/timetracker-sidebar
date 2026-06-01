@@ -1,8 +1,6 @@
 import { formatLocalDate } from "./date";
 import { getHolidays, isWorkingDay } from "./swedishHolidays";
 
-export const HOURS_PER_WORKDAY = 8;
-
 // ISO date strings (YYYY-MM-DD) of the working days in [fromISO, toISO],
 // skipping weekends and Swedish holidays. Used to fan an absence report out
 // into one full-day entry per working day. Empty for an invalid/reversed range.
