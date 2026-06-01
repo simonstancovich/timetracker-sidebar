@@ -38,12 +38,8 @@ interface Props extends Omit<HTMLAttributes<HTMLElement>, 'style' | 'children'> 
   left?: StackPadding
   fullWidth?: boolean
   fullHeight?: boolean
-  viewportHeight?: boolean
   noShrink?: boolean
-  flex1?: boolean
   minWidth0?: boolean
-  minHeight0?: boolean
-  overflowY?: keyof typeof s.overflowY
   wrap?: boolean
   as?: StackTag
   children: ReactNode
@@ -76,12 +72,8 @@ export const Stack = forwardRef<HTMLElement, Props>(function Stack(
     left,
     fullWidth = false,
     fullHeight = false,
-    viewportHeight = false,
     noShrink = false,
-    flex1 = false,
     minWidth0 = false,
-    minHeight0 = false,
-    overflowY,
     wrap = false,
     as: Tag = 'div',
     className,
@@ -117,12 +109,8 @@ export const Stack = forwardRef<HTMLElement, Props>(function Stack(
     left && s.left[left],
     fullWidth && s.fullWidth,
     fullHeight && s.fullHeight,
-    viewportHeight && s.viewportHeight,
     noShrink && s.noShrink,
-    flex1 && s.flex1,
     minWidth0 && s.minWidth0,
-    minHeight0 && s.minHeight0,
-    overflowY && s.overflowY[overflowY],
     wrap && s.wrap,
     className,
   )

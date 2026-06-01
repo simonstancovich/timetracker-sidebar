@@ -90,21 +90,12 @@ export const left = styleVariants(spacing, (v) => ({ left: v }));
 
 export const fullWidth = style({ width: "100%" });
 export const fullHeight = style({ minHeight: "100vh" });
-export const viewportHeight = style({ height: "100vh" });
 
 export const noShrink = style({ flexShrink: 0 });
-export const flex1 = style({ flex: 1 });
 
 export const wrap = style({ flexWrap: "wrap" });
 
 export const minWidth0 = style({ minWidth: 0 });
-export const minHeight0 = style({ minHeight: 0 });
-
-export const overflowY = styleVariants({
-  visible: { overflowY: "visible" },
-  auto: { overflowY: "auto" },
-  hidden: { overflowY: "hidden" },
-});
 
 export const rowGap = styleVariants(spacing, (v) => ({ rowGap: v }));
 export const columnGap = styleVariants(spacing, (v) => ({ columnGap: v }));

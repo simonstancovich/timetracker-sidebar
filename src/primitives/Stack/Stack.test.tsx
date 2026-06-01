@@ -161,20 +161,4 @@ describe('<Stack />', () => {
     expect(cls).toContain(s.rowGap.sm)
     expect(cls).toContain(s.columnGap.lg)
   })
-
-  it('applies viewportHeight, flex1, minHeight0 and overflowY classes', () => {
-    const { container } = render(
-      <Stack viewportHeight flex1 minHeight0 overflowY="auto"><span /></Stack>,
-    )
-    const cls = (container.firstChild as HTMLElement).className
-    expect(cls).toContain(s.viewportHeight)
-    expect(cls).toContain(s.flex1)
-    expect(cls).toContain(s.minHeight0)
-    expect(cls).toContain(s.overflowY.auto)
-  })
-
-  it.each(['visible', 'auto', 'hidden'] as const)('applies overflowY=%s', (v) => {
-    const { container } = render(<Stack overflowY={v}><span /></Stack>)
-    expect((container.firstChild as HTMLElement).className).toContain(s.overflowY[v])
-  })
 })
