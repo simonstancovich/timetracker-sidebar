@@ -241,7 +241,8 @@ export function AppShell({
     fD, setFD,
     fNote, setFNote,
     fInv, setFInv,
-    openForEdit,
+    setEditingId,
+    setEditingDate,
     hydrate: hydrateLogForm,
   } = logFormApi;
   const [confirmation, setConfirmation] =
@@ -364,12 +365,13 @@ export function AppShell({
   };
 
   const editEntry = async (entry: TimeEntry) => {
+    setEditingId(entry.id);
     const [y, mo, d] = (entry.task_date || "").split("-").map(Number);
-    const date =
+    setEditingDate(
       Number.isFinite(y) && Number.isFinite(mo) && Number.isFinite(d)
         ? new Date(y, mo - 1, d)
-        : new Date();
-    openForEdit(entry.id, date);
+        : null,
+    );
     setFCo(entry._company_id);
     await ensureProjects(entry._company_id);
     setFPr(entry._project_id);
@@ -624,9 +626,9 @@ export function AppShell({
     hours: number,
     desc: string,
     inv: boolean,
-    internalNote: string,
-    entryDate: Date,
-    existingId: string | null,
+    internalNote = "",
+    entryDate: Date = selectedDate,
+    existingId: string | null = null,
   ) => {
     if (!currentUser) return;
     const co = companies.find((c) => c.id === cid);
@@ -1018,6 +1020,8 @@ export function AppShell({
           saveNewEntry={saveNewEntry}
           addFloat={addFloat}
           switchTaskGuarded={switchTaskGuarded}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
           onClose={() => setLogOpen(false)}
         />
       ) : (
@@ -1092,7 +1096,7 @@ export function AppShell({
           jumpHistoryToCurrent={jumpHistoryToCurrent}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
-          openForNew={logFormApi.openForNew}
+          setEditingDate={setEditingDate}
           setTab={setTab}
           setTD={setTD}
           setLogOpen={setLogOpen}

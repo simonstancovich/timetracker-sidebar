@@ -68,7 +68,7 @@ interface Props {
   // Callbacks
   setTab: (tab: HeaderTab) => void;
   setTD: Dispatch<SetStateAction<string>>;
-  onLogPastToday: () => void;
+  setLogOpen: Dispatch<SetStateAction<boolean>>;
   startTodo: (todo: Todo) => void;
   editTodo: (todo: Todo) => void;
   editEntry: (entry: TimeEntry) => void;
@@ -110,7 +110,7 @@ export function TodayView({
   todoTrackedH,
   setTab,
   setTD,
-  onLogPastToday,
+  setLogOpen,
   startTodo,
   editTodo,
   editEntry,
@@ -873,7 +873,10 @@ export function TodayView({
         >
           <button
             type="button"
-            onClick={onLogPastToday}
+            onClick={() => {
+              setTab("timer");
+              setLogOpen(true);
+            }}
             aria-label={t("timer.logPastTime")}
             style={{
               display: "inline-flex",

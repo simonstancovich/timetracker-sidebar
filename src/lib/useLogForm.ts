@@ -10,6 +10,9 @@ export interface StoredLogForm {
   fInv?: boolean;
 }
 
+// Cohesive state for the manual time-entry ("log") form — the fields plus the
+// derived hours-input text and the entry being edited. Shared by the LogView
+// and by App's edit-entry / reset flows.
 export function useLogForm() {
   const [fCo, setFCo] = useState("");
   const [fPr, setFPr] = useState("");
@@ -19,15 +22,16 @@ export function useLogForm() {
   const [fInv, setFInv] = useState(true);
   const [fHInput, setFHInput] = useState("1:00");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formDate, setFormDate] = useState<Date>(() => new Date());
+  const [editingDate, setEditingDate] = useState<Date | null>(null);
 
+  // Keep the hours text in sync with the numeric value.
   useEffect(() => {
     setFHInput(fmtHours(fH));
   }, [fH]);
 
   const reset = useCallback(() => {
     setEditingId(null);
-    setFormDate(new Date());
+    setEditingDate(null);
     setFCo("");
     setFPr("");
     setFH(1);
@@ -36,16 +40,8 @@ export function useLogForm() {
     setFInv(true);
   }, []);
 
-  const openForNew = useCallback((date: Date) => {
-    setEditingId(null);
-    setFormDate(date);
-  }, []);
-
-  const openForEdit = useCallback((id: string, date: Date) => {
-    setEditingId(id);
-    setFormDate(date);
-  }, []);
-
+  // Populate the fields from a persisted draft (the hours text re-syncs via the
+  // effect above).
   const hydrate = useCallback((f: StoredLogForm) => {
     setFCo(f.fCo || "");
     setFPr(f.fPr || "");
@@ -64,9 +60,7 @@ export function useLogForm() {
     fInv, setFInv,
     fHInput, setFHInput,
     editingId, setEditingId,
-    formDate, setFormDate,
-    openForNew,
-    openForEdit,
+    editingDate, setEditingDate,
     reset,
     hydrate,
   };

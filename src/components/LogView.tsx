@@ -37,9 +37,13 @@ interface Props {
   ) => unknown;
   addFloat: (msg: string, color: string) => void;
   switchTaskGuarded: (cid: string, prid: string, desc: string) => void;
+  selectedDate: Date;
+  setSelectedDate: (d: Date) => void;
   onClose: () => void;
 }
 
+// The manual time-entry / "log past time" form: date, recent-task shortcuts,
+// client/project pickers, hours stepper, description, invoice toggle, save.
 export function LogView({
   form,
   entries,
@@ -47,6 +51,8 @@ export function LogView({
   saveNewEntry,
   addFloat,
   switchTaskGuarded,
+  selectedDate,
+  setSelectedDate,
   onClose,
 }: Props) {
   const { t, i18n } = useTranslation();
@@ -55,7 +61,7 @@ export function LogView({
 
   const {
     fCo, setFCo, fPr, setFPr, fH, setFH, fD, setFD, fNote, setFNote,
-    fInv, setFInv, fHInput, setFHInput, editingId, formDate, setFormDate, reset,
+    fInv, setFInv, fHInput, setFHInput, editingId, editingDate, setEditingDate, reset,
   } = form;
 
   const isInternalCompany = (companyId: string) =>
@@ -73,6 +79,7 @@ export function LogView({
   const prList = companies.cache[fCo] || [];
   const prObj = prList.find((p) => p.id === fPr);
   const co = companies.list.find((c) => c.id === fCo);
+  const pickedDate = editingDate ?? selectedDate;
   const save = async () => {
     if (!fCo || !fPr || !fD.trim()) {
       addFloat(t("form.fillFirst"), vars.typography.error);
@@ -82,9 +89,11 @@ export function LogView({
       addFloat(t("form.saveFailed", { err: "missing client/project" }), vars.typography.error);
       return;
     }
+    // Commit any pending input by parsing fHInput so a user who clicks Save
+    // without blurring the hours input still gets their typed value saved.
     const parsed = parseHoursInput(fHInput);
     const liveHours = parsed == null ? fH : Math.max(0, Math.min(24, parsed));
-    await saveNewEntry(fCo, fPr, liveHours, fD, fInv, fNote.trim(), formDate, editingId);
+    await saveNewEntry(fCo, fPr, liveHours, fD, fInv, fNote.trim(), pickedDate, editingId);
     reset();
     onClose();
   };
@@ -131,7 +140,7 @@ export function LogView({
         >
           {editingId
             ? t("form.editingEntryOn", {
-                date: formDate.toLocaleDateString(locale, {
+                date: pickedDate.toLocaleDateString(locale, {
                   weekday: "short",
                   day: "numeric",
                   month: "short",
@@ -156,11 +165,13 @@ export function LogView({
         </div>
         <input
           type="date"
-          value={formatLocalDate(formDate)}
+          value={formatLocalDate(pickedDate)}
           onChange={(e) => {
             const [y, m, d] = e.target.value.split("-").map(Number);
             if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return;
-            setFormDate(new Date(y, m - 1, d));
+            const next = new Date(y, m - 1, d);
+            if (editingId) setEditingDate(next);
+            else setSelectedDate(next);
           }}
           style={{
             width: "100%",
