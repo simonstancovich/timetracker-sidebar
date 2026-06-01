@@ -4,7 +4,6 @@ import type { PendingEntry } from "../lib/pendingEntries";
 import type { Todo, TodoDraft, TodoFormState } from "../lib/todos";
 import { todosInPlay, todosUpcoming } from "../lib/todos";
 import type { Lang } from "../lib/i18n";
-import type { Ach } from "../lib/achievements";
 import type { MonthClosureCache } from "../lib/useMonthClosure";
 import type { CompanyGroup } from "../lib/useTodayDerivations";
 import type { HeaderTab } from "./AppHeader";
@@ -163,13 +162,11 @@ interface Props {
   xpCoach: string;
   done: boolean;
   monthClosure: MonthClosureCache;
-  ach: Ach | null;
   addFloat: (msg: string, col: string) => void;
   openAbsence: () => Promise<void> | void;
 }
 
 export function AppViews(p: Props) {
-  void p.ach; // not currently consumed; kept for future router slots
   const firstName = p.username.trim().split(/\s+/)[0];
   const pickDayForView = (d: Date) => {
     p.setSelectedDate(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -186,6 +183,15 @@ export function AppViews(p: Props) {
     p.setTab("timer");
     p.setLogOpen(true);
   };
+  const onLogPastSelectedDay = () => {
+    const [y, mo, da] = [
+      p.selectedDate.getFullYear(),
+      p.selectedDate.getMonth(),
+      p.selectedDate.getDate(),
+    ];
+    p.openForNew(new Date(y, mo, da));
+    p.setLogOpen(true);
+  };
 
   const dayView = (
     <DayView
@@ -199,15 +205,7 @@ export function AppViews(p: Props) {
       onEditEntry={p.editEntry}
       onSetPendingDelete={p.setPendingDeleteId}
       onDeleteEntry={p.delEntry}
-      onLogPastTime={() => {
-        const [y, mo, da] = [
-          p.selectedDate.getFullYear(),
-          p.selectedDate.getMonth(),
-          p.selectedDate.getDate(),
-        ];
-        p.openForNew(new Date(y, mo, da));
-        p.setLogOpen(true);
-      }}
+      onLogPastTime={onLogPastSelectedDay}
     />
   );
   const weekView = (

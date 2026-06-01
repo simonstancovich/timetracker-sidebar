@@ -1111,7 +1111,6 @@ export function AppShell({
           xpCoach={xpCoach}
           done={done}
           monthClosure={monthClosure}
-          ach={ach}
           addFloat={addFloat}
           openAbsence={absence.open}
         />
