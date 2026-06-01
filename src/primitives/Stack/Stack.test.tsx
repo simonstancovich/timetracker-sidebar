@@ -177,4 +177,9 @@ describe('<Stack />', () => {
     const { container } = render(<Stack overflowY={v}><span /></Stack>)
     expect((container.firstChild as HTMLElement).className).toContain(s.overflowY[v])
   })
+
+  it('applies inline (display:inline-flex) when inline is true', () => {
+    const { container } = render(<Stack inline><span /></Stack>)
+    expect((container.firstChild as HTMLElement).className).toContain(s.inline)
+  })
 })

@@ -69,7 +69,13 @@
     "timerIdle": "Spårar inget"
   },
   "top": {
-    "dblClickToOpen": "Dubbelklicka för att öppna hela sidopanelen"
+    "dblClickToOpen": "Dubbelklicka för att öppna hela sidopanelen",
+    "pause": "Pausa",
+    "start": "Starta",
+    "switchToDark": "Byt till mörkt",
+    "switchToLight": "Byt till ljust",
+    "openSidebar": "Öppna sidomenyn",
+    "open": "Öppna"
   },
   "greet": {
     "morning": "God morgon",

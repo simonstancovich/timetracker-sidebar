@@ -45,6 +45,7 @@ interface Props extends Omit<HTMLAttributes<HTMLElement>, 'style' | 'children'> 
   minHeight0?: boolean
   overflowY?: keyof typeof s.overflowY
   wrap?: boolean
+  inline?: boolean
   as?: StackTag
   children: ReactNode
 }
@@ -83,6 +84,7 @@ export const Stack = forwardRef<HTMLElement, Props>(function Stack(
     minHeight0 = false,
     overflowY,
     wrap = false,
+    inline = false,
     as: Tag = 'div',
     className,
     children,
@@ -124,6 +126,7 @@ export const Stack = forwardRef<HTMLElement, Props>(function Stack(
     minHeight0 && s.minHeight0,
     overflowY && s.overflowY[overflowY],
     wrap && s.wrap,
+    inline && s.inline,
     className,
   )
   return (

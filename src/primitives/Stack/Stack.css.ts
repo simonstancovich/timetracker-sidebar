@@ -3,6 +3,8 @@ import { spacing, radii, vars } from "../../theme";
 
 export const root = style({ display: "flex" });
 
+export const inline = style({ display: "inline-flex" });
+
 export const direction = styleVariants({
   row: { flexDirection: "row" },
   column: { flexDirection: "column" },

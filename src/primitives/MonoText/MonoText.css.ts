@@ -7,6 +7,7 @@ export const root = style({
 })
 
 export const size = styleVariants({
+  "3xs": { fontSize: fontSize["3xs"] },
   "2xs": { fontSize: fontSize["2xs"] },
   xs: { fontSize: fontSize.xs },
   sm: { fontSize: fontSize.sm },

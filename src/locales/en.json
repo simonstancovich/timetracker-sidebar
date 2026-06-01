@@ -69,7 +69,13 @@
     "timerIdle": "Not tracking"
   },
   "top": {
-    "dblClickToOpen": "Double-click to open full sidebar"
+    "dblClickToOpen": "Double-click to open full sidebar",
+    "pause": "Pause",
+    "start": "Start",
+    "switchToDark": "Switch to dark",
+    "switchToLight": "Switch to light",
+    "openSidebar": "Open sidebar",
+    "open": "Open"
   },
   "greet": {
     "morning": "Good morning",

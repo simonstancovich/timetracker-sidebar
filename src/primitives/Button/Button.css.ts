@@ -58,9 +58,20 @@ export const variant = styleVariants({
     boxShadow: "none",
     fontWeight: fontWeight.normal,
   },
+  accent: {
+    background: vars.typography.accent,
+    color: vars.typography.onAccent,
+    border: "none",
+  },
 });
 
 export const size = styleVariants({
+  "2xs": {
+    height: 22,
+    padding: `0 ${spacing.md}px`,
+    fontSize: fontSize["2xs"],
+    borderRadius: radii.xs,
+  },
   xs: {
     padding: `${spacing.xs}px ${spacing.sm}px`,
     fontSize: fontSize.xs,

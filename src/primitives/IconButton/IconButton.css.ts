@@ -42,6 +42,16 @@ export const variant = styleVariants({
     border: 'none',
     color: vars.typography.tertiary,
   },
+  outline: {
+    background: 'transparent',
+    border: `1px solid ${vars.border.soft}`,
+    color: vars.typography.secondary,
+  },
+  solid: {
+    background: vars.background.button,
+    border: 'none',
+    color: vars.typography.onAccent,
+  },
   ring: {
     background: 'transparent',
     border: 'none',
@@ -54,6 +64,12 @@ export const variant = styleVariants({
 })
 
 export const size = styleVariants({
+  xs: {
+    width: 14,
+    height: 14,
+    borderRadius: radii.xs,
+    padding: 0,
+  },
   sm: {
     width: sizes.sm,
     height: sizes.sm,
@@ -70,4 +86,9 @@ export const size = styleVariants({
     padding: 0,
     borderRadius: radii.circle,
   },
+})
+
+export const shape = styleVariants({
+  default: {},
+  circle: { borderRadius: '50%' },
 })

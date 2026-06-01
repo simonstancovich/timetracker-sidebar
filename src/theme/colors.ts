@@ -80,6 +80,10 @@ export const colors = {
     greenDark: "rgba(111,212,160,0.07)",
     warningLight: "rgba(245,158,11,0.08)",
     warningDark: "rgba(245,158,11,0.08)",
+    urgentLight: "#ff7a00",
+    urgentDark: "#ff7a00",
+    dangerLight: "#ff1f1f",
+    dangerDark: "#ff1f1f",
     skeletonLight: "rgba(140,140,160,0.18)",
     skeletonDark: "rgba(140,140,160,0.18)",
     scrimLight: "rgba(0,0,0,0.6)",
@@ -165,6 +169,8 @@ type BgName =
   | "pinkPaper"
   | "green"
   | "warning"
+  | "urgent"
+  | "danger"
   | "skeleton"
   | "scrim";
 
@@ -182,6 +188,8 @@ const BACKGROUND_MAP: Record<
   pinkPaper: { light: "pinkPaperLight", dark: "pinkPaperDark" },
   green: { light: "greenLight", dark: "greenDark" },
   warning: { light: "warningLight", dark: "warningDark" },
+  urgent: { light: "urgentLight", dark: "urgentDark" },
+  danger: { light: "dangerLight", dark: "dangerDark" },
   skeleton: { light: "skeletonLight", dark: "skeletonDark" },
   scrim: { light: "scrimLight", dark: "scrimDark" },
 };
