@@ -21,6 +21,7 @@ autoUpdater.on("update-available", (info) => {
 });
 autoUpdater.on("update-not-available", (info) => {
   log.info("[updater] no update", info.version);
+  send("update-status", { state: "not-available", version: info.version });
 });
 autoUpdater.on("download-progress", (p) => {
   log.info(`[updater] downloading ${Math.round(p.percent)}%`);
@@ -48,7 +49,7 @@ function init({ getMainWindow, isPackaged }) {
     autoUpdater.checkForUpdates().catch((err) => {
       log.warn("[updater] periodic check failed", err);
     });
-  }, 4 * 60 * 60 * 1000);
+  }, 15 * 60 * 1000);
 }
 
 function checkNow() {

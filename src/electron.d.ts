@@ -73,6 +73,7 @@ declare global {
 
   type UpdateStatus =
     | { state: 'available'; version: string }
+    | { state: 'not-available'; version: string }
     | { state: 'downloading'; percent: number }
     | { state: 'ready'; version: string }
     | { state: 'error'; error: string }

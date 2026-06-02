@@ -76,6 +76,8 @@ export const helpBtn = style({
 
 export const sendLogBtn = style(utilityBtnBase)
 
+export const checkUpdateBtn = style(utilityBtnBase)
+
 export const signOutBtn = style({
   display: 'flex',
   alignItems: 'center',

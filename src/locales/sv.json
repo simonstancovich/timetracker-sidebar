@@ -243,13 +243,17 @@
     "darkMode": "Mörkt läge",
     "sendLog": "Skicka senaste 2 min av loggen till support",
     "sendLogDone": "Logg sparad & kopierad — e-post öppnad",
-    "sendLogFailed": "Skicka logg misslyckades: {{err}}"
+    "sendLogFailed": "Skicka logg misslyckades: {{err}}",
+    "checkForUpdates": "Sök efter uppdateringar"
   },
   "update": {
     "available": "Uppdatering {{v}} tillgänglig — laddas ner i bakgrunden",
     "ready": "Uppdatering {{v}} klar",
     "restartPrompt": "Uppdatering {{v}} är klar. Starta om nu för att installera?",
-    "failed": "Uppdatering misslyckades: {{err}}"
+    "failed": "Uppdatering misslyckades: {{err}}",
+    "checking": "Söker efter uppdateringar…",
+    "upToDate": "Du har den senaste versionen",
+    "checkTimeout": "Uppdateringssökningen tog för lång tid"
   },
   "login": {
     "pitch": "Logga in med ditt DevCore-konto för att börja spåra tid.",

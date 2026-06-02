@@ -243,13 +243,17 @@
     "darkMode": "Dark mode",
     "sendLog": "Send last 2 minutes of log to support",
     "sendLogDone": "Log saved & copied — email opened",
-    "sendLogFailed": "Send log failed: {{err}}"
+    "sendLogFailed": "Send log failed: {{err}}",
+    "checkForUpdates": "Check for updates"
   },
   "update": {
     "available": "Update {{v}} available — downloading in background",
     "ready": "Update {{v}} ready",
     "restartPrompt": "Update {{v}} is ready. Restart now to install?",
-    "failed": "Update failed: {{err}}"
+    "failed": "Update failed: {{err}}",
+    "checking": "Checking for updates…",
+    "upToDate": "You're on the latest version",
+    "checkTimeout": "Update check timed out"
   },
   "login": {
     "pitch": "Sign in with your DevCore account to start tracking time.",
