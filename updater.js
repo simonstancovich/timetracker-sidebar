@@ -6,6 +6,7 @@ autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
 let mainWindowGetter = () => null;
+let initIsPackaged = false;
 
 function send(channel, payload) {
   const win = mainWindowGetter();
@@ -38,6 +39,7 @@ autoUpdater.on("error", (err) => {
 
 function init({ getMainWindow, isPackaged }) {
   mainWindowGetter = getMainWindow;
+  initIsPackaged = !!isPackaged;
   if (!isPackaged) {
     log.info("[updater] skipped in dev (app not packaged)");
     return;
@@ -53,6 +55,9 @@ function init({ getMainWindow, isPackaged }) {
 }
 
 function checkNow() {
+  if (!initIsPackaged) {
+    throw new Error("Updates are disabled in dev mode (app is not packaged)");
+  }
   return autoUpdater.checkForUpdates();
 }
 
