@@ -64,3 +64,4 @@ export { ProgressFill, type ProgressFillTone } from './ProgressFill/ProgressFill
 export { Marquee } from './Marquee/Marquee'
 export { Divider, type DividerTone } from './Divider/Divider'
 export { Badge, type BadgeTone } from './Badge/Badge'
+export { ConfettiPiece } from './ConfettiPiece/ConfettiPiece'

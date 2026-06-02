@@ -1,47 +1,59 @@
+import { useMemo } from "react";
+import * as prim from "../primitives";
 import { vars } from "../theme";
+import * as s from "./ConfettiBurst.css";
 
 interface Props {
   show: boolean;
 }
 
+interface Piece {
+  id: number;
+  color: string;
+  targetX: number;
+  targetY: number;
+  rotation: number;
+  delayMs: number;
+}
+
+const PIECE_COUNT = 22;
+
+function buildPieces(): Piece[] {
+  const palette = [
+    vars.typography.accent,
+    vars.typography.pink,
+    vars.typography.green,
+    "#e8c060",
+  ];
+  return Array.from({ length: PIECE_COUNT }, (_, i) => {
+    const angle = (i / PIECE_COUNT) * Math.PI * 2;
+    const dist = 90 + Math.random() * 90;
+    return {
+      id: i,
+      color: palette[i % palette.length] as string,
+      targetX: Math.cos(angle) * dist,
+      targetY: Math.sin(angle) * dist - 30,
+      rotation: (Math.random() - 0.5) * 720,
+      delayMs: Math.random() * 120,
+    };
+  });
+}
+
 export function ConfettiBurst({ show }: Props) {
+  const pieces = useMemo(() => (show ? buildPieces() : []), [show]);
   if (!show) return null;
   return (
-    <div
-      className="confetti-burst"
-      aria-hidden
-      style={{ left: "50%", top: "30%" }}
-    >
-      {Array.from({ length: 22 }).map((_, i) => {
-        const angle = (i / 22) * Math.PI * 2;
-        const dist = 90 + Math.random() * 90;
-        const dx = Math.cos(angle) * dist;
-        const dy = Math.sin(angle) * dist - 30;
-        const rot = (Math.random() - 0.5) * 720;
-        const palette = [
-          vars.typography.accent,
-          vars.typography.pink,
-          vars.typography.green,
-          "#e8c060",
-        ];
-        const color = palette[i % palette.length];
-        const delay = Math.random() * 120;
-        return (
-          <span
-            key={i}
-            className="confetti-piece"
-            style={
-              {
-                background: color,
-                "--cx": `${dx}px`,
-                "--cy": `${dy}px`,
-                "--cr": `${rot}deg`,
-                animationDelay: `${delay}ms`,
-              } as { [k: string]: string }
-            }
-          />
-        );
-      })}
-    </div>
+    <prim.Stack position="absolute" className={s.anchor} aria-hidden>
+      {pieces.map((p) => (
+        <prim.ConfettiPiece
+          key={p.id}
+          color={p.color}
+          targetX={p.targetX}
+          targetY={p.targetY}
+          rotation={p.rotation}
+          delayMs={p.delayMs}
+        />
+      ))}
+    </prim.Stack>
   );
 }

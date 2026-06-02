@@ -251,30 +251,6 @@ input, textarea, select {
 }
 .goal-bloom { display: inline-block; animation: goalBloom 1.6s cubic-bezier(.34,1.56,.64,1); transform-origin: center; }
 
-@keyframes confettiBurst {
-  0% { transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; }
-  60% { opacity: 1; }
-  100% { transform: translate(var(--cx,0), var(--cy,0)) rotate(var(--cr,180deg)) scale(0.6); opacity: 0; }
-}
-.confetti-burst {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  pointer-events: none;
-  z-index: 102;
-  width: 0;
-  height: 0;
-}
-.confetti-piece {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 6px;
-  height: 9px;
-  border-radius: 1px;
-  animation: confettiBurst 1.8s cubic-bezier(.22,1,.36,1) forwards;
-  transform-origin: center;
-}
 @keyframes goalToastIn {
   0% { opacity: 0; transform: translateY(24px) scale(.94); }
   60% { opacity: 1; transform: translateY(-4px) scale(1.02); }

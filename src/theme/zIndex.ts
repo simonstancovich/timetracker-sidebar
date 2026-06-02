@@ -3,6 +3,7 @@ export const zIndex = {
   dropdown: 50,
   pinnedFloat: 99, // floating XP / save toasts
   pinnedFloatTop: 100, // achievement unlock toast
+  confetti: 102,
   modalBackdrop: 200,
   modal: 201,
   introMask: 499, // intro overlay's cutout mask
