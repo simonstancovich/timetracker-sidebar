@@ -25,6 +25,8 @@ interface Props {
   onLogPastTime: () => void;
 }
 
+const CHART_KEYS = ["0", "1", "2", "3"] as const;
+
 // The selected-day detail: hero total, per-client entry groups with inline
 // edit/delete, day total, and a "log past time" action.
 export function DayView({
@@ -68,10 +70,8 @@ export function DayView({
   const dayDate = smartDate(selectedDate, lang, t);
   const goalReached = dayH >= goal;
   const heroSubtitle = goalReached
-    ? `Day complete · ${dayBillablePct}% billable`
-    : `${dayBillablePct}% billable · ${dayList.length} ${
-        dayList.length === 1 ? "entry" : "entries"
-      }`;
+    ? t("today.heroComplete", { pct: dayBillablePct })
+    : t("today.heroProgress", { pct: dayBillablePct, count: dayList.length });
   const totalTone = goalReached ? "goal" : "inProgress";
 
   return (
@@ -85,10 +85,11 @@ export function DayView({
       )}
 
       {dayList.length === 0 && dayEntriesLoading && (
-        <prim.Stack className={s.loadingWrap}>
+        <prim.Stack gap="sm" paddingY="xs">
           <prim.Skeleton className={s.skeletonTitle} />
-          <prim.Skeleton className={s.skeletonRow} />
-          <prim.Skeleton className={s.skeletonRow} />
+          {[0, 1].map((i) => (
+            <prim.Skeleton key={i} className={s.skeletonRow} />
+          ))}
         </prim.Stack>
       )}
       {dayList.length === 0 && !dayEntriesLoading && (
@@ -108,10 +109,16 @@ export function DayView({
           { cid: string; h: number; entries: TimeEntry[] },
         ][]
       ).map(([co, g], gi) => {
-        const idx = String(gi % 4) as "0" | "1" | "2" | "3";
+        const idx = CHART_KEYS[gi % CHART_KEYS.length]!;
         return (
-          <prim.Stack key={co}>
-            <prim.Stack className={s.groupHeader}>
+          <prim.Stack key={co} gap="sm">
+            <prim.Stack
+              direction="row"
+              justify="spaceBetween"
+              align="baseline"
+              position="relative"
+              paddingLeft="md"
+            >
               <prim.Stack
                 as="span"
                 inline
@@ -143,7 +150,13 @@ export function DayView({
       })}
 
       {dayList.length > 0 && (
-        <prim.Stack className={s.totalRow}>
+        <prim.Stack
+          direction="row"
+          justify="spaceBetween"
+          align="baseline"
+          paddingTop="md"
+          className={s.totalDivider}
+        >
           <prim.Text as="span" className={s.totalLabel}>
             {t("today.totalLabel")}
           </prim.Text>

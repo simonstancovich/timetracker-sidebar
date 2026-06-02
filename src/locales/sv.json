@@ -85,6 +85,9 @@
   },
   "today": {
     "dayDoneSubtitle": "Dagen klar · +{{extra}} bonus",
+    "heroComplete": "Dagen klar · {{pct}}% fakturerbart",
+    "heroProgress_one": "{{pct}}% fakturerbart · {{count}} post",
+    "heroProgress_other": "{{pct}}% fakturerbart · {{count}} poster",
     "toGoSubtitle": "av en 8-timmars dag · {{remaining}} kvar",
     "logTime": "Logga tid",
     "hoursLogged": "Loggat {{hours}}",

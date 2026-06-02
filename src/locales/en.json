@@ -85,6 +85,9 @@
   },
   "today": {
     "dayDoneSubtitle": "Day complete · +{{extra}} bonus",
+    "heroComplete": "Day complete · {{pct}}% billable",
+    "heroProgress_one": "{{pct}}% billable · {{count}} entry",
+    "heroProgress_other": "{{pct}}% billable · {{count}} entries",
     "toGoSubtitle": "of an 8-hour day · {{remaining}} to go",
     "logTime": "Log time",
     "hoursLogged": "{{hours}} logged",
