@@ -1,6 +1,6 @@
 {
   "name": "timetracker-sidebar",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "DevCore TimeTracker sidebar app",
   "main": "main.js",
   "scripts": {
