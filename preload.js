@@ -41,4 +41,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   graphSignOut: () => ipcRenderer.invoke('graph-sign-out'),
   graphMeetings: (opts) => ipcRenderer.invoke('graph-meetings', opts),
   onGraphDeviceCode: subscribe('graph-device-code', (code) => code),
+
+  // Log report (floating "Send log" button — opens mail client to author)
+  sendLogReport: (payload) => ipcRenderer.invoke('send-log-report', payload),
 })

@@ -74,6 +74,8 @@ export const helpBtn = style({
   fontWeight: fontWeight.bold,
 })
 
+export const sendLogBtn = style(utilityBtnBase)
+
 export const signOutBtn = style({
   display: 'flex',
   alignItems: 'center',

@@ -1,9 +1,14 @@
+import { useState } from 'react'
 import { useTranslation, type Lang } from '../lib/i18n'
 import { cx } from '../lib/cx'
+import { createLog } from '../lib/logger'
+import { vars } from '../theme'
 import { SunIcon } from '../icons/SunIcon'
 import { MoonIcon } from '../icons/MoonIcon'
 import { PinIcon } from '../icons/PinIcon'
 import * as s from './AppFooter.css'
+
+const log = createLog('AppFooter')
 
 interface Props {
   mode: 'light' | 'dark'
@@ -14,6 +19,7 @@ interface Props {
   setPinned: (next: (prev: boolean) => boolean) => void
   onShowIntro: () => void
   onSignOut: () => void
+  addFloat: (txt: string, col: string) => void
 }
 
 export function AppFooter({
@@ -25,8 +31,29 @@ export function AppFooter({
   setPinned,
   onShowIntro,
   onSignOut,
+  addFloat,
 }: Props) {
   const { t } = useTranslation()
+  const [sendingLog, setSendingLog] = useState(false)
+  const sendLog = async () => {
+    if (sendingLog) return
+    setSendingLog(true)
+    try {
+      const result = await window.electronAPI.sendLogReport()
+      log.info('sendLogReport result', result)
+      if (result && result.ok) {
+        addFloat(t('footer.sendLogDone'), vars.typography.green)
+      } else {
+        const err = (result && 'error' in result && result.error) || `unexpected response ${JSON.stringify(result)}`
+        addFloat(t('footer.sendLogFailed', { err }), vars.typography.error)
+      }
+    } catch (err) {
+      log.error('sendLogReport failed', { error: String(err) })
+      addFloat(t('footer.sendLogFailed', { err: String(err) }), vars.typography.error)
+    } finally {
+      setSendingLog(false)
+    }
+  }
   return (
     <div className={s.root}>
       <div data-tour="footer-theme" className={s.modeGroup} role="radiogroup" aria-label={t('footer.theme')}>
@@ -70,6 +97,29 @@ export function AppFooter({
         className={s.helpBtn}
       >
         ?
+      </button>
+      <button
+        type="button"
+        onClick={sendLog}
+        title={t('footer.sendLog')}
+        aria-label={t('footer.sendLog')}
+        disabled={sendingLog}
+        className={s.sendLogBtn}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M4 4h16v16H4z" />
+          <path d="M4 4l8 8 8-8" />
+        </svg>
       </button>
       <button onClick={onSignOut} title={t('footer.signOut')} className={s.signOutBtn}>
         {t('footer.signOut')}

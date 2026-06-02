@@ -2,9 +2,11 @@ import { formatLocalDate } from './lib/date'
 import { ApiError, classifyApiError } from './lib/apiError'
 import { mockCall } from './api.mock'
 import { isTestMode } from './lib/testMode'
+import { createLog } from './lib/logger'
 
 const api = window.electronAPI
 const TEST_MODE = isTestMode()
+const log = createLog('api')
 
 export type WireBoolIn = '0' | '1'
 export type WireBoolOut = 'true' | 'false'
@@ -133,6 +135,7 @@ async function call<T>(params: Record<string, string>, body?: Record<string, str
   if (TEST_MODE) return mockCall<T>(params, body)
   const result = await api.apiCall(params, body ?? null)
   if (result.error) {
+    log.warn(`${params.c}.${params.m} failed`, { error: result.error })
     throw new ApiError(classifyApiError(result.error), result.error)
   }
   return result.data as T

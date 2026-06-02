@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "../lib/i18n";
+import { useAppContext } from "../lib/AppContext";
 import type { Todo } from "../lib/todos";
 import { vars } from "../theme";
 import { MONO } from "../lib/fonts";
@@ -20,7 +21,6 @@ interface Props {
   weekView: ReactNode;
   monthView: ReactNode;
   // Simon-mode "upcoming to-dos" strip below the active panel.
-  simonMode: boolean;
   upcomingTodos: Todo[];
   activeTaskKey: string | null;
   startTodo: (todo: Todo) => void;
@@ -38,13 +38,13 @@ export function HistoryView({
   dayView,
   weekView,
   monthView,
-  simonMode,
   upcomingTodos,
   activeTaskKey,
   startTodo,
   editTodo,
 }: Props) {
   const { t } = useTranslation();
+  const { simonMode } = useAppContext();
   return (
     <Page
       title={t("page.history")}

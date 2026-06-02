@@ -9,11 +9,13 @@ import {
   setLang as setI18nLang,
 } from "./lib/i18n";
 import { isTestMode, testModeOverrideMode } from "./lib/testMode";
+import { createLog } from "./lib/logger";
 
 type WindowSize = "full" | "top";
 
 const TEST_MODE = isTestMode();
 const TEST_MODE_INITIAL = testModeOverrideMode();
+const log = createLog("App");
 
 export default function App() {
   const { t } = useTranslation();
@@ -25,11 +27,23 @@ export default function App() {
 
   useEffect(() => {
     if (TEST_MODE) return;
-    window.electronAPI.checkAuth().then(setAuthed);
+    window.electronAPI.checkAuth().then((ok) => {
+      log.info("checkAuth resolved", { authed: ok });
+      setAuthed(ok);
+    });
     const unsubs = [
-      window.electronAPI.onAuthSuccess(() => setAuthed(true)),
-      window.electronAPI.onSignedOut(() => setAuthed(false)),
-      window.electronAPI.onSessionLost(() => setAuthed(false)),
+      window.electronAPI.onAuthSuccess(() => {
+        log.info("auth-success");
+        setAuthed(true);
+      }),
+      window.electronAPI.onSignedOut(() => {
+        log.info("signed-out");
+        setAuthed(false);
+      }),
+      window.electronAPI.onSessionLost(() => {
+        log.warn("session-lost");
+        setAuthed(false);
+      }),
       window.electronAPI.onForcedSize(setWindowSize),
     ];
     return () => unsubs.forEach((off) => typeof off === "function" && off());

@@ -1,7 +1,8 @@
 import { useTranslation, achName, type Lang } from "../lib/i18n";
 import { fmtHours } from "../lib/hours";
 import { ACHS } from "../lib/achievements";
-import { vars, type Mode } from "../theme";
+import { vars } from "../theme";
+import { useAppContext } from "../lib/AppContext";
 import { MONO, SERIF } from "../lib/fonts";
 import * as prim from "../primitives";
 import { Page } from "./Page";
@@ -16,12 +17,12 @@ interface Props {
   weekH: number[];
   todayI: number;
   unlocked: string[];
-  mode: Mode;
   goal: number;
 }
 
-export function XpView({ xp, xpCoach, weekTotal, weekH, todayI, unlocked, mode, goal }: Props) {
+export function XpView({ xp, xpCoach, weekTotal, weekH, todayI, unlocked, goal }: Props) {
   const { t, i18n } = useTranslation();
+  const { mode } = useAppContext();
   const lang = i18n.language as Lang;
   const level = Math.floor(xp / 1000) + 1;
   const xpBase = (level - 1) * 1000;

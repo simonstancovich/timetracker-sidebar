@@ -60,6 +60,11 @@ declare global {
     graphMeetings: (opts?: { hoursBack?: number; hoursForward?: number }) =>
       Promise<{ meetings?: GraphMeeting[]; error?: string }>
     onGraphDeviceCode: (cb: (code: { userCode: string; verificationUri: string; message: string }) => void) => () => void
+
+    sendLogReport: (payload?: { note?: string }) => Promise<
+      | { ok: true; file: string; recipient: string; copied: boolean; mailtoOpened: boolean }
+      | { ok: false; error: string }
+    >
   }
 
   interface GraphStatus {

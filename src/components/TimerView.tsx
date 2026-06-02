@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
-import { useTranslation, type Lang } from "../lib/i18n";
+import { useTranslation } from "../lib/i18n";
+import { useAppContext } from "../lib/AppContext";
 import { fmtClock, fmtHours } from "../lib/hours";
 import { getTimerVibe } from "../lib/timerVibe";
 import { MONO, SERIF } from "../lib/fonts";
@@ -94,7 +95,6 @@ interface Props {
   streak: number;
   done: boolean;
   goal: number;
-  lang: Lang;
   timerInsight: string;
   openAbsence: () => void;
 }
@@ -125,11 +125,11 @@ export function TimerView({
   streak,
   done,
   goal,
-  lang,
   timerInsight,
   openAbsence,
 }: Props) {
   const { t } = useTranslation();
+  const { lang } = useAppContext();
   const {
     tCo, tPr, tD, tNote, tInv, tSec, tRun, draftId,
     setTCo, setTPr, setTD, setTNote, setTInv, setTRun,

@@ -240,7 +240,10 @@
     "unpinSidebar": "Sidebar pinned — click to allow auto-collapse",
     "theme": "Theme",
     "lightMode": "Light mode",
-    "darkMode": "Dark mode"
+    "darkMode": "Dark mode",
+    "sendLog": "Send last 2 minutes of log to support",
+    "sendLogDone": "Log saved & copied — email opened",
+    "sendLogFailed": "Send log failed: {{err}}"
   },
   "login": {
     "pitch": "Sign in with your DevCore account to start tracking time.",

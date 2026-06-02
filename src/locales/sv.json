@@ -240,7 +240,10 @@
     "unpinSidebar": "Sidofältet är fäst — klicka för att tillåta auto-minimering",
     "theme": "Tema",
     "lightMode": "Ljust läge",
-    "darkMode": "Mörkt läge"
+    "darkMode": "Mörkt läge",
+    "sendLog": "Skicka senaste 2 min av loggen till support",
+    "sendLogDone": "Logg sparad & kopierad — e-post öppnad",
+    "sendLogFailed": "Skicka logg misslyckades: {{err}}"
   },
   "login": {
     "pitch": "Logga in med ditt DevCore-konto för att börja spåra tid.",

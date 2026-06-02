@@ -3,13 +3,21 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18n from 'i18next'
 import { AppViews } from '../AppViews'
+import { AppContextProvider } from '../../lib/AppContext'
+
+function renderInContext(ui: React.ReactElement) {
+  return render(
+    <AppContextProvider mode="light" lang="en" simonMode={false} username="Test User">
+      {ui}
+    </AppContextProvider>,
+  )
+}
 
 function baseProps(overrides: Partial<Parameters<typeof AppViews>[0]> = {}) {
   const noop = vi.fn()
   const asyncNoop = vi.fn(async () => undefined)
   return {
     tab: 'today' as const,
-    username: 'Test User',
     timer: {
       tCo: '',
       tPr: '',
@@ -99,10 +107,6 @@ function baseProps(overrides: Partial<Parameters<typeof AppViews>[0]> = {}) {
     pendingCancelTimer: false,
     setPendingCancelTimer: noop,
     setConfirmation: noop,
-    simonMode: false,
-    mode: 'light' as const,
-    lang: 'en' as const,
-    locale: 'en-GB',
     greetingMsg: '',
     emptyMsg: '',
     timerInsight: '',
@@ -121,27 +125,27 @@ describe('<AppViews />', () => {
   })
 
   it('renders TodayView when tab=today', () => {
-    render(<AppViews {...baseProps({ tab: 'today' })} />)
+    renderInContext(<AppViews {...baseProps({ tab: 'today' })} />)
     expect(screen.getByText(/Test|Time tracking/i)).toBeInTheDocument()
   })
 
   it('renders TimerView when tab=timer', () => {
-    render(<AppViews {...baseProps({ tab: 'timer' })} />)
+    renderInContext(<AppViews {...baseProps({ tab: 'timer' })} />)
     expect(screen.getByRole('button', { name: /Start timer/i })).toBeInTheDocument()
   })
 
   it('renders HistoryView when tab=history', () => {
-    render(<AppViews {...baseProps({ tab: 'history' })} />)
+    renderInContext(<AppViews {...baseProps({ tab: 'history' })} />)
     expect(screen.getAllByRole('tab').length).toBeGreaterThan(0)
   })
 
   it('renders TodoView when tab=todo', () => {
-    render(<AppViews {...baseProps({ tab: 'todo' })} />)
+    renderInContext(<AppViews {...baseProps({ tab: 'todo' })} />)
     expect(screen.getByPlaceholderText('What needs doing?')).toBeInTheDocument()
   })
 
   it('renders XpView when tab=xp', () => {
-    render(<AppViews {...baseProps({ tab: 'xp' })} />)
+    renderInContext(<AppViews {...baseProps({ tab: 'xp' })} />)
     expect(screen.getByText('Developer')).toBeInTheDocument()
   })
 
@@ -149,7 +153,7 @@ describe('<AppViews />', () => {
     const openForNew = vi.fn()
     const setTab = vi.fn()
     const setLogOpen = vi.fn()
-    render(
+    renderInContext(
       <AppViews
         {...baseProps({ tab: 'today', openForNew, setTab, setLogOpen, liveTodayEntries: [] })}
       />,

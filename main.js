@@ -9,6 +9,8 @@ const {
   nativeImage,
   net,
   globalShortcut,
+  shell,
+  clipboard,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -491,6 +493,104 @@ ipcMain.handle("open-auth", () => {
 });
 
 ipcMain.handle("sign-out", () => signOut());
+
+const LOG_LINE_TS = /^\[(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{3})\]/;
+
+function tailRecentLogLines(filePath, sinceEpochMs) {
+  let raw;
+  try {
+    raw = fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    return `(could not read log: ${err.message})`;
+  }
+  const lines = raw.split(/\r?\n/);
+  const kept = [];
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    const m = line.match(LOG_LINE_TS);
+    if (!m) {
+      // Continuation of a multi-line entry — keep only if we've already kept its parent.
+      if (kept.length) kept.push(line);
+      continue;
+    }
+    const ts = new Date(
+      Number(m[1]),
+      Number(m[2]) - 1,
+      Number(m[3]),
+      Number(m[4]),
+      Number(m[5]),
+      Number(m[6]),
+      Number(m[7]),
+    ).getTime();
+    if (ts < sinceEpochMs) break;
+    kept.push(line);
+  }
+  return kept.reverse().join("\n");
+}
+
+ipcMain.handle("send-log-report", async (_e, payload) => {
+  const recipient = "simon.stancovich@devcore.se";
+  const logFile = log.transports.file.getFile().path;
+  const noteFromUser = (payload && payload.note) || "";
+  const sinceMs = Date.now() - 2 * 60 * 1000;
+  const tail = tailRecentLogLines(logFile, sinceMs);
+  const subject = "DevCore TimeTracker — log report";
+  const body =
+    `Hi Simon,\n\n${noteFromUser ? noteFromUser + "\n\n" : ""}` +
+    `Log file: ${logFile}\n` +
+    `Last 2 minutes of log:\n` +
+    `------------------------------------------------------\n` +
+    `${tail || "(no log entries in the last 2 minutes)"}\n` +
+    `------------------------------------------------------\n`;
+
+  const reportsDir = path.join(app.getPath("userData"), "log-reports");
+  try {
+    fs.mkdirSync(reportsDir, { recursive: true });
+  } catch (err) {
+    log.warn("send-log-report mkdir failed", err);
+  }
+  const ts = new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-")
+    .replace("T", "_")
+    .slice(0, 19);
+  const filePath = path.join(reportsDir, `timetracker-log-${ts}.txt`);
+  try {
+    fs.writeFileSync(filePath, body, "utf8");
+  } catch (err) {
+    log.error("send-log-report write failed", err);
+    return { ok: false, error: String(err && err.message ? err.message : err) };
+  }
+
+  let copied = false;
+  try {
+    clipboard.writeText(body);
+    copied = true;
+  } catch (err) {
+    log.warn("send-log-report clipboard failed", err);
+  }
+
+  let mailtoOpened = false;
+  const shortMailto = `mailto:${recipient}?subject=${encodeURIComponent(
+    subject,
+  )}&body=${encodeURIComponent(
+    `Hi Simon,\n\n${noteFromUser ? noteFromUser + "\n\n" : ""}Log saved to: ${filePath}\nThe full log text is already on the clipboard — paste it below this line.\n\n`,
+  )}`;
+  try {
+    await shell.openExternal(shortMailto);
+    mailtoOpened = true;
+  } catch (err) {
+    log.warn("send-log-report mailto failed", err);
+  }
+
+  try {
+    shell.showItemInFolder(filePath);
+  } catch (err) {
+    log.warn("send-log-report showItemInFolder failed", err);
+  }
+
+  return { ok: true, file: filePath, recipient, copied, mailtoOpened };
+});
 
 ipcMain.handle("store-get", (event, key) => store.get(key));
 ipcMain.handle("store-set", (event, key, value) => store.set(key, value));
