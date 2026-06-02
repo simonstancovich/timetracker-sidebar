@@ -59,8 +59,8 @@ export const colors = {
     // Crisp near-white canvas with only a whisper of warm. Value-based
     // elevation, not saturation — avoids the dune/sand wash of the earlier
     // warm-paper attempt.
-    pageLight: "#fdfcfb",
-    pageDark: "#0b0910",
+    pageLight: "#ff2a2a",
+    pageDark: "#7a0000",
     surfaceLight: "#f0ebe2",
     surfaceDark: "rgba(255,255,255,0.045)",
     raisedLight: "#e3dccf",
