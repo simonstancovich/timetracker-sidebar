@@ -1,7 +1,6 @@
 import { useTranslation } from "../lib/i18n";
-import { MONO } from "../lib/fonts";
-import { vars } from "../theme";
-import { Button } from "../primitives/Button/Button";
+import * as prim from "../primitives";
+import * as s from "./FailedQueueBanner.css";
 
 interface Props {
   count: number;
@@ -12,28 +11,20 @@ export function FailedQueueBanner({ count, onRetry }: Props) {
   const { t } = useTranslation();
   if (count === 0) return null;
   return (
-    <div
+    <prim.Stack
       role="status"
-      style={{
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "7px 14px",
-        background: `color-mix(in srgb, ${vars.typography.error} 10%, transparent)`,
-        borderTop: `1px solid color-mix(in srgb, ${vars.typography.error} 25%, transparent)`,
-        borderBottom: `1px solid color-mix(in srgb, ${vars.typography.error} 25%, transparent)`,
-        color: vars.typography.error,
-        fontFamily: MONO,
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: 0.5,
-      }}
+      direction="row"
+      align="center"
+      gap="sm"
+      noShrink
+      className={s.banner}
     >
-      <span style={{ flex: 1 }}>{t("offline.failedBanner", { n: count })}</span>
-      <Button variant="danger" size="xs" shape="pill" mono onClick={onRetry}>
+      <prim.MonoText size="xs" color="error" tracking="wider" className={s.label}>
+        {t("offline.failedBanner", { n: count })}
+      </prim.MonoText>
+      <prim.Button variant="danger" size="xs" shape="pill" mono onClick={onRetry}>
         {t("offline.retry")}
-      </Button>
-    </div>
+      </prim.Button>
+    </prim.Stack>
   );
 }
