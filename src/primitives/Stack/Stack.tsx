@@ -10,7 +10,7 @@ export type StackBorderColor = keyof typeof s.borderColor
 export type StackBorderStyle = keyof typeof s.borderStyle
 export type StackBorderRadius = keyof typeof s.borderRadius
 export type StackPosition = keyof typeof s.position
-export type StackTag = 'div' | 'section' | 'nav' | 'header' | 'footer' | 'main' | 'aside' | 'ul' | 'ol' | 'li'
+export type StackTag = 'div' | 'section' | 'nav' | 'header' | 'footer' | 'main' | 'aside' | 'ul' | 'ol' | 'li' | 'span' | 'p'
 
 interface Props extends Omit<HTMLAttributes<HTMLElement>, 'style' | 'children'> {
   direction?: keyof typeof s.direction
