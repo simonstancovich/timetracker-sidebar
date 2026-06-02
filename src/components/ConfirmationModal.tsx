@@ -1,7 +1,7 @@
 import { useTranslation } from "../lib/i18n";
 import { useModal } from "../lib/useModal";
-import { vars } from "../theme";
 import * as prim from "../primitives";
+import * as s from "./ConfirmationModal.css";
 
 export interface ConfirmationRequest {
   title: string;
@@ -17,40 +17,28 @@ interface Props {
 
 export function ConfirmationModal({ request, onDismiss }: Props) {
   const { t } = useTranslation();
-  const ref = useModal<HTMLDivElement>({
+  const ref = useModal<HTMLElement>({
     enabled: !!request,
     onClose: onDismiss,
   });
   if (!request) return null;
   return (
     <>
-      <div
+      <prim.Overlay
+        tone="none"
+        zIndex="modalBackdrop"
+        className={s.backdrop}
         onClick={onDismiss}
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(0,0,0,0.35)",
-          zIndex: 200,
-        }}
+        aria-hidden
       />
-      <div
+      <prim.Stack
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirmation-title"
         tabIndex={-1}
-        style={{
-          position: "absolute",
-          bottom: 12,
-          left: 12,
-          right: 12,
-          background: vars.background.surface,
-          border: `1.5px solid ${vars.typography.accent}`,
-          borderRadius: 14,
-          padding: "14px 16px",
-          zIndex: 201,
-          boxShadow: "0 12px 32px rgba(0,0,0,0.25)",
-        }}
+        gap="md"
+        className={s.dialog}
       >
         <prim.Stack gap="xs">
           <prim.Text id="confirmation-title" size="lg" weight="bold" color="primary">
@@ -60,7 +48,7 @@ export function ConfirmationModal({ request, onDismiss }: Props) {
             {request.body}
           </prim.Text>
         </prim.Stack>
-        <prim.Stack direction="row" gap="sm" paddingTop="md">
+        <prim.Stack direction="row" gap="sm">
           <prim.Button variant="secondary" size="sm" grow onClick={onDismiss}>
             {t("entry.cancel")}
           </prim.Button>
@@ -77,7 +65,7 @@ export function ConfirmationModal({ request, onDismiss }: Props) {
             {request.confirmLabel}
           </prim.Button>
         </prim.Stack>
-      </div>
+      </prim.Stack>
     </>
   );
 }
