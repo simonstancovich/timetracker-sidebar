@@ -14,6 +14,7 @@ function baseProps(overrides: Partial<Parameters<typeof AppFooter>[0]> = {}) {
     setPinned: vi.fn(),
     onShowIntro: vi.fn(),
     onSignOut: vi.fn(),
+    addFloat: vi.fn(),
     ...overrides,
   }
 }
@@ -68,5 +69,34 @@ describe('<AppFooter />', () => {
     render(<AppFooter {...baseProps({ onSignOut })} />)
     await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
     expect(onSignOut).toHaveBeenCalledOnce()
+  })
+
+  it('floats a success message when the send-log button reports ok', async () => {
+    const addFloat = vi.fn()
+    const sendLogReport = vi.fn().mockResolvedValue({
+      ok: true,
+      file: 'C:/tmp/log.txt',
+      recipient: 'simon.stancovich@devcore.se',
+      copied: true,
+      mailtoOpened: true,
+    })
+    ;(window as unknown as { electronAPI: { sendLogReport: typeof sendLogReport } }).electronAPI = {
+      sendLogReport,
+    }
+    render(<AppFooter {...baseProps({ addFloat })} />)
+    await userEvent.click(screen.getByRole('button', { name: /Send last 2 minutes of log/i }))
+    expect(sendLogReport).toHaveBeenCalledOnce()
+    expect(addFloat).toHaveBeenCalledWith(expect.stringContaining('Log saved'), expect.any(String))
+  })
+
+  it('floats an error message when the send-log report fails', async () => {
+    const addFloat = vi.fn()
+    const sendLogReport = vi.fn().mockResolvedValue({ ok: false, error: 'EACCES' })
+    ;(window as unknown as { electronAPI: { sendLogReport: typeof sendLogReport } }).electronAPI = {
+      sendLogReport,
+    }
+    render(<AppFooter {...baseProps({ addFloat })} />)
+    await userEvent.click(screen.getByRole('button', { name: /Send last 2 minutes of log/i }))
+    expect(addFloat).toHaveBeenCalledWith(expect.stringContaining('EACCES'), expect.any(String))
   })
 })

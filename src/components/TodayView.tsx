@@ -1,5 +1,6 @@
 import type { CSSProperties, Dispatch, SetStateAction } from "react";
-import { useTranslation, type Lang } from "../lib/i18n";
+import { useTranslation } from "../lib/i18n";
+import { useAppContext } from "../lib/AppContext";
 import { fmtHours } from "../lib/hours";
 import { isPendingId, LIVE_SESSION_ID } from "../lib/pendingEntries";
 import type { Todo } from "../lib/todos";
@@ -39,7 +40,6 @@ interface TimerForToday {
 }
 
 interface Props {
-  username: string;
   // Computed totals
   todayH: number;
   liveTodayH: number;
@@ -60,7 +60,6 @@ interface Props {
   // Timer state subset
   timer: TimerForToday;
   // Simon-mode to-dos
-  simonMode: boolean;
   todos: Todo[];
   activeTaskKey: string | null;
   estimatedTodoFor: (cid: string, prid: string, desc: string) => Todo | undefined;
@@ -77,9 +76,6 @@ interface Props {
   // i18n + misc
   greetingMsg: string;
   emptyMsg: string;
-  mode: "light" | "dark";
-  locale: string;
-  lang: Lang;
 }
 
 // The Today tab: greeting, hero hours number, stat chips (streak/billable/XP),
@@ -87,7 +83,6 @@ interface Props {
 // total footer, "log past time" CTA. Read-only aggregator — all state comes in
 // via props and writes go back through callbacks.
 export function TodayView({
-  username,
   todayH,
   liveTodayH,
   liveTodayEntries,
@@ -103,7 +98,6 @@ export function TodayView({
   pendingDeleteId,
   setPendingDeleteId,
   timer,
-  simonMode,
   todos,
   activeTaskKey,
   estimatedTodoFor,
@@ -118,11 +112,8 @@ export function TodayView({
   switchTaskGuarded,
   greetingMsg,
   emptyMsg,
-  mode,
-  locale,
-  lang: _lang,
 }: Props) {
-  void _lang;
+  const { username, mode, locale, simonMode } = useAppContext();
   const { t } = useTranslation();
   const { tRun, draftId, tCo, tPr, setTRun } = timer;
   const firstName = username.trim().split(/\s+/)[0];

@@ -8,12 +8,15 @@ import {
 } from "react";
 import { loadTimeEntries, saveTimeEntry, type TimeEntry } from "../api";
 import { classifyApiError } from "./apiError";
+import { createLog } from "./logger";
 import {
   PENDING_STORE_KEY,
   FAILED_STORE_KEY,
   entrySignature,
   type PendingEntry,
 } from "./pendingEntries";
+
+const log = createLog("syncQueue");
 
 interface UseSyncQueueArgs {
   online: boolean;
@@ -117,12 +120,14 @@ export function useSyncQueue({
       }
       try {
         await saveTimeEntry(item.payload);
+        log.info("flushed pending entry", { localId: item.localId, task_date: item.payload.task_date });
         setOnline(true);
         sigs.add(sig);
         drop(item.localId);
         touched = true;
       } catch (err) {
         const kind = classifyApiError(err);
+        log.warn("flush pending entry failed", { localId: item.localId, kind, error: String(err) });
         if (kind === "auth") {
           onAuthFailed();
           break;

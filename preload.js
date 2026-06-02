@@ -46,4 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updaterCheck: () => ipcRenderer.invoke('updater-check'),
   updaterQuitAndInstall: () => ipcRenderer.invoke('updater-quit-and-install'),
   onUpdateStatus: subscribe('update-status', (status) => status),
+
+  // Log report (bottom-bar button — opens mail client + saves file)
+  sendLogReport: (payload) => ipcRenderer.invoke('send-log-report', payload),
 })

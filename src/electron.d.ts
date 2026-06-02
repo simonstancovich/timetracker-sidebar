@@ -64,6 +64,11 @@ declare global {
     updaterCheck: () => Promise<{ ok: true; hasUpdate: boolean } | { ok: false; error: string }>
     updaterQuitAndInstall: () => Promise<void>
     onUpdateStatus: (cb: (status: UpdateStatus) => void) => () => void
+
+    sendLogReport: (payload?: { note?: string }) => Promise<
+      | { ok: true; file: string; recipient: string; copied: boolean; mailtoOpened: boolean }
+      | { ok: false; error: string }
+    >
   }
 
   type UpdateStatus =

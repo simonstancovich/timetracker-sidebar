@@ -39,6 +39,10 @@ import {
   saveCheer,
 } from "./lib/personality";
 import { Lang, useTranslation } from "./lib/i18n";
+import { AppContextProvider } from "./lib/AppContext";
+import { createLog } from "./lib/logger";
+
+const log = createLog("AppShell");
 import { useLogForm, type StoredLogForm } from "./lib/useLogForm";
 import { useTimer, type StoredTimer } from "./lib/useTimer";
 import * as prim from "./primitives";
@@ -366,6 +370,7 @@ export function AppShell({
   };
 
   const editEntry = async (entry: TimeEntry) => {
+    log.info("editEntry open", { id: entry.id, task_date: entry.task_date, hour: entry.hour });
     const [y, mo, d] = (entry.task_date || "").split("-").map(Number);
     const date =
       Number.isFinite(y) && Number.isFinite(mo) && Number.isFinite(d)
@@ -655,6 +660,7 @@ export function AppShell({
       existingId,
     });
     const queueOffline = () => {
+      log.info("queueOffline", { task_date: payload.task_date, hours });
       const item = makePendingEntry(payload);
       setPendingQueue((q) => [...q, item]);
       const savedISO = item.entry.task_date;
@@ -683,6 +689,7 @@ export function AppShell({
       setOnline(true);
     } catch (err) {
       const kind = classifyApiError(err);
+      log.warn("saveNewEntry threw", { kind, existingId, error: String(err) });
       if (kind === "auth") {
         onSignOut();
         return;
@@ -693,6 +700,21 @@ export function AppShell({
         return;
       }
       handleApiError(err, "form.saveFailed");
+      return;
+    }
+
+    if (!saved?.success) {
+      log.warn("saveNewEntry got non-success response", {
+        existingId,
+        saved,
+        entryDate: formatLocalDate(entryDate),
+      });
+      addFloat(
+        t("form.saveFailed", {
+          err: existingId ? "entry not on server" : "save rejected",
+        }),
+        vars.typography.error,
+      );
       return;
     }
 
@@ -820,16 +842,29 @@ export function AppShell({
     });
     try {
       const r = await saveTimeEntry(payload);
-      if (!draftIdRef.current && r?.id) {
+      if (!r?.success) {
+        log.warn("autoSaveDraft non-success — clearing stale draftIdRef", {
+          existingDraftId: draftIdRef.current,
+          response: r,
+        });
+        if (draftIdRef.current) {
+          draftIdRef.current = null;
+          setDraftId(null);
+        }
+        return;
+      }
+      if (!draftIdRef.current && r.id) {
         draftIdRef.current = r.id;
         setDraftId(r.id);
       }
-    } catch {
+    } catch (err) {
+      log.warn("autoSaveDraft threw", { existingDraftId: draftIdRef.current, error: String(err) });
     }
   };
   useAutoSaveDraft(tRun, autoSaveDraft);
 
   const delEntry = async (id: string) => {
+    log.info("delEntry", { id });
     if (isPendingId(id)) {
       setPendingQueue((q) => q.filter((x) => x.localId !== id));
       setFailedQueue((f) => f.filter((x) => x.localId !== id));
@@ -839,6 +874,7 @@ export function AppShell({
       await deleteTimeEntry(id);
       setEntries((es) => es.filter((e) => e.id !== id));
     } catch (err) {
+      log.warn("delEntry failed", { id, error: String(err) });
       handleApiError(err, "form.deleteFailed");
     }
   };
@@ -939,6 +975,7 @@ export function AppShell({
   }
 
   return (
+    <AppContextProvider mode={mode} lang={lang} simonMode={simonMode} username={currentUser.username}>
     <ui.AppLayout
       themeClass={themeClass}
       mode={mode}
@@ -965,6 +1002,7 @@ export function AppShell({
           setPinned={setPinned}
           onShowIntro={startIntroFresh}
           onSignOut={confirmSignOut}
+          addFloat={addFloat}
         />
       }
       overlays={
@@ -1025,7 +1063,6 @@ export function AppShell({
       ) : (
         <ui.AppViews
           tab={tab}
-          username={currentUser.username}
           timer={{
             tCo, tPr, tD, tNote, tInv, tSec, tRun, draftId,
             setTCo, setTPr, setTD, setTNote, setTInv, setTRun,
@@ -1103,10 +1140,6 @@ export function AppShell({
           pendingCancelTimer={pendingCancelTimer}
           setPendingCancelTimer={setPendingCancelTimer}
           setConfirmation={setConfirmation}
-          simonMode={simonMode}
-          mode={mode}
-          lang={lang}
-          locale={locale}
           greetingMsg={greetingMsg}
           emptyMsg={emptyMsg}
           timerInsight={timerInsight}
@@ -1118,5 +1151,6 @@ export function AppShell({
         />
       )}
     </ui.AppLayout>
+    </AppContextProvider>
   );
 }

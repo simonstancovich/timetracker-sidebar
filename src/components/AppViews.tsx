@@ -3,8 +3,8 @@ import type { TimeEntry } from "../api";
 import type { PendingEntry } from "../lib/pendingEntries";
 import type { Todo, TodoDraft, TodoFormState } from "../lib/todos";
 import { todosInPlay, todosUpcoming } from "../lib/todos";
-import type { Lang } from "../lib/i18n";
 import type { MonthClosureCache } from "../lib/useMonthClosure";
+import { useAppContext } from "../lib/AppContext";
 import type { CompanyGroup } from "../lib/useTodayDerivations";
 import type { HeaderTab } from "./AppHeader";
 import type { ConfirmationRequest } from "./ConfirmationModal";
@@ -52,8 +52,6 @@ interface TimerStateBundle {
 
 interface Props {
   tab: HeaderTab;
-  // Auth/user
-  username: string;
   // Timer
   timer: TimerStateBundle;
   setActiveTodoId: Dispatch<SetStateAction<string | null>>;
@@ -152,10 +150,6 @@ interface Props {
   setPendingCancelTimer: Dispatch<SetStateAction<boolean>>;
   setConfirmation: Dispatch<SetStateAction<ConfirmationRequest | null>>;
   // Misc
-  simonMode: boolean;
-  mode: "light" | "dark";
-  lang: Lang;
-  locale: string;
   greetingMsg: string;
   emptyMsg: string;
   timerInsight: string;
@@ -167,7 +161,7 @@ interface Props {
 }
 
 export function AppViews(p: Props) {
-  const firstName = p.username.trim().split(/\s+/)[0];
+  const { firstName } = useAppContext();
   const pickDayForView = (d: Date) => {
     p.setSelectedDate(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
     p.setHistoryScale("day");
@@ -235,7 +229,6 @@ export function AppViews(p: Props) {
     case "today":
       return (
         <TodayView
-          username={p.username}
           todayH={p.todayH}
           liveTodayH={p.liveTodayH}
           liveTodayEntries={p.liveTodayEntries}
@@ -257,7 +250,6 @@ export function AppViews(p: Props) {
             tPr: p.timer.tPr,
             setTRun: p.timer.setTRun,
           }}
-          simonMode={p.simonMode}
           todos={todosInPlay(p.todos)}
           activeTaskKey={p.activeTaskKey}
           estimatedTodoFor={p.estimatedTodoFor}
@@ -272,9 +264,6 @@ export function AppViews(p: Props) {
           switchTaskGuarded={p.switchTaskGuarded}
           greetingMsg={p.greetingMsg}
           emptyMsg={p.emptyMsg}
-          mode={p.mode}
-          locale={p.locale}
-          lang={p.lang}
         />
       );
     case "timer":
@@ -313,7 +302,6 @@ export function AppViews(p: Props) {
           streak={p.streak}
           done={p.done}
           goal={p.goal}
-          lang={p.lang}
           timerInsight={p.timerInsight}
           openAbsence={p.openAbsence}
         />
@@ -329,7 +317,6 @@ export function AppViews(p: Props) {
           dayView={dayView}
           weekView={weekView}
           monthView={monthView}
-          simonMode={p.simonMode}
           upcomingTodos={todosUpcoming(p.todos)}
           activeTaskKey={p.activeTaskKey}
           startTodo={p.startTodo}
@@ -366,7 +353,6 @@ export function AppViews(p: Props) {
           weekH={p.weekH}
           todayI={p.todayI}
           unlocked={p.unlocked}
-          mode={p.mode}
           goal={p.goal}
         />
       );
