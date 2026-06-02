@@ -70,7 +70,8 @@
       "provider": "github",
       "owner": "simonstancovich",
       "repo": "timetracker-sidebar",
-      "private": true
+      "private": true,
+      "releaseType": "release"
     }
   }
 }
