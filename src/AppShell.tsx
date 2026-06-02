@@ -69,6 +69,7 @@ import {
 import { useGoSize } from "./lib/useGoSize";
 import { useAutoSaveDraft } from "./lib/useAutoSaveDraft";
 import { useSimonMode } from "./lib/useSimonMode";
+import { useAppUpdater } from "./lib/useAppUpdater";
 import { useAbsence } from "./lib/useAbsence";
 import { useMonthClosure } from "./lib/useMonthClosure";
 import { useConnection } from "./lib/useConnection";
@@ -172,6 +173,7 @@ export function AppShell({
     reload: reloadCompanies,
   } = useCompanies({ authed, onOnlineChange: setOnline });
   const { simonMode, tapCorner: tapSimonCorner } = useSimonMode(addFloat);
+  useAppUpdater(addFloat);
   const {
     pendingQueue, setPendingQueue,
     failedQueue, setFailedQueue,

@@ -242,6 +242,12 @@
     "lightMode": "Ljust läge",
     "darkMode": "Mörkt läge"
   },
+  "update": {
+    "available": "Uppdatering {{v}} tillgänglig — laddas ner i bakgrunden",
+    "ready": "Uppdatering {{v}} klar",
+    "restartPrompt": "Uppdatering {{v}} är klar. Starta om nu för att installera?",
+    "failed": "Uppdatering misslyckades: {{err}}"
+  },
   "login": {
     "pitch": "Logga in med ditt DevCore-konto för att börja spåra tid.",
     "signIn": "Logga in",

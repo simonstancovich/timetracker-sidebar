@@ -242,6 +242,12 @@
     "lightMode": "Light mode",
     "darkMode": "Dark mode"
   },
+  "update": {
+    "available": "Update {{v}} available — downloading in background",
+    "ready": "Update {{v}} ready",
+    "restartPrompt": "Update {{v}} is ready. Restart now to install?",
+    "failed": "Update failed: {{err}}"
+  },
   "login": {
     "pitch": "Sign in with your DevCore account to start tracking time.",
     "signIn": "Sign in",

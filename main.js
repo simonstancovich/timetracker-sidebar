@@ -16,6 +16,7 @@ const Store = require("electron-store");
 const log = require("electron-log/main");
 const appbar = require("./appbar");
 const graph = require("./graph");
+const updater = require("./updater");
 
 log.initialize();
 log.transports.file.level = "info";
@@ -501,6 +502,18 @@ ipcMain.handle("set-blur-collapse-disabled", (_e, disabled) => {
   blurCollapseDisabled = !!disabled;
 });
 
+ipcMain.handle("updater-check", async () => {
+  try {
+    const result = await updater.checkNow();
+    return { ok: true, hasUpdate: !!(result && result.updateInfo) };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message ? err.message : err) };
+  }
+});
+ipcMain.handle("updater-quit-and-install", () => {
+  updater.quitAndInstall();
+});
+
 ipcMain.handle("graph-status", () => graph.status());
 ipcMain.handle("graph-sign-in", async (event) => {
   try {
@@ -539,6 +552,7 @@ if (!process.env.PLAYWRIGHT_TEST && !app.requestSingleInstanceLock()) {
 app.whenReady().then(() => {
   createMainWindow();
   createTray();
+  updater.init({ getMainWindow: () => mainWindow, isPackaged: app.isPackaged });
   app.on("activate", () => {
     if (!mainWindow) createMainWindow();
   });

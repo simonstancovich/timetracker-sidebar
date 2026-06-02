@@ -41,4 +41,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   graphSignOut: () => ipcRenderer.invoke('graph-sign-out'),
   graphMeetings: (opts) => ipcRenderer.invoke('graph-meetings', opts),
   onGraphDeviceCode: subscribe('graph-device-code', (code) => code),
+
+  // Auto-updater
+  updaterCheck: () => ipcRenderer.invoke('updater-check'),
+  updaterQuitAndInstall: () => ipcRenderer.invoke('updater-quit-and-install'),
+  onUpdateStatus: subscribe('update-status', (status) => status),
 })

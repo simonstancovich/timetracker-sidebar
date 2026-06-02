@@ -60,7 +60,17 @@ declare global {
     graphMeetings: (opts?: { hoursBack?: number; hoursForward?: number }) =>
       Promise<{ meetings?: GraphMeeting[]; error?: string }>
     onGraphDeviceCode: (cb: (code: { userCode: string; verificationUri: string; message: string }) => void) => () => void
+
+    updaterCheck: () => Promise<{ ok: true; hasUpdate: boolean } | { ok: false; error: string }>
+    updaterQuitAndInstall: () => Promise<void>
+    onUpdateStatus: (cb: (status: UpdateStatus) => void) => () => void
   }
+
+  type UpdateStatus =
+    | { state: 'available'; version: string }
+    | { state: 'downloading'; percent: number }
+    | { state: 'ready'; version: string }
+    | { state: 'error'; error: string }
 
   interface GraphStatus {
     configured: boolean
