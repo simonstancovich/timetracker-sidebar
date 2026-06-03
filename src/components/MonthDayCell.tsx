@@ -1,8 +1,8 @@
-import { vars } from "../theme";
-import type { CSSProperties } from "react";
 import { dateKey } from "../lib/swedishHolidays";
 import { fmtHours } from "../lib/hours";
-import { MONO, SERIF } from "../lib/fonts";
+import { cx } from "../lib/cx";
+import * as prim from "../primitives";
+import * as s from "./MonthDayCell.css";
 
 interface Props {
   date: Date | null;
@@ -14,120 +14,82 @@ interface Props {
   onPick: (d: Date) => void;
 }
 
-interface CellTone {
-  bg: string;
-  border: string;
-  numColor: string;
-  hoursColor: string;
+type Tone = "today" | "goal" | "partial" | "missed" | "workday" | "off";
+type Heat = "20" | "30" | "40" | "50" | "60";
+
+const NUM_COLOR: Record<Tone, prim.TextColor> = {
+  today: "accent",
+  goal: "goalInk",
+  partial: "primary",
+  missed: "primary",
+  workday: "faint",
+  off: "faint",
+};
+
+const HOURS_COLOR: Record<Tone, prim.MonoTextColor> = {
+  today: "accent",
+  goal: "goalInk",
+  partial: "partialInk",
+  missed: "missedInk",
+  workday: "secondary",
+  off: "secondary",
+};
+
+function pickTone(isToday: boolean, hours: number, goal: number, isFuture: boolean, isWorkday: boolean): Tone {
+  if (isToday) return "today";
+  if (hours >= goal) return "goal";
+  if (!isFuture && hours > 0) return "partial";
+  if (!isFuture && isWorkday) return "missed";
+  return isWorkday ? "workday" : "off";
 }
 
-// The cell's appearance is data-driven heatmap: green intensity scales with how
-// far past goal the day went, amber = partial, red = missed workday, dashed =
-// off day. Colours are computed (alpha ramps, status hexes) so they stay inline.
-function cellTone(
-  isToday: boolean,
-  hours: number,
-  goal: number,
-  isFuture: boolean,
-  isWorkday: boolean,
-): CellTone {
-  if (isToday) {
-    return { bg: `color-mix(in srgb, ${vars.typography.accent} 10%, transparent)`, border: `1.5px solid ${vars.typography.accent}`, numColor: vars.typography.accent, hoursColor: vars.typography.accent };
-  }
-  if (hours >= goal) {
-    const heatPct = Math.min(1, hours / (goal * 1.5));
-    const alphaPct = Math.round(((50 + heatPct * 110) / 255) * 100);
-    return {
-      bg: `color-mix(in srgb, ${vars.typography.green} ${alphaPct}%, transparent)`,
-      border: `1px solid color-mix(in srgb, ${vars.typography.green} 40%, transparent)`,
-      numColor: vars.typography.goalInk,
-      hoursColor: vars.typography.goalInk,
-    };
-  }
-  if (!isFuture && hours > 0) {
-    return {
-      bg: "rgba(217, 119, 6, 0.12)",
-      border: "1px solid rgba(217, 119, 6, 0.45)",
-      numColor: vars.typography.primary,
-      hoursColor: vars.typography.partialInk,
-    };
-  }
-  if (!isFuture && isWorkday) {
-    return {
-      bg: "rgba(239, 68, 68, 0.08)",
-      border: "1px solid rgba(239, 68, 68, 0.35)",
-      numColor: vars.typography.primary,
-      hoursColor: vars.typography.missedInk,
-    };
-  }
-  const border = isWorkday ? `1px solid ${vars.border.soft}` : `1px dashed ${vars.border.soft}`;
-  return { bg: "transparent", border, numColor: vars.typography.faint, hoursColor: vars.typography.secondary };
+function pickHeat(hours: number, goal: number): Heat {
+  const heatPct = Math.min(1, hours / (goal * 1.5));
+  const alpha = Math.round(20 + heatPct * 43);
+  if (alpha >= 55) return "60";
+  if (alpha >= 45) return "50";
+  if (alpha >= 35) return "40";
+  if (alpha >= 25) return "30";
+  return "20";
 }
-
-const cellButton: CSSProperties = {
-  aspectRatio: "1 / 1",
-  borderRadius: 8,
-  padding: 2,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 1,
-  cursor: "pointer",
-  position: "relative",
-  transition: "all 140ms ease",
-};
-
-const dayNumber: CSSProperties = {
-  fontFamily: SERIF,
-  fontSize: 18,
-  lineHeight: 1,
-  fontVariantNumeric: "tabular-nums",
-  letterSpacing: -0.4,
-};
-
-const hoursLabel: CSSProperties = {
-  fontFamily: MONO,
-  fontSize: 9,
-  fontWeight: 700,
-  lineHeight: 1,
-  fontVariantNumeric: "tabular-nums",
-  letterSpacing: 0.3,
-};
 
 export function MonthDayCell({ date, dayKey, hours, holiday, goal, loaded, onPick }: Props) {
-  if (!date) return <div />;
-  if (!loaded) {
-    return <div className="skeleton" style={{ aspectRatio: "1 / 1", borderRadius: 8 }} />;
-  }
+  if (!date) return <prim.Stack>{null}</prim.Stack>;
+  if (!loaded) return <prim.Skeleton className={s.skeletonCell} />;
 
-  const isToday = dateKey(new Date()) === dayKey;
-  const isFuture = date > new Date();
-  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const now = new Date();
+  const day = date.getDay();
+  const isToday = dateKey(now) === dayKey;
+  const isFuture = date > now;
+  const isWeekend = day === 0 || day === 6;
   const isWorkday = !isWeekend && !holiday;
-
-  const tone = cellTone(isToday, hours, goal, isFuture, isWorkday);
+  const tone = pickTone(isToday, hours, goal, isFuture, isWorkday);
+  const heat = tone === "goal" ? pickHeat(hours, goal) : null;
   const showHours = !isFuture && (hours > 0 || isWorkday);
 
   const dayNum = date.getDate();
+  const hoursText = hours > 0 ? fmtHours(hours) : "0:00";
   const title = holiday
-    ? `${dayNum} · ${holiday}${hours > 0 ? ` · ${fmtHours(hours)}` : ""}`
+    ? `${dayNum} · ${holiday}${hours > 0 ? ` · ${hoursText}` : ""}`
     : isWorkday
-      ? `${dayNum} · ${fmtHours(hours)}`
+      ? `${dayNum} · ${hoursText}`
       : `${dayNum}`;
 
   return (
-    <button
+    <prim.Button
+      variant="link"
       onClick={() => onPick(date)}
       title={title}
-      style={{ ...cellButton, background: tone.bg, border: tone.border }}
+      className={cx(s.cell, s.tone[tone], heat && s.heat[heat])}
     >
-      <span style={{ ...dayNumber, color: tone.numColor }}>{dayNum}</span>
+      <prim.Text as="span" color={NUM_COLOR[tone]} className={s.dayNumber}>
+        {dayNum}
+      </prim.Text>
       {showHours && (
-        <span style={{ ...hoursLabel, color: tone.hoursColor }}>
-          {hours > 0 ? fmtHours(hours) : "0:00"}
-        </span>
+        <prim.MonoText size="2xs" color={HOURS_COLOR[tone]} className={s.hoursLabel}>
+          {hoursText}
+        </prim.MonoText>
       )}
-    </button>
+    </prim.Button>
   );
 }
