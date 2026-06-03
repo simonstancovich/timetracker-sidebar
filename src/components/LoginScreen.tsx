@@ -1,8 +1,8 @@
-import { useState, type CSSProperties } from "react";
-import { vars } from "../theme";
+import { useState, type KeyboardEvent } from "react";
 import { useTranslation } from "../lib/i18n";
 import * as prim from "../primitives";
 import { StopwatchIcon } from "../icons/StopwatchIcon";
+import * as s from "./LoginScreen.css";
 
 interface Props {
   onAuthed: () => void;
@@ -42,16 +42,8 @@ export function LoginScreen({ onAuthed, onOpenBrowser }: Props) {
     setBusy(false);
   };
 
-  const inputStyle: CSSProperties = {
-    width: "100%",
-    padding: "10px 12px",
-    background: vars.background.surface,
-    border: `1px solid ${error ? vars.typography.error : vars.border.soft}`,
-    borderRadius: 10,
-    color: vars.typography.primary,
-    fontSize: 14,
-    outline: "none",
-    fontFamily: "inherit",
+  const onEnter = (e: KeyboardEvent) => {
+    if (e.key === "Enter") submit();
   };
 
   return (
@@ -66,75 +58,51 @@ export function LoginScreen({ onAuthed, onOpenBrowser }: Props) {
         </prim.Text>
       </prim.Stack>
 
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 300,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}
-      >
-        <input
+      <prim.Stack className={s.form}>
+        <prim.TextInput
+          fullWidth
+          invalid={!!error}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
+          onKeyDown={onEnter}
           placeholder={t("login.username")}
           autoFocus
           autoComplete="username"
           aria-label={t("login.username")}
-          style={inputStyle}
         />
-        <input
+        <prim.TextInput
+          fullWidth
+          invalid={!!error}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
+          onKeyDown={onEnter}
           placeholder={t("login.password")}
           autoComplete="current-password"
           aria-label={t("login.password")}
-          style={inputStyle}
         />
         {error && (
-          <span style={{ color: vars.typography.error, fontSize: 12, textAlign: "center" }}>
+          <prim.Text as="span" size="base" color="error" align="center">
             {error}
-          </span>
+          </prim.Text>
         )}
-        <button
-          type="button"
+        <prim.Button
+          variant="primary"
+          shape="pill"
           onClick={submit}
           disabled={!canSubmit}
-          style={{
-            width: "100%",
-            padding: "11px 0",
-            borderRadius: 999,
-            background: canSubmit ? vars.background.button : vars.background.raised,
-            color: canSubmit ? vars.typography.onAccent : vars.typography.faint,
-            border: "none",
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: canSubmit ? "pointer" : "not-allowed",
-            boxShadow: canSubmit ? vars.shadow.button : "none",
-          }}
+          className={s.signInBtn}
         >
           {busy ? t("login.signingIn") : t("login.signIn")}
-        </button>
-        <button
-          type="button"
+        </prim.Button>
+        <prim.Button
+          variant="link"
           onClick={onOpenBrowser}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: vars.typography.tertiary,
-            fontSize: 12,
-            cursor: "pointer",
-            textDecoration: "underline",
-            marginTop: 2,
-          }}
+          className={s.fallbackBtn}
         >
           {t("login.browserFallback")}
-        </button>
-      </div>
+        </prim.Button>
+      </prim.Stack>
     </prim.Stack>
   );
 }
