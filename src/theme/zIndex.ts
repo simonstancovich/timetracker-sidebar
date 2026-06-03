@@ -10,4 +10,5 @@ export const zIndex = {
   introMask: 499, // intro overlay's cutout mask
   introHighlight: 500, // intro overlay's pulsing highlight ring
   introTooltip: 501, // intro overlay's tooltip card
+  modeTransition: 999,
 } as const;

@@ -1,4 +1,6 @@
-import { vars } from "../theme";
+import { cx } from "../lib/cx";
+import * as prim from "../primitives";
+import * as s from "./ModeTransitionOverlay.css";
 
 export type ModeTransitionPhase = "idle" | "out" | "in";
 
@@ -6,23 +8,14 @@ interface Props {
   phase: ModeTransitionPhase;
 }
 
-// Full-viewport backdrop that fades to the theme background while the main
-// process resizes the window between full and top-bar modes. Hides the resize
-// jank without blocking input outside the "out" phase.
 export function ModeTransitionOverlay({ phase }: Props) {
-  const isOut = phase === "out";
   return (
-    <div
+    <prim.Stack
       aria-hidden
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: vars.background.page,
-        zIndex: 999,
-        pointerEvents: isOut ? "auto" : "none",
-        opacity: isOut ? 1 : 0,
-        transition: "opacity 180ms ease-out",
-      }}
-    />
+      position="fixed"
+      className={cx(s.root, phase === "out" ? s.state.out : s.state.hidden)}
+    >
+      {null}
+    </prim.Stack>
   );
 }
