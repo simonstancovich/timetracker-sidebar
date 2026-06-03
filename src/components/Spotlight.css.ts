@@ -1,5 +1,5 @@
 import { keyframes, style } from "@vanilla-extract/css";
-import { zIndex } from "../theme";
+import { vars, zIndex } from "../theme";
 
 const ringPulse = keyframes({
   "0%, 100%": {
@@ -32,6 +32,8 @@ export const ring = style({
   borderRadius: 10,
   pointerEvents: "none",
   zIndex: zIndex.introHighlight,
+  border: `2px solid ${vars.typography.accent}`,
+  boxShadow: `0 0 0 4px color-mix(in srgb, ${vars.typography.accent} 20%, transparent), 0 0 22px color-mix(in srgb, ${vars.typography.accent} 40%, transparent)`,
   animationName: ringPulse,
   animationDuration: "1.8s",
   animationTimingFunction: "ease-in-out",

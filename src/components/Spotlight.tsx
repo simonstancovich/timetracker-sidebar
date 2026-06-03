@@ -1,7 +1,5 @@
-import type { CSSProperties, SyntheticEvent } from "react";
-import { vars } from "../theme";
-import { cx } from "../lib/cx";
-import { layer as overlayLayer } from "../primitives/Overlay/Overlay.css";
+import type { SyntheticEvent } from "react";
+import * as prim from "../primitives";
 import * as s from "./Spotlight.css";
 
 export interface HoleRect {
@@ -21,7 +19,7 @@ interface Props {
 
 export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
   const { top, left, right, bottom, width, height } = hole;
-  const maskPanels: CSSProperties[] = [
+  const maskPanels = [
     { top: 0, left: 0, right: 0, height: top },
     { top, left: 0, width: left, height },
     { top, left: right, right: 0, height },
@@ -31,34 +29,33 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
   return (
     <>
       {maskPanels.map((pos, i) => (
-        <div
+        <prim.OverlayRect
           key={i}
-          className={cx(overlayLayer, s.mask)}
-          style={pos}
+          className={s.mask}
           onClick={onDismiss}
           onMouseDown={onDismiss}
+          {...pos}
         />
       ))}
 
       {readOnly && (
-        <div
-          className={cx(overlayLayer, s.block)}
-          style={{ top, left, width, height }}
+        <prim.OverlayRect
+          className={s.block}
+          top={top}
+          left={left}
+          width={width}
+          height={height}
           onClick={onDismiss}
           onMouseDown={onDismiss}
         />
       )}
 
-      <div
-        className={cx(overlayLayer, s.ring)}
-        style={{
-          top,
-          left,
-          width,
-          height,
-          border: `2px solid ${vars.typography.accent}`,
-          boxShadow: `0 0 0 4px color-mix(in srgb, ${vars.typography.accent} 20%, transparent), 0 0 22px color-mix(in srgb, ${vars.typography.accent} 40%, transparent)`,
-        }}
+      <prim.OverlayRect
+        className={s.ring}
+        top={top}
+        left={left}
+        width={width}
+        height={height}
       />
     </>
   );
