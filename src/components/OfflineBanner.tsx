@@ -1,20 +1,20 @@
 import { useTranslation } from "../lib/i18n";
-import { vars } from "../theme";
-import { MONO } from "../lib/fonts";
+import { cx } from "../lib/cx";
+import * as prim from "../primitives";
+import * as s from "./OfflineBanner.css";
 
 interface Props {
   online: boolean;
   pendingCount: number;
   syncing: boolean;
-  mode: "light" | "dark";
 }
 
-export function OfflineBanner({ online, pendingCount, syncing, mode }: Props) {
+export function OfflineBanner({ online, pendingCount, syncing }: Props) {
   const { t } = useTranslation();
   if (online && pendingCount === 0) return null;
 
-  const syncMode = online;
-  const accent = syncMode ? vars.typography.accent : vars.typography.warning;
+  const tone = online ? "sync" : "offline";
+  const pulsing = online || syncing;
   const text = !online
     ? pendingCount > 0
       ? t("offline.banner", { n: pendingCount })
@@ -22,42 +22,21 @@ export function OfflineBanner({ online, pendingCount, syncing, mode }: Props) {
     : t("offline.syncing", { n: pendingCount });
 
   return (
-    <div
+    <prim.Stack
       role="status"
-      style={{
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        gap: 7,
-        padding: "7px 14px",
-        background: `${accent}1a`,
-        borderTop: `1px solid ${accent}40`,
-        borderBottom: `1px solid ${accent}40`,
-        color: syncMode
-          ? vars.typography.accent
-          : mode === "dark"
-            ? "#fbbf24"
-            : "#b45309",
-        fontFamily: MONO,
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: 0.5,
-      }}
+      direction="row"
+      align="center"
+      noShrink
+      className={cx(s.banner, s.tone[tone])}
     >
-      <span
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: accent,
-          flexShrink: 0,
-          animation:
-            syncMode || syncing
-              ? "pulse 1.2s ease-in-out infinite"
-              : undefined,
-        }}
-      />
+      <prim.Stack
+        as="span"
+        inline
+        className={cx(s.dot, s.dotTone[tone], pulsing && s.dotPulsing)}
+      >
+        {null}
+      </prim.Stack>
       {text}
-    </div>
+    </prim.Stack>
   );
 }

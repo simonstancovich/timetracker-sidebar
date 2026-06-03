@@ -47,6 +47,8 @@ export const colors = {
     // darker red on the pale light bg, softer red on the dark bg.
     dangerStrong: "#b91c1c", // light
     dangerSoft: "#fca5a5", // dark
+    warningInkLight: "#b45309", // amber-700, for text on warning-tinted bg in light mode
+    warningInkDark: "#fbbf24",  // amber-400, for text on warning-tinted bg in dark mode
     // Deep "ink" colors for text sitting on the tinted month-heatmap cells
     // (light mode); chosen for legibility on the pale green/amber/red fills.
     forestInk: "#0f4d2a", // hit-goal text

@@ -987,7 +987,6 @@ export function AppShell({
             online={online}
             pendingCount={pendingQueue.length}
             syncing={syncing}
-            mode={mode}
           />
           <ui.FailedQueueBanner count={failedQueue.length} onRetry={retryFailed} />
         </>

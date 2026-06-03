@@ -28,6 +28,7 @@ export const vars = createThemeContract({
     goalInk: null,
     partialInk: null,
     missedInk: null,
+    warningInk: null,
   },
   background: {
     page: null,
@@ -99,6 +100,7 @@ export const lightTheme = createTheme(vars, {
     goalInk: colors.typography.forestInk,
     partialInk: colors.typography.amberInk,
     missedInk: colors.typography.redInk,
+    warningInk: colors.typography.warningInkLight,
   },
   background: {
     page: pickColor("background", "page", "light"),
@@ -160,6 +162,7 @@ export const darkTheme = createTheme(vars, {
     goalInk: colors.typography.gray100,
     partialInk: colors.typography.amberInk,
     missedInk: colors.typography.redInk,
+    warningInk: colors.typography.warningInkDark,
   },
   background: {
     page: pickColor("background", "page", "dark"),
