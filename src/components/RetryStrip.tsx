@@ -1,44 +1,29 @@
 import { useTranslation } from "../lib/i18n";
-import { vars } from "../theme";
-import { MONO } from "../lib/fonts";
-import { Button } from "../primitives/Button/Button";
+import * as prim from "../primitives";
+import * as s from "./RetryStrip.css";
 
 interface Props {
   label: string;
   onRetry: () => void;
 }
 
-// Inline failstate for a load that didn't arrive (clients / projects), so the
-// user sees a clear reason + a way to recover instead of a stuck "Loading…".
 export function RetryStrip({ label, onRetry }: Props) {
   const { t } = useTranslation();
   return (
-    <div
+    <prim.Stack
       role="status"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "7px 10px",
-        borderRadius: 8,
-        background: `color-mix(in srgb, ${vars.typography.error} 10%, transparent)`,
-        border: `1px solid color-mix(in srgb, ${vars.typography.error} 25%, transparent)`,
-      }}
+      direction="row"
+      align="center"
+      gap="sm"
+      borderRadius="sm"
+      className={s.strip}
     >
-      <span
-        style={{
-          flex: 1,
-          fontSize: 11,
-          fontWeight: 600,
-          color: vars.typography.danger,
-          fontFamily: MONO,
-        }}
-      >
+      <prim.MonoText size="sm" weight="semibold" color="danger" className={s.label}>
         {label}
-      </span>
-      <Button variant="danger" size="xs" shape="pill" mono onClick={onRetry}>
+      </prim.MonoText>
+      <prim.Button variant="danger" size="xs" shape="pill" mono onClick={onRetry}>
         {t("offline.retry")}
-      </Button>
-    </div>
+      </prim.Button>
+    </prim.Stack>
   );
 }
