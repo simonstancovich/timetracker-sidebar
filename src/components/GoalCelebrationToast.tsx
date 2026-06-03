@@ -1,6 +1,8 @@
 import { useTranslation } from "../lib/i18n";
-import { vars } from "../theme";
+import { cx } from "../lib/cx";
 import * as prim from "../primitives";
+import { CheckIcon } from "../icons/CheckIcon";
+import * as s from "./GoalCelebrationToast.css";
 
 interface Celebration {
   title: string;
@@ -16,70 +18,32 @@ export function GoalCelebrationToast({ celebration, liftedForAch }: Props) {
   const { t } = useTranslation();
   if (!celebration) return null;
   return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: liftedForAch ? 90 : 14,
-        left: 12,
-        right: 12,
-        background: vars.background.surface,
-        border: `1.5px solid color-mix(in srgb, ${vars.typography.green} 40%, transparent)`,
-        borderRadius: 14,
-        padding: "14px 16px",
-        display: "flex",
-        alignItems: "center",
-        gap: 13,
-        zIndex: 101,
-        animation: "goalToastIn .6s cubic-bezier(.34,1.56,.64,1)",
-        boxShadow: `0 10px 36px color-mix(in srgb, ${vars.typography.green} 33%, transparent)`,
-      }}
+    <prim.Stack
       role="status"
       aria-live="polite"
+      direction="row"
+      align="center"
+      className={cx(s.toast, liftedForAch ? s.toastOffset.lifted : s.toastOffset.default)}
     >
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
-          background: `color-mix(in srgb, ${vars.typography.green} 12%, transparent)`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          color: vars.typography.green,
-        }}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          width={24}
-          height={24}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      </div>
+      <prim.IconTile size="md" className={s.iconTile}>
+        <CheckIcon size={24} />
+      </prim.IconTile>
       <prim.Stack gap="xs" minWidth0>
         <prim.MonoText
           size="2xs"
-          weight="bold"
           color="green"
           tracking="loosest"
           transform="uppercase"
         >
           {t("goal.eyebrow")}
         </prim.MonoText>
-        <prim.Text size="xl" weight="black" color="primary" tracking="tight">
+        <prim.Text size="xl" weight="black" tracking="tight">
           {celebration.title}
         </prim.Text>
         <prim.Text size="sm" color="tertiary">
           {celebration.sub}
         </prim.Text>
       </prim.Stack>
-    </div>
+    </prim.Stack>
   );
 }

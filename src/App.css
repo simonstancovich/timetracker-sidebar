@@ -246,11 +246,6 @@ input, textarea, select {
 }
 .goal-bloom { display: inline-block; animation: goalBloom 1.6s cubic-bezier(.34,1.56,.64,1); transform-origin: center; }
 
-@keyframes goalToastIn {
-  0% { opacity: 0; transform: translateY(24px) scale(.94); }
-  60% { opacity: 1; transform: translateY(-4px) scale(1.02); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
 @keyframes streakPop {
   0%   { transform: rotate(-10deg) scale(1); }
   22%  { transform: rotate(8deg) scale(1.18); }
