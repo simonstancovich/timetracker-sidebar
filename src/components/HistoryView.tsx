@@ -51,7 +51,7 @@ export function HistoryView({
   const { simonMode } = useAppContext();
   const scaleLabel = t(`scale.${historyScale}` as "scale.week");
   return (
-    <Page title={t("page.history")} hint={scaleLabel} gap={12}>
+    <Page title={t("page.history")} hint={scaleLabel} gap="md">
       <prim.Stack
         direction="row"
         align="center"

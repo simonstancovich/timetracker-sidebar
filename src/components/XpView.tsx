@@ -30,7 +30,7 @@ export function XpView({ xp, xpCoach, weekTotal, weekH, todayI, unlocked, goal }
   const pct = Math.min(((xp - xpBase) / (xpNext - xpBase)) * 100, 100);
 
   return (
-    <Page title={t("page.progress")} hint={`${t("page.level")} ${level}`} gap={10}>
+    <Page title={t("page.progress")} hint={`${t("page.level")} ${level}`} gap="sm">
       {/* Level hero */}
       <div
         data-tour="xp-level"

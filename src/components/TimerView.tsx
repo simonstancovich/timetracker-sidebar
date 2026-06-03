@@ -177,7 +177,7 @@ export function TimerView({
       : t("page.timerIdle");
 
   return (
-    <Page title={t("page.timer")} hint={timerHint} gap={10} minHeight="100%">
+    <Page title={t("page.timer")} hint={timerHint} gap="sm" fullHeight>
       {stashedTimer && (
         <button
           type="button"

@@ -1,31 +1,22 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import * as prim from "../primitives";
+import * as s from "./Page.css";
 
 interface Props {
   title: string;
   hint?: string;
-  gap?: number;
-  minHeight?: CSSProperties["minHeight"];
+  gap?: prim.StackGap;
+  fullHeight?: boolean;
   children: ReactNode;
 }
 
-// Standard scrolling view: the eyebrow header bleeds to the page edges (its
-// negative margin cancels this exact padding), with the content stacked below.
-export function Page({ title, hint, gap = 16, minHeight, children }: Props) {
+export function Page({ title, hint, gap = "lg", fullHeight = false, children }: Props) {
   return (
-    <div
-      style={{
-        padding: "16px 14px 24px",
-        display: "flex",
-        flexDirection: "column",
-        gap,
-        minHeight,
-      }}
-    >
-      <div style={{ margin: "-16px -14px 0" }}>
+    <prim.Stack gap={gap} fullHeight={fullHeight} className={s.root}>
+      <prim.Stack className={s.eyebrowBleed}>
         <prim.PageEyebrow title={title} hint={hint} />
-      </div>
+      </prim.Stack>
       {children}
-    </div>
+    </prim.Stack>
   );
 }
