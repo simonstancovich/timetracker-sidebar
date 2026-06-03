@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatLocalDate, mondayOf } from './date'
+import { formatLocalDate, mondayOf, parseTaskDate } from './date'
 
 describe('formatLocalDate', () => {
   it('formats a date as YYYY-MM-DD using local components', () => {
@@ -52,5 +52,33 @@ describe('mondayOf', () => {
     const copy = new Date(input)
     mondayOf(input)
     expect(+input).toBe(+copy)
+  })
+})
+
+describe('parseTaskDate', () => {
+  it('parses the server "YYYY-MM-DD HH:MM:SS" shape into a local-time Date at 00:00', () => {
+    const d = parseTaskDate('2026-06-02 00:00:00')
+    expect(d).not.toBeNull()
+    expect(formatLocalDate(d!)).toBe('2026-06-02')
+    expect(d!.getHours()).toBe(0)
+  })
+
+  it('parses a bare "YYYY-MM-DD" the same way', () => {
+    expect(formatLocalDate(parseTaskDate('2026-01-15')!)).toBe('2026-01-15')
+  })
+
+  it('returns null for empty / non-string / malformed input', () => {
+    expect(parseTaskDate('')).toBeNull()
+    expect(parseTaskDate(null)).toBeNull()
+    expect(parseTaskDate(undefined)).toBeNull()
+    expect(parseTaskDate('not a date')).toBeNull()
+    expect(parseTaskDate('06-02-2026')).toBeNull()
+  })
+
+  it('regression — does not roll an edit of yesterday onto today (the split-on-"-" bug)', () => {
+    // The old code did `task_date.split("-").map(Number)` which left the day
+    // chunk as "02 00:00:00", making it NaN and silently falling back to today.
+    const parsed = parseTaskDate('2026-06-02 00:00:00')!
+    expect(formatLocalDate(parsed)).toBe('2026-06-02')
   })
 })

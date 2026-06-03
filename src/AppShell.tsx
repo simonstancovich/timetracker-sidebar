@@ -22,7 +22,7 @@ import {
   isPendingId,
   makePendingEntry,
 } from "./lib/pendingEntries";
-import { formatLocalDate, mondayOf } from "./lib/date";
+import { formatLocalDate, mondayOf, parseTaskDate } from "./lib/date";
 import {
   fmtHours,
   roundUpToQuarter,
@@ -371,11 +371,11 @@ export function AppShell({
 
   const editEntry = async (entry: TimeEntry) => {
     log.info("editEntry open", { id: entry.id, task_date: entry.task_date, hour: entry.hour });
-    const [y, mo, d] = (entry.task_date || "").split("-").map(Number);
-    const date =
-      Number.isFinite(y) && Number.isFinite(mo) && Number.isFinite(d)
-        ? new Date(y, mo - 1, d)
-        : new Date();
+    const parsed = parseTaskDate(entry.task_date);
+    if (!parsed) {
+      log.warn("editEntry: could not parse task_date, falling back to today", { task_date: entry.task_date });
+    }
+    const date = parsed ?? new Date();
     openForEdit(entry.id, date);
     setFCo(entry._company_id);
     await ensureProjects(entry._company_id);
