@@ -1,5 +1,21 @@
 import { keyframes, style } from "@vanilla-extract/css";
 
+const streakPopAnim = keyframes({
+  "0%":   { transform: "rotate(-10deg) scale(1)" },
+  "22%":  { transform: "rotate(8deg) scale(1.18)" },
+  "44%":  { transform: "rotate(-4deg) scale(0.96)" },
+  "68%":  { transform: "rotate(2deg) scale(1.04)" },
+  "100%": { transform: "rotate(0) scale(1)" },
+});
+
+export const streakPop = style({
+  display: "inline-flex",
+  animationName: streakPopAnim,
+  animationDuration: "1.3s",
+  animationTimingFunction: "cubic-bezier(.34,1.4,.64,1)",
+  transformOrigin: "center",
+});
+
 const goalBloom = keyframes({
   "0%": { transform: "scale(1)", filter: "drop-shadow(0 0 0 transparent)" },
   "35%": {

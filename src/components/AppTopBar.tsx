@@ -3,6 +3,7 @@ import { useTranslation, type Lang } from '../lib/i18n'
 import { fmtClock, fmtHours } from '../lib/hours'
 import { cx } from '../lib/cx'
 import * as prim from '../primitives'
+import { streakPop } from '../styles/celebration.css'
 import { FlameIcon } from '../icons/FlameIcon'
 import { SunIcon } from '../icons/SunIcon'
 import { MoonIcon } from '../icons/MoonIcon'
@@ -279,7 +280,7 @@ export function AppTopBar({
             direction="row"
             align="baseline"
             inline
-            className={cx(s.streakGroup, justBumpedStreak && 'streak-pop')}
+            className={cx(s.streakGroup, justBumpedStreak && streakPop)}
           >
             <FlameIcon size={10} />
             <prim.MonoText size="xs" weight="bold" tabular tracking="wide" color="pink">
