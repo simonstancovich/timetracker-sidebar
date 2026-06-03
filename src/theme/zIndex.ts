@@ -5,6 +5,7 @@ export const zIndex = {
   pinnedFloatTop: 100, // achievement unlock toast
   goalToast: 101,
   confetti: 102,
+  saveToast: 110,
   modalBackdrop: 200,
   modal: 201,
   introMask: 499, // intro overlay's cutout mask

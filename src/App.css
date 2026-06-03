@@ -106,10 +106,6 @@ input, textarea, select {
 }
 .timer-dial-btn:hover { transform: scale(1.06); }
 .timer-dial-btn:active { transform: scale(0.94); transition-duration: 80ms; }
-.glassy {
-  backdrop-filter: blur(18px) saturate(130%);
-  -webkit-backdrop-filter: blur(18px) saturate(130%);
-}
 @keyframes topShimmer {
   0% { background-position: -150% 0; }
   100% { background-position: 250% 0; }
@@ -168,31 +164,6 @@ input, textarea, select {
   100% { transform: rotate(0) scale(1); }
 }
 .streak-pop { display: inline-flex; animation: streakPop 1.3s cubic-bezier(.34,1.4,.64,1); transform-origin: center; }
-
-@keyframes saveFlashBackdrop {
-  0%   { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
-  14%  { opacity: 1; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-  86%  { opacity: 1; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-  100% { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
-}
-@keyframes saveFlashCard {
-  0%   { opacity: 0; transform: scale(.88) rotate(-1.6deg); }
-  18%  { opacity: 1; transform: scale(1.02) rotate(0.4deg); }
-  30%  { transform: scale(1) rotate(0); }
-  86%  { opacity: 1; transform: scale(1) rotate(0); }
-  100% { opacity: 0; transform: scale(.985) rotate(0); }
-}
-@keyframes saveRingDraw {
-  0%   { stroke-dashoffset: 195; }
-  100% { stroke-dashoffset: 0; }
-}
-@keyframes saveCheckDraw {
-  0%   { stroke-dashoffset: 40; }
-  100% { stroke-dashoffset: 0; }
-}
-.save-flash-ring { animation: saveRingDraw 720ms 220ms cubic-bezier(.22,1,.36,1) both; }
-.save-flash-check { animation: saveCheckDraw 620ms 820ms cubic-bezier(.22,1,.36,1) both; }
-
 
 .entry-card {
   box-shadow: var(--shadow-engrave);

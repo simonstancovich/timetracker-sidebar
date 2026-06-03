@@ -90,6 +90,8 @@ export const colors = {
     skeletonDark: "rgba(140,140,160,0.18)",
     scrimLight: "rgba(0,0,0,0.6)",
     scrimDark: "rgba(0,0,0,0.6)",
+    saveScrimLight: "rgba(253,252,251,0.65)",
+    saveScrimDark: "rgba(11,9,16,0.55)",
   },
 
   border: {
@@ -174,7 +176,8 @@ type BgName =
   | "urgent"
   | "danger"
   | "skeleton"
-  | "scrim";
+  | "scrim"
+  | "saveScrim";
 
 const BACKGROUND_MAP: Record<
   BgName,
@@ -194,6 +197,7 @@ const BACKGROUND_MAP: Record<
   danger: { light: "dangerLight", dark: "dangerDark" },
   skeleton: { light: "skeletonLight", dark: "skeletonDark" },
   scrim: { light: "scrimLight", dark: "scrimDark" },
+  saveScrim: { light: "saveScrimLight", dark: "saveScrimDark" },
 };
 
 type BorderName = "soft" | "strong" | "green" | "pink" | "accent" | "warning";

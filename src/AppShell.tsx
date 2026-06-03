@@ -1021,7 +1021,7 @@ export function AppShell({
             onDismiss={() => setConfirmation(null)}
           />
           <ui.FloatStack floats={floats} />
-          <ui.SaveToast toast={saveToast} mode={mode} />
+          <ui.SaveToast toast={saveToast} />
           <ui.ConfettiBurst show={justHitGoal} />
           <ui.GoalCelebrationToast
             celebration={goalCelebration}
