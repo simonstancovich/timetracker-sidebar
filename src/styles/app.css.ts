@@ -1,8 +1,5 @@
 import { style } from "@vanilla-extract/css";
 
-// Dark-mode ambient gradient. Applied to the app shell (AppLayout) and to the
-// welcome/done IntroOverlay so the editorial screens share the same backdrop
-// as the rest of the app in dark mode.
 export const darkGlow = style({
   background: `
     radial-gradient(ellipse 700px 520px at 100% -4%, rgba(140, 104, 255, 0.24) 0%, transparent 56%),

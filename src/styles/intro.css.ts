@@ -1,7 +1,5 @@
 import { keyframes, style, styleVariants } from "@vanilla-extract/css";
 
-// Editorial fade-up + staggered delays for the welcome / chapter overlays.
-// Used by IntroOverlay (welcome/done full-screens) and TourTooltip (chapter cards).
 const introFadeUp = keyframes({
   from: { opacity: 0, transform: "translateY(8px)" },
   to: { opacity: 1, transform: "translateY(0)" },

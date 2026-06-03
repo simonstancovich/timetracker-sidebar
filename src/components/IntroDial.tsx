@@ -9,8 +9,6 @@ const TICK_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 const RING_RADIUS = 29;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-// Animated watch-dial mark — sweeping ring + ticking hand, surrounded by tick
-// marks. Switches to a green check when `done` (the final intro step).
 export function IntroDial({ done }: Props) {
   const ringColor = done ? vars.typography.green : vars.typography.accent;
   return (

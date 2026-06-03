@@ -1,7 +1,6 @@
 import { keyframes, style } from "@vanilla-extract/css";
 import { zIndex } from "../theme";
 
-// Pulsing ring around the highlighted target during the chapter tour.
 const ringPulse = keyframes({
   "0%, 100%": {
     boxShadow:

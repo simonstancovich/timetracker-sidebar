@@ -27,8 +27,6 @@ interface Props {
 
 const CHART_KEYS = ["0", "1", "2", "3"] as const;
 
-// The selected-day detail: hero total, per-client entry groups with inline
-// edit/delete, day total, and a "log past time" action.
 export function DayView({
   selectedDate,
   dayEntries,
@@ -45,7 +43,6 @@ export function DayView({
   const { t, i18n } = useTranslation();
   const lang = i18n.language as Lang;
 
-  // Merge queued / quarantined entries for the selected day with server rows.
   const sdISO = formatLocalDate(selectedDate);
   const dayIds = new Set(dayEntries.map((e) => e.id));
   const dayList = [

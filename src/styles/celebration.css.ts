@@ -1,7 +1,5 @@
 import { keyframes, style } from "@vanilla-extract/css";
 
-// Shared "just hit goal" celebration animation. Applied to the hours ring
-// button in the top bar and the giant hours number on Today.
 const goalBloom = keyframes({
   "0%": { transform: "scale(1)", filter: "drop-shadow(0 0 0 transparent)" },
   "35%": {

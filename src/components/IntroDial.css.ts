@@ -1,12 +1,10 @@
 import { keyframes, style } from "@vanilla-extract/css";
 
-// Sweeping ring stroke that fills as the welcome screen mounts.
 const dialSweep = keyframes({
   "0%": { strokeDashoffset: 226 },
   "100%": { strokeDashoffset: 0 },
 });
 
-// Ticking watch hand — six rotation stops per cycle, steps timing for the snap.
 const handTick = keyframes({
   "0%": { transform: "rotate(0deg)" },
   "12%": { transform: "rotate(30deg)" },

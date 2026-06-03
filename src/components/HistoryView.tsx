@@ -18,12 +18,9 @@ interface Props {
   stepHistoryDate: (dir: 1 | -1) => void;
   historyIsOnCurrent: boolean;
   jumpHistoryToCurrent: () => void;
-  // The actual day/week/month panels — rendered by App so they can stay wired
-  // to whatever state they need without us re-plumbing it through here.
   dayView: ReactNode;
   weekView: ReactNode;
   monthView: ReactNode;
-  // Simon-mode "upcoming to-dos" strip below the active panel.
   upcomingTodos: Todo[];
   activeTaskKey: string | null;
   startTodo: (todo: Todo) => void;
@@ -36,8 +33,6 @@ const SCALES = [
   { value: "month" as const, labelKey: "history.monthly" },
 ];
 
-// The History tab: a scale selector (Daily / Weekly / Monthly), prev/next nav,
-// jump-to-current button, and the active scale's panel.
 export function HistoryView({
   historyScale,
   setHistoryScale,

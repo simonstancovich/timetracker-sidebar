@@ -10,8 +10,6 @@ interface Props extends Omit<HTMLAttributes<HTMLDivElement>, "style"> {
   children: ReactNode;
 }
 
-// The floating coachmark card. Position is runtime geometry (stays inline);
-// the surface is themed via `vars` so it tracks light/dark without a prop.
 export const TourTooltip = forwardRef<HTMLDivElement, Props>(function TourTooltip(
   { top, left, maxWidth, className, children, ...rest },
   ref,
