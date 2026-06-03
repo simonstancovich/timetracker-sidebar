@@ -12,4 +12,5 @@ export const zIndex = {
   introHighlight: 500, // intro overlay's pulsing highlight ring
   introTooltip: 501, // intro overlay's tooltip card
   modeTransition: 999,
+  simonCorner: 9999,
 } as const;

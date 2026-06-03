@@ -1,4 +1,5 @@
-import { vars } from "../theme";
+import * as prim from "../primitives";
+import * as s from "./SimonCorner.css";
 
 interface Props {
   active: boolean;
@@ -7,32 +8,15 @@ interface Props {
 
 export function SimonCorner({ active, onTap }: Props) {
   return (
-    <div
+    <prim.Stack
       onClick={onTap}
       aria-hidden
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: 22,
-        height: 22,
-        zIndex: 9999,
-      }}
+      position="absolute"
+      className={s.corner}
     >
       {active && (
-        <span
-          style={{
-            position: "absolute",
-            top: 4,
-            left: 4,
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: vars.typography.green,
-            opacity: 0.7,
-          }}
-        />
+        <prim.Stack as="span" inline className={s.dot}>{null}</prim.Stack>
       )}
-    </div>
+    </prim.Stack>
   );
 }
