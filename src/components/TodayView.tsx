@@ -8,6 +8,7 @@ import { vars, chart } from "../theme";
 import { MONO, SERIF } from "../lib/fonts";
 import * as prim from "../primitives";
 import { FlameIcon } from "../icons/FlameIcon";
+import { bloom as goalBloomClass } from "../styles/celebration.css";
 import { PlusIcon } from "../icons/PlusIcon";
 import type { TimeEntry } from "../api";
 import type { HeaderTab } from "./AppHeader";
@@ -200,7 +201,7 @@ export function TodayView({
           style={{ textAlign: "center", padding: "20px 0 22px" }}
         >
           <div
-            className={justHitGoal ? "goal-bloom" : undefined}
+            className={justHitGoal ? goalBloomClass : undefined}
             style={{
               fontFamily: SERIF,
               fontSize: 90,

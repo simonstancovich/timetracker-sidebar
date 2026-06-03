@@ -1,6 +1,7 @@
 import { useTranslation } from "../lib/i18n";
 import { fmtHours } from "../lib/hours";
 import * as prim from "../primitives";
+import { bloom } from "../styles/celebration.css";
 
 interface Props {
   tRun: boolean;
@@ -43,7 +44,7 @@ export function HoursRingButton({
       onClick={onClick}
       title={statusTitle}
       aria-label={statusTitle}
-      className={justHitGoal ? "goal-bloom" : undefined}
+      className={justHitGoal ? bloom : undefined}
       badge={
         <prim.StatusDot
           color={statusDotColor}
