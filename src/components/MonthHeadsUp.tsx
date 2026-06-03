@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { useTranslation } from "../lib/i18n";
 import { fmtHours } from "../lib/hours";
 import * as prim from "../primitives";
@@ -35,13 +34,11 @@ export function MonthHeadsUp({
       <prim.MonoText size="2xs" weight="semibold" color="warning" transform="uppercase" tracking="loosest">
         {t("week.headsUp")}
       </prim.MonoText>
-      <prim.Stack gap="none">
+      <prim.Stack>
         {notes.map((note) => (
-          <Fragment key={note}>
-            <prim.DisplayText size="md" italic color="secondary" leading="loose">
-              {note}
-            </prim.DisplayText>
-          </Fragment>
+          <prim.DisplayText key={note} italic color="secondary" leading="loose">
+            {note}
+          </prim.DisplayText>
         ))}
       </prim.Stack>
     </prim.Stack>
