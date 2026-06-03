@@ -114,7 +114,7 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
     )
   }
 
-  const upcoming = meetings.filter((m) => new Date(m.end.dateTime).getTime() > now)
+  const upcoming = meetings.filter((m) => Date.parse(m.end.dateTime) > now)
   const next = upcoming[0]
   const rest = upcoming.slice(1, 4)
 
@@ -191,6 +191,18 @@ interface NextMeetingCardProps {
   onStartForMeeting?: (title: string) => void
 }
 
+type Tone = 'inProgress' | 'soon' | 'default'
+
+const TONE_PALETTE: Record<Tone, {
+  bg: prim.StackBackground
+  border: prim.StackBorderColor
+  label: prim.TextColor
+}> = {
+  inProgress: { bg: 'green', border: 'green', label: 'green' },
+  soon: { bg: 'pink', border: 'pink', label: 'pink' },
+  default: { bg: 'page', border: 'soft', label: 'accent' },
+}
+
 function NextMeetingCard({ meeting, now, onStartForMeeting }: NextMeetingCardProps) {
   const { t, i18n } = useTranslation()
   const locale = localeFor(i18n.language)
@@ -199,10 +211,8 @@ function NextMeetingCard({ meeting, now, onStartForMeeting }: NextMeetingCardPro
   const mins = Math.round((startMs - now) / 60000)
   const inProgress = mins <= 0 && endMs > now
   const soon = mins > 0 && mins <= 5
-
-  const cardBackground: prim.StackBackground = inProgress ? 'green' : soon ? 'pink' : 'page'
-  const cardBorderColor: prim.StackBorderColor = inProgress ? 'green' : soon ? 'pink' : 'soft'
-  const labelColor: prim.TextColor = inProgress ? 'green' : soon ? 'pink' : 'accent'
+  const tone: Tone = inProgress ? 'inProgress' : soon ? 'soon' : 'default'
+  const palette = TONE_PALETTE[tone]
 
   const labelText = inProgress
     ? t('cal.now')
@@ -215,14 +225,14 @@ function NextMeetingCard({ meeting, now, onStartForMeeting }: NextMeetingCardPro
   const organizerName = meeting.organizer?.emailAddress?.name
   const joinUrl = meeting.onlineMeeting?.joinUrl
 
-  const onStart = () => onStartForMeeting?.(meeting.subject || t('cal.noSubject'))
+  const onStart = () => onStartForMeeting?.(subject)
   const onJoin = () => { if (joinUrl) window.open(joinUrl, '_blank', 'noopener,noreferrer') }
 
   return (
     <prim.Stack
-      background={cardBackground}
+      background={palette.bg}
       border="all"
-      borderColor={cardBorderColor}
+      borderColor={palette.border}
       borderRadius="md"
       paddingX="md"
       paddingY="sm"
@@ -233,7 +243,7 @@ function NextMeetingCard({ meeting, now, onStartForMeeting }: NextMeetingCardPro
           as="span"
           size="2xs"
           weight="black"
-          color={labelColor}
+          color={palette.label}
           tracking="widest"
           transform="uppercase"
         >
