@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createRef } from "react";
 import { TourTooltip } from "../TourTooltip";
+import { fadeUp } from "../../styles/intro.css";
 
 describe("<TourTooltip />", () => {
   it("renders children and forwards dialog passthrough attributes", () => {
@@ -23,7 +24,7 @@ describe("<TourTooltip />", () => {
     );
     const el = container.firstChild as HTMLElement;
     expect(el.className).toContain("extra");
-    expect(el.className).toContain("intro-in");
+    expect(el.className).toContain(fadeUp);
     expect(ref.current).toBe(el);
   });
 });

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { cx } from '../lib/cx'
 import * as prim from '../primitives'
 import * as s from './AppLayout.css'
+import { darkGlow } from '../styles/app.css'
 
 interface Props {
   themeClass: string
@@ -38,7 +39,7 @@ export function AppLayout({
           s.modeVariant[mode],
           themeClass,
           'mode-root',
-          mode === 'dark' && 'app-dark-glow',
+          mode === 'dark' && darkGlow,
         )}
       >
         {topLeftCorner}

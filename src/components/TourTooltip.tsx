@@ -1,6 +1,7 @@
 import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
 import { cx } from "../lib/cx";
 import { vars, radii, zIndex } from "../theme";
+import { fadeUp } from "../styles/intro.css";
 
 interface Props extends Omit<HTMLAttributes<HTMLDivElement>, "style"> {
   top: number;
@@ -18,7 +19,7 @@ export const TourTooltip = forwardRef<HTMLDivElement, Props>(function TourToolti
   return (
     <div
       ref={ref}
-      className={cx("intro-in", className)}
+      className={cx(fadeUp, className)}
       style={{
         position: "fixed",
         top,

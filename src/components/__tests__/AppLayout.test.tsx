@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { AppLayout } from '../AppLayout'
 import * as s from '../AppLayout.css'
 import * as stack from '../../primitives/Stack/Stack.css'
+import { darkGlow } from '../../styles/app.css'
 
 function baseProps(overrides: Partial<Parameters<typeof AppLayout>[0]> = {}) {
   return {
@@ -50,13 +51,13 @@ describe('<AppLayout />', () => {
     expect(outer).toBeTruthy()
     expect(outer.className).toContain('lt')
     expect(outer.className).toContain(s.modeVariant.light)
-    expect(outer.className).not.toContain('app-dark-glow')
+    expect(outer.className).not.toContain(darkGlow)
   })
 
-  it('applies the dark mode variant and app-dark-glow class when mode=dark', () => {
+  it('applies the dark mode variant and dark-glow class when mode=dark', () => {
     const { container } = render(<AppLayout {...baseProps({ mode: 'dark' })} />)
     const outer = container.querySelector('.mode-root') as HTMLElement
     expect(outer.className).toContain(s.modeVariant.dark)
-    expect(outer.className).toContain('app-dark-glow')
+    expect(outer.className).toContain(darkGlow)
   })
 })

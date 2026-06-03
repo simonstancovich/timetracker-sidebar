@@ -2,6 +2,7 @@ import type { CSSProperties, SyntheticEvent } from "react";
 import { vars } from "../theme";
 import { cx } from "../lib/cx";
 import { layer as overlayLayer } from "../primitives/Overlay/Overlay.css";
+import * as s from "./Spotlight.css";
 
 export interface HoleRect {
   top: number;
@@ -32,7 +33,7 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
       {maskPanels.map((pos, i) => (
         <div
           key={i}
-          className={cx(overlayLayer, "intro-mask")}
+          className={cx(overlayLayer, s.mask)}
           style={pos}
           onClick={onDismiss}
           onMouseDown={onDismiss}
@@ -41,7 +42,7 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
 
       {readOnly && (
         <div
-          className={cx(overlayLayer, "intro-block")}
+          className={cx(overlayLayer, s.block)}
           style={{ top, left, width, height }}
           onClick={onDismiss}
           onMouseDown={onDismiss}
@@ -49,7 +50,7 @@ export function Spotlight({ hole, readOnly = false, onDismiss }: Props) {
       )}
 
       <div
-        className={cx(overlayLayer, "intro-ring")}
+        className={cx(overlayLayer, s.ring)}
         style={{
           top,
           left,

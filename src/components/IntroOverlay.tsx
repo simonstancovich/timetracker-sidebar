@@ -1,11 +1,15 @@
 import { useLayoutEffect, useState, type SyntheticEvent } from 'react'
 import { useModal } from '../lib/useModal'
+import { cx } from '../lib/cx'
 import type { IntroStep } from '../lib/introSteps'
 import { chapterRoman } from '../lib/roman'
-import { vars, type Mode } from '../theme'
+import { type Mode } from '../theme'
 import * as prim from '../primitives'
 import { Spotlight } from './Spotlight'
 import { TourTooltip } from './TourTooltip'
+import { IntroDial } from './IntroDial'
+import { fadeUp, delay } from '../styles/intro.css'
+import { darkGlow } from '../styles/app.css'
 
 export type { IntroStep }
 
@@ -24,58 +28,6 @@ function getEffectiveRect(el: HTMLElement): DOMRect {
     bottom = Math.max(bottom, r.bottom)
   })
   return new DOMRect(left, top, right - left, bottom - top)
-}
-
-// Animated watch-dial mark — sweeping ring + ticking hand, tick marks.
-function IntroDial({ done }: { done: boolean }) {
-  const ringColor = done ? vars.typography.green : vars.typography.accent
-  return (
-    <svg width={108} height={108} viewBox="0 0 64 64" aria-hidden>
-      <circle cx="32" cy="32" r="29" fill="none" stroke={vars.border.soft} strokeWidth={2.5} />
-      {[0, 45, 90, 135, 180, 225, 270, 315].map((a, i) => (
-        <line
-          key={a}
-          x1="32"
-          y1="3.5"
-          x2="32"
-          y2={i % 2 === 0 ? 7 : 5.5}
-          stroke={i % 2 === 0 ? vars.typography.tertiary : vars.typography.faint}
-          strokeWidth={i % 2 === 0 ? 1.4 : 1}
-          strokeLinecap="round"
-          transform={`rotate(${a} 32 32)`}
-          opacity={0.7}
-        />
-      ))}
-      <circle
-        className="intro-dial-sweep"
-        cx="32"
-        cy="32"
-        r="29"
-        fill="none"
-        stroke={ringColor}
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        strokeDasharray={2 * Math.PI * 29}
-        strokeDashoffset={2 * Math.PI * 29}
-        transform="rotate(-90 32 32)"
-      />
-      {done ? (
-        <polyline
-          points="22 33 29 40 43 25"
-          fill="none"
-          stroke={vars.typography.green}
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ) : (
-        <g className="intro-dial-hand">
-          <line x1="32" y1="32" x2="32" y2="14" stroke={vars.typography.accent} strokeWidth={2.5} strokeLinecap="round" />
-          <circle cx="32" cy="32" r="3" fill={vars.typography.accent} />
-        </g>
-      )}
-    </svg>
-  )
 }
 
 export function IntroOverlay({
@@ -147,13 +99,13 @@ export function IntroOverlay({
         tabIndex={-1}
         zIndex="introHighlight"
         tone={mode === 'dark' ? 'none' : 'screen'}
-        className={mode === 'dark' ? 'app-dark-glow' : undefined}
+        className={mode === 'dark' ? darkGlow : undefined}
       >
-        <prim.Stack className="intro-in" align="center" paddingBottom="xl">
+        <prim.Stack className={fadeUp} align="center" paddingBottom="xl">
           <IntroDial done={isLast} />
         </prim.Stack>
 
-        <prim.Stack className="intro-in intro-d1" align="center" paddingBottom="sm">
+        <prim.Stack className={cx(fadeUp, delay["1"])} align="center" paddingBottom="sm">
           <prim.MonoText
             size="xs"
             weight="bold"
@@ -166,7 +118,7 @@ export function IntroOverlay({
         </prim.Stack>
 
         <prim.DisplayText
-          className="intro-in intro-d2"
+          className={cx(fadeUp, delay["2"])}
           size="5xl"
           align="center"
           tracking="tightest"
@@ -176,7 +128,7 @@ export function IntroOverlay({
         </prim.DisplayText>
 
         <prim.Stack
-          className="intro-in intro-d3"
+          className={cx(fadeUp, delay["3"])}
           align="center"
           paddingTop="md"
           paddingBottom="xl"
@@ -191,13 +143,13 @@ export function IntroOverlay({
           variant={isLast ? 'success' : 'primary'}
           shape="pill"
           mono
-          className="intro-in intro-d4"
+          className={cx(fadeUp, delay["4"])}
         >
           {current.nextLabel || "Let's go"}
         </prim.Button>
 
         {isFirst && (
-          <prim.Stack className="intro-in intro-d5" align="center" paddingTop="lg">
+          <prim.Stack className={cx(fadeUp, delay["5"])} align="center" paddingTop="lg">
             <prim.Button variant="link" mono size="xs" onClick={onSkip}>
               Skip the tour
             </prim.Button>

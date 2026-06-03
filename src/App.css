@@ -106,12 +106,6 @@ input, textarea, select {
 }
 .timer-dial-btn:hover { transform: scale(1.06); }
 .timer-dial-btn:active { transform: scale(0.94); transition-duration: 80ms; }
-.app-dark-glow {
-  background:
-    radial-gradient(ellipse 700px 520px at 100% -4%, rgba(140, 104, 255, 0.24) 0%, transparent 56%),
-    radial-gradient(ellipse 620px 900px at 0% 108%, rgba(196, 120, 214, 0.15) 0%, transparent 52%),
-    linear-gradient(180deg, #120c1c 0%, #0b0910 44%, #08060e 100%);
-}
 .glassy {
   backdrop-filter: blur(18px) saturate(130%);
   -webkit-backdrop-filter: blur(18px) saturate(130%);
@@ -145,78 +139,6 @@ input, textarea, select {
   font-size: 10px;
   font-weight: 800;
   white-space: nowrap;
-}
-@keyframes introWiggle {
-  0%, 100% { transform: translateY(0) rotate(-8deg); }
-  50% { transform: translateY(-14px) rotate(8deg); }
-}
-@keyframes introFadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.intro-emoji { animation: introWiggle 1.6s ease-in-out infinite; display: inline-block; }
-.intro-mask {
-  position: fixed;
-  background: rgba(0, 0, 0, 0.62);
-  z-index: 499;
-  pointer-events: auto;
-}
-.intro-block {
-  position: fixed;
-  background: transparent;
-  z-index: 499;
-  pointer-events: auto;
-  cursor: not-allowed;
-}
-.intro-ring {
-  position: fixed;
-  border-radius: 10px;
-  pointer-events: none;
-  z-index: 500;
-  animation: introPulse 1.8s ease-in-out infinite;
-}
-.intro-in { animation: introFadeUp 600ms ease-out both; }
-.intro-d1 { animation-delay: 80ms; }
-.intro-d2 { animation-delay: 120ms; }
-.intro-d3 { animation-delay: 200ms; }
-.intro-d4 { animation-delay: 300ms; }
-.intro-d5 { animation-delay: 380ms; }
-
-@media (prefers-reduced-motion: reduce) {
-  .intro-in,
-  .intro-ring,
-  .intro-dial-sweep,
-  .intro-dial-hand {
-    animation: none;
-  }
-}
-
-/* Editorial onboarding — ticking dial hand + sweeping ring */
-@keyframes introDialSweep {
-  0% { stroke-dashoffset: 226; }
-  100% { stroke-dashoffset: 0; }
-}
-@keyframes introHandTick {
-  0% { transform: rotate(0deg); }
-  12% { transform: rotate(30deg); }
-  24% { transform: rotate(60deg); }
-  36% { transform: rotate(90deg); }
-  48% { transform: rotate(120deg); }
-  60% { transform: rotate(150deg); }
-  72% { transform: rotate(180deg); }
-  84% { transform: rotate(210deg); }
-  100% { transform: rotate(240deg); }
-}
-.intro-dial-sweep { animation: introDialSweep 2.4s cubic-bezier(.22,1,.36,1) forwards; }
-.intro-dial-hand { transform-origin: 32px 32px; animation: introHandTick 6s steps(1) infinite; }
-@keyframes introDotPop {
-  0% { transform: scale(0.6); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.intro-dot { animation: introDotPop 300ms cubic-bezier(.34,1.56,.64,1) both; }
-@keyframes introPulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(232,148,114,0.22), 0 0 22px rgba(232,148,114,0.42); }
-  50% { box-shadow: 0 0 0 7px rgba(232,148,114,0.12), 0 0 32px rgba(232,148,114,0.62); }
 }
 @keyframes modeIn {
   from { opacity: 0; }
