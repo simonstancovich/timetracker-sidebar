@@ -20,6 +20,8 @@ export function MonthGoalProgress({
   const { t } = useTranslation();
   const onTrack = monthTotal >= expectedMonthHours;
   const pct = Math.min(100, (monthTotal / expectedMonthHours) * 100);
+  const flexPositive = flexBalance >= 0;
+  const flexSign = flexPositive ? "+" : "";
 
   const deltaText =
     monthDelta == null
@@ -34,7 +36,7 @@ export function MonthGoalProgress({
         <prim.MonoText size="2xs" weight="semibold" color="tertiary" transform="uppercase" tracking="loosest">
           {t("month.thisMonth")}
         </prim.MonoText>
-        <prim.MonoText size="sm" weight="semibold" tabular>
+        <prim.Stack direction="row" align="baseline">
           <prim.MonoText size="sm" weight="semibold" color={onTrack ? "green" : "primary"} tabular>
             {fmtHours(monthTotal)}
           </prim.MonoText>
@@ -42,7 +44,7 @@ export function MonthGoalProgress({
             {" / "}
             {fmtHours(expectedMonthHours)}
           </prim.MonoText>
-        </prim.MonoText>
+        </prim.Stack>
       </prim.Stack>
 
       <prim.ProgressBar value={pct / 100} size="thin" tone={onTrack ? "green" : "accent"} />
@@ -53,15 +55,15 @@ export function MonthGoalProgress({
             {deltaText}
           </prim.DisplayText>
           {workingDaysCount > 0 && (
-            <prim.MonoText size="xs" color="faint" tabular>
+            <prim.Stack direction="row" align="baseline">
               <prim.MonoText size="xs" weight="semibold" color="faint" transform="uppercase" tracking="loosest">
                 {t("week.flex")}{" "}
               </prim.MonoText>
-              <prim.MonoText size="xs" weight="bold" color={flexBalance >= 0 ? "green" : "warning"}>
-                {flexBalance >= 0 ? "+" : ""}
+              <prim.MonoText size="xs" weight="bold" color={flexPositive ? "green" : "warning"}>
+                {flexSign}
                 {fmtHours(flexBalance)}
               </prim.MonoText>
-            </prim.MonoText>
+            </prim.Stack>
           )}
         </prim.Stack>
       )}
