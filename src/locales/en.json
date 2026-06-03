@@ -308,6 +308,8 @@
     "less": "Less",
     "more": "More",
     "missed": "Missed",
+    "atGoal": "At goal",
+    "internal": "Internal",
     "workdaysWithoutEntries": "{{n}} workday without entries",
     "workdaysWithoutEntriesPlural": "{{n}} workdays without entries",
     "moreDays": "+ {{n}} more",

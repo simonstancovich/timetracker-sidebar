@@ -308,6 +308,8 @@
     "less": "Mindre",
     "more": "Mer",
     "missed": "Missat",
+    "atGoal": "Vid mål",
+    "internal": "Intern",
     "workdaysWithoutEntries": "{{n}} arbetsdag utan poster",
     "workdaysWithoutEntriesPlural": "{{n}} arbetsdagar utan poster",
     "moreDays": "+ {{n}} till",

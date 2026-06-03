@@ -1,17 +1,19 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { loadTimeEntries, TimeEntry, endMonth } from '../api'
 import { getHolidays, isWorkingDay, dateKey } from '../lib/swedishHolidays'
 import { monthInsight } from '../lib/personality'
 import { useTranslation, type Lang } from '../lib/i18n'
+import { fmtHours } from '../lib/hours'
+import { cx } from '../lib/cx'
 import type { MonthClosureCache } from '../lib/useMonthClosure'
 import * as prim from '../primitives'
 import { MonthDayCell } from './MonthDayCell'
-import { vars, chart } from '../theme'
+import { vars } from '../theme'
 import { MonthGoalProgress } from './MonthGoalProgress'
 import { MonthHeadsUp } from './MonthHeadsUp'
 import { MonthStat } from './MonthStat'
 import { MonthSummaryStat } from './MonthSummaryStat'
-import { MONO, SERIF } from '../lib/fonts'
+import * as s from './MonthView.css'
 
 interface ConfirmOptions {
   title: string
@@ -31,18 +33,15 @@ interface Props {
   monthClosure?: MonthClosureCache
 }
 
+const CHART_KEYS = ['0', '1', '2', '3'] as const
+const DAY_HEADER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const
+
 function isoWeekOf(d: Date): number {
   const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
   const dayNum = x.getUTCDay() || 7
   x.setUTCDate(x.getUTCDate() + 4 - dayNum)
   const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1))
   return Math.ceil((((+x - +yearStart) / 86400000) + 1) / 7)
-}
-
-const fmtHours = (h: number) => {
-  const hh = Math.floor(h)
-  const mm = Math.round((h - hh) * 60)
-  return `${hh}:${String(mm).padStart(2, '0')}`
 }
 
 export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, firstName, confirm, notify, monthClosure }: Props) {
@@ -66,7 +65,6 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
   const lastOfMonth = useMemo(() => new Date(year, month + 1, 0), [year, month])
   const holidays = useMemo(() => getHolidays(year), [year])
 
-  // Mon-first: JS getDay() → 0=Sun,1=Mon,...6=Sat. Shift so Mon=0.
   const firstCol = (firstOfMonth.getDay() + 6) % 7
   const daysInMonth = lastOfMonth.getDate()
   const cells: Array<{ date: Date | null; key: string }> = []
@@ -77,7 +75,6 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
   }
   while (cells.length % 7 !== 0) cells.push({ date: null, key: `pad-end-${cells.length}` })
 
-  // Load all days of the month in parallel
   useEffect(() => {
     let cancelled = false
     const load = async () => {
@@ -106,7 +103,6 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
     return () => { cancelled = true }
   }, [year, month, daysInMonth])
 
-  // Previous month total (for delta)
   useEffect(() => {
     let cancelled = false
     const prevYear = month === 0 ? year - 1 : year
@@ -162,10 +158,11 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
     [hoursByDate],
   )
   const workingDays = useMemo(() => {
+    const now = new Date()
     let count = 0, hit = 0, partial = 0, missed = 0
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month, d)
-      if (date > new Date()) continue
+      if (date > now) continue
       if (!isWorkingDay(date, holidays)) continue
       count++
       const h = hoursByDate[dateKey(date)] || 0
@@ -177,10 +174,11 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
   }, [year, month, daysInMonth, holidays, hoursByDate, goal])
 
   const missingDays = useMemo(() => {
+    const now = new Date()
     const out: Date[] = []
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month, d)
-      if (date > new Date()) continue
+      if (date > now) continue
       if (!isWorkingDay(date, holidays)) continue
       if ((hoursByDate[dateKey(date)] || 0) === 0) out.push(date)
     }
@@ -189,7 +187,6 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
 
   const avgPerWorkday = workingDays.count > 0 ? monthTotal / workingDays.count : 0
   const flexBalance = monthTotal - workingDays.count * goal
-  // Full-month expected: count all workdays of the month (past + future)
   const allWorkdaysInMonth = useMemo(() => {
     let n = 0
     for (let d = 1; d <= daysInMonth; d++) {
@@ -199,7 +196,6 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
   }, [year, month, daysInMonth, holidays])
   const expectedMonthHours = allWorkdaysInMonth * goal
 
-  // Overtime / weekend / long-day signals
   const weekendHours = useMemo(() => {
     let s = 0
     for (let d = 1; d <= daysInMonth; d++) {
@@ -241,7 +237,6 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
     return Object.values(m).sort((a, b) => b.hours - a.hours)
   }, [entriesByDate])
 
-  // Weekly rollup: group dates by ISO week
   const weeklyRollup = useMemo(() => {
     const m: Record<number, { week: number; hours: number }> = {}
     for (let d = 1; d <= daysInMonth; d++) {
@@ -276,109 +271,81 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
   }), [monthTotal, prevMonthTotal, workingDays.hit, workingDays.count, billable, bestWeek, topClient, firstName, isFinished, lang, t])
 
   const monthDelta = prevMonthTotal != null ? monthTotal - prevMonthTotal : null
-
-  let deltaContent: ReactNode = null
-  if (monthDelta != null) {
-    if (monthDelta === 0) {
-      deltaContent = t('month.sameAsLast')
-    } else {
-      const prefix = monthDelta > 0 ? '+' : ''
-      const deltaColor = monthDelta > 0 ? 'green' : 'warning'
-      deltaContent = (
-        <>
-          <prim.Text as="span" weight="bold" color={deltaColor}>{prefix}{fmtHours(monthDelta)}</prim.Text>
-          {' '}{t('month.vsLast')}
-        </>
-      )
-    }
-  }
-
-  void deltaContent;
-
-  const monthLabelEditorial = anchor.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
-  const dayHeader = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const
+  const showAvg = loaded && avgPerWorkday > 0
+  const showPct = loaded && monthTotal > 0
 
   return (
     <prim.Stack gap="lg" paddingTop="md" paddingX="md" paddingBottom="xl">
-      {/* Editorial month label */}
       <prim.DisplayText size="4xl" align="center" italic tracking="tight">
-        {monthLabelEditorial}
+        {monthLabel}
       </prim.DisplayText>
 
-      {/* Day-of-week header */}
       <prim.Grid columns={7} gap="xs">
-        {dayHeader.map((d, i) => (
-          <Fragment key={d}>
-            <prim.MonoText
-              size="2xs"
-              weight="bold"
-              tracking="loosest"
-              align="center"
-              color={i >= 5 ? 'faint' : 'tertiary'}
-            >
-              {d}
-            </prim.MonoText>
-          </Fragment>
+        {DAY_HEADER.map((d, i) => (
+          <prim.MonoText
+            key={d}
+            size="2xs"
+            tracking="loosest"
+            align="center"
+            color={i >= 5 ? 'faint' : 'tertiary'}
+          >
+            {d}
+          </prim.MonoText>
         ))}
       </prim.Grid>
 
-      {/* Calendar grid */}
       <prim.Grid columns={7} gap="xs">
         {cells.map((cell) => (
-          <Fragment key={cell.key}>
-            <MonthDayCell
-              date={cell.date}
-              dayKey={cell.key}
-              hours={cell.date ? hoursByDate[cell.key] || 0 : 0}
-              holiday={cell.date ? holidays.get(cell.key) : undefined}
-              goal={goal}
-              loaded={loaded}
-              onPick={onPickDay}
-            />
-          </Fragment>
+          <MonthDayCell
+            key={cell.key}
+            date={cell.date}
+            dayKey={cell.key}
+            hours={cell.date ? hoursByDate[cell.key] || 0 : 0}
+            holiday={cell.date ? holidays.get(cell.key) : undefined}
+            goal={goal}
+            loaded={loaded}
+            onPick={onPickDay}
+          />
         ))}
       </prim.Grid>
 
-      {/* 3-stat row */}
       <prim.Grid columns={3} gap="sm" paddingY="md" borderY align="center">
         <MonthStat
           value={loaded ? fmtHours(monthTotal) : '—'}
           label={t('month.thisMonth')}
         />
         <MonthStat
-          value={loaded && avgPerWorkday > 0 ? avgPerWorkday.toFixed(1) : '—'}
-          unit={loaded && avgPerWorkday > 0 ? 'h' : undefined}
+          value={showAvg ? avgPerWorkday.toFixed(1) : '—'}
+          unit={showAvg ? 'h' : undefined}
           unitColor="accent"
           label={t('week.avgDay')}
         />
         <MonthStat
-          value={loaded && monthTotal > 0 ? Math.round(billablePct) : '—'}
-          unit={loaded && monthTotal > 0 ? '%' : undefined}
+          value={showPct ? Math.round(billablePct) : '—'}
+          unit={showPct ? '%' : undefined}
           unitColor="green"
           label={t('week.billable')}
         />
       </prim.Grid>
 
-      {/* Earnings + goal-hit ratio subtitle */}
       {loaded && monthTotal > 0 && (
         <prim.Stack direction="row" justify="center" align="baseline" wrap gap="lg">
           {workingDays.count > 0 && (
             <MonthSummaryStat
               value={`${workingDays.hit}/${workingDays.count}`}
               valueColor={workingDays.hit === workingDays.count ? 'green' : 'primary'}
-              label="at goal"
+              label={t('month.atGoal')}
             />
           )}
           {billable > 0 && (
-            <MonthSummaryStat value={fmtHours(billable)} valueColor="green" label="billable" />
+            <MonthSummaryStat value={fmtHours(billable)} valueColor="green" label={t('week.billable')} />
           )}
           {nonBillable > 0 && (
-            <MonthSummaryStat value={fmtHours(nonBillable)} valueColor="secondary" label="internal" />
+            <MonthSummaryStat value={fmtHours(nonBillable)} valueColor="secondary" label={t('month.internal')} />
           )}
         </prim.Stack>
       )}
 
-      {/* Monthly goal progress + delta + flex */}
       {loaded && expectedMonthHours > 0 && (
         <MonthGoalProgress
           monthTotal={monthTotal}
@@ -389,7 +356,6 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
         />
       )}
 
-      {/* Heads up */}
       {loaded && (overtimeHours > 0 || weekendHours > 0 || longDayCount > 0) && (
         <MonthHeadsUp
           overtimeHours={overtimeHours}
@@ -400,7 +366,6 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
         />
       )}
 
-      {/* Per client */}
       {!loaded ? (
         <prim.Stack gap="xs">
           <prim.Skeleton height="xs" width="2xl" radius="xs" />
@@ -408,169 +373,87 @@ export function MonthView({ goal, referenceDate, onPickDay, onBackfillDay, first
           <prim.Skeleton height="sm" radius="xs" />
         </prim.Stack>
       ) : clientTotals.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={{
-            fontFamily: MONO,
-            fontSize: 9,
-            fontWeight: 600,
-            color: vars.typography.tertiary,
-            letterSpacing: 2.2,
-            textTransform: 'uppercase',
-            marginBottom: 10,
-          }}>{t('week.perClient')}</div>
+        <prim.Stack>
+          <prim.Text as="span" className={s.sectionLabel}>{t('week.perClient')}</prim.Text>
           {clientTotals.map((c, gi) => {
-            const stripe = chart[gi % chart.length]
+            const idx = CHART_KEYS[gi % CHART_KEYS.length]!
             return (
-              <div key={c.name} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'baseline',
-                gap: 12,
-                padding: '8px 0 8px 12px',
-                position: 'relative',
-              }}>
-                <span style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 8,
-                  bottom: 8,
-                  width: 3,
-                  borderRadius: 2,
-                  background: stripe,
-                }} />
-                <span style={{
-                  fontFamily: SERIF,
-                  fontSize: 17,
-                  color: stripe,
-                  letterSpacing: -0.1,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  minWidth: 0,
-                  flex: 1,
-                }}>{c.name}</span>
-                <span style={{
-                  fontFamily: MONO,
-                  fontSize: 12,
-                  color: vars.typography.secondary,
-                  fontWeight: 600,
-                  fontVariantNumeric: 'tabular-nums',
-                }}>{fmtHours(c.hours)}</span>
-              </div>
+              <prim.Stack
+                key={c.name}
+                direction="row"
+                justify="spaceBetween"
+                align="baseline"
+                gap="md"
+                position="relative"
+                className={s.clientRow}
+              >
+                <prim.Stack as="span" inline className={cx(s.clientStripe, s.clientStripeColor[idx])}>{null}</prim.Stack>
+                <prim.Text as="span" truncate className={cx(s.clientName, s.clientNameColor[idx])}>
+                  {c.name}
+                </prim.Text>
+                <prim.MonoText tabular className={s.clientHours}>
+                  {fmtHours(c.hours)}
+                </prim.MonoText>
+              </prim.Stack>
             )
           })}
-        </div>
+        </prim.Stack>
       )}
 
-      {/* Missing days */}
       {loaded && missingDays.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{
-            fontFamily: MONO,
-            fontSize: 9,
-            fontWeight: 600,
-            color: '#d97706',
-            letterSpacing: 2.2,
-            textTransform: 'uppercase',
-          }}>
-            {missingDays.length === 1 ? t('month.workdaysWithoutEntries', { n: 1 }) : t('month.workdaysWithoutEntriesPlural', { n: missingDays.length })}
-          </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <prim.Stack gap="sm">
+          <prim.Text as="span" className={s.missingLabel}>
+            {missingDays.length === 1
+              ? t('month.workdaysWithoutEntries', { n: 1 })
+              : t('month.workdaysWithoutEntriesPlural', { n: missingDays.length })}
+          </prim.Text>
+          <prim.Stack direction="row" gap="xs" wrap>
             {missingDays.slice(0, 8).map((d) => (
-              <button
+              <prim.Button
                 key={dateKey(d)}
+                variant="link"
                 onClick={() => (onBackfillDay || onPickDay)(d)}
                 title={d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${vars.border.soft}`,
-                  color: vars.typography.secondary,
-                  borderRadius: 999,
-                  padding: '5px 12px',
-                  fontFamily: MONO,
-                  fontSize: 10,
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  letterSpacing: 1,
-                  textTransform: 'uppercase',
-                }}
+                className={s.missingPill}
               >
                 {d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' })}
-              </button>
+              </prim.Button>
             ))}
             {missingDays.length > 8 && (
-              <span style={{
-                fontFamily: MONO,
-                fontSize: 10,
-                color: vars.typography.faint,
-                alignSelf: 'center',
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-                fontWeight: 600,
-              }}>{t('month.moreDays', { n: missingDays.length - 8 })}</span>
+              <prim.Text as="span" className={s.moreDaysHint}>
+                {t('month.moreDays', { n: missingDays.length - 8 })}
+              </prim.Text>
             )}
-          </div>
-        </div>
+          </prim.Stack>
+        </prim.Stack>
       )}
 
-      {/* Insight card */}
       {loaded && insight && (
         <prim.Card tone="tinted" radius="lg" pad="lg">
-          <div style={{
-            fontFamily: SERIF,
-            fontStyle: 'italic',
-            fontSize: 15,
-            color: vars.typography.accentInk,
-            lineHeight: 1.4,
-            letterSpacing: -0.1,
-          }}>&ldquo;{insight}&rdquo;</div>
-          <div style={{
-            fontFamily: MONO,
-            fontSize: 8,
-            color: vars.typography.tertiary,
-            textTransform: 'uppercase',
-            letterSpacing: 1.8,
-            marginTop: 10,
-            fontWeight: 600,
-          }}>— {t('week.coachNote')} · {t('month.monthlyInsight')}</div>
+          <prim.Text as="span" className={s.insightQuote}>&ldquo;{insight}&rdquo;</prim.Text>
+          <prim.Text as="span" className={s.insightAttribution}>
+            — {t('week.coachNote')} · {t('month.monthlyInsight')}
+          </prim.Text>
         </prim.Card>
       )}
 
-      {/* Close-month action (subtle, only when closable) */}
       {!isFutureMonth && isClosed === false && confirm && (
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 4 }}>
-          <button
+        <prim.Stack direction="row" justify="center" paddingTop="xs">
+          <prim.Button
+            variant="link"
             onClick={handleCloseMonth}
             disabled={closing}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 999,
-              background: 'transparent',
-              border: `1px solid ${vars.border.soft}`,
-              color: vars.typography.secondary,
-              cursor: closing ? 'default' : 'pointer',
-              fontFamily: MONO,
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: 1.4,
-              textTransform: 'uppercase',
-              opacity: closing ? 0.6 : 1,
-            }}
+            className={s.closeBtn}
           >
             {closing ? t('month.closing') : t('month.closeMonth')}
-          </button>
-        </div>
+          </prim.Button>
+        </prim.Stack>
       )}
 
       {loading && loaded && (
-        <div style={{
-          fontFamily: MONO,
-          fontSize: 9,
-          color: vars.typography.faint,
-          textAlign: 'center',
-          letterSpacing: 1.4,
-          textTransform: 'uppercase',
-        }}>{t('week.refreshing')}</div>
+        <prim.MonoText size="2xs" color="faint" className={s.refreshing}>
+          {t('week.refreshing')}
+        </prim.MonoText>
       )}
     </prim.Stack>
   )
