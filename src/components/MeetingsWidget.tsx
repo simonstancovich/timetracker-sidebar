@@ -6,7 +6,7 @@ interface Props {
   onStartForMeeting?: (title: string) => void
 }
 
-type Translate = (key: string, vars?: Record<string, string | number>) => string
+const localeFor = (lang: string) => (lang === 'sv' ? 'sv-SE' : 'en-GB')
 
 const fmtTime = (iso: string, locale: string) => {
   const d = new Date(iso)
@@ -15,15 +15,13 @@ const fmtTime = (iso: string, locale: string) => {
 
 export function MeetingsWidget({ onStartForMeeting }: Props) {
   const { t, i18n } = useTranslation()
-  const locale = i18n.language === 'sv' ? 'sv-SE' : 'en-GB'
+  const locale = localeFor(i18n.language)
 
   const [status, setStatus] = useState<GraphStatus | null>(null)
   const [meetings, setMeetings] = useState<GraphMeeting[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signingIn, setSigningIn] = useState(false)
-  // Ticks so the "NOW" / "in N min" label and the upcoming list stay accurate
-  // between the 5-minute refetches.
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
@@ -178,8 +176,6 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
         <NextMeetingCard
           meeting={next}
           now={now}
-          locale={locale}
-          t={t}
           onStartForMeeting={onStartForMeeting}
         />
       )}
@@ -192,12 +188,12 @@ export function MeetingsWidget({ onStartForMeeting }: Props) {
 interface NextMeetingCardProps {
   meeting: GraphMeeting
   now: number
-  locale: string
-  t: Translate
   onStartForMeeting?: (title: string) => void
 }
 
-function NextMeetingCard({ meeting, now, locale, t, onStartForMeeting }: NextMeetingCardProps) {
+function NextMeetingCard({ meeting, now, onStartForMeeting }: NextMeetingCardProps) {
+  const { t, i18n } = useTranslation()
+  const locale = localeFor(i18n.language)
   const startMs = Date.parse(meeting.start.dateTime)
   const endMs = Date.parse(meeting.end.dateTime)
   const mins = Math.round((startMs - now) / 60000)
