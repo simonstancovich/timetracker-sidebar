@@ -3,7 +3,7 @@ import { useTranslation } from "../lib/i18n";
 import { useAppContext } from "../lib/AppContext";
 import { fmtClock, fmtHours } from "../lib/hours";
 import { getTimerVibe } from "../lib/timerVibe";
-import { MONO, SERIF } from "../lib/fonts";
+import { cx } from "../lib/cx";
 import { vars } from "../theme";
 import * as prim from "../primitives";
 import { PauseIcon } from "../icons/PauseIcon";
@@ -101,9 +101,6 @@ interface Props {
   openAbsence: () => void;
 }
 
-// The Timer tab: activity ring + clock, client/project pickers, description &
-// notes, invoiceable toggle, start/pause/stop/cancel controls, switch-task and
-// side-quest entries, plus the running-state stats strip.
 export function TimerView({
   timer,
   todos,
@@ -164,7 +161,6 @@ export function TimerView({
     accrueTodoHours(activeTodoId, h);
     setActiveTodoId(null);
     if (stashedTimer) {
-      // Side quest logged — pop the main timer back (paused).
       restoreStashedTimer();
     } else {
       resetTimer();
@@ -188,8 +184,8 @@ export function TimerView({
         />
       )}
 
-      <div className={s.dialZone} style={{ padding: "12px 0 6px" }}>
-        <div className={s.dialContent}>
+      <prim.Stack direction="row" justify="center" className={cx(s.dialZone, s.dialZonePad)}>
+        <prim.Stack className={s.dialContent}>
           <prim.ActivityRing
             progress={goal > 0 ? todayH / goal : 0}
             done={done}
@@ -197,43 +193,28 @@ export function TimerView({
             stroke={3}
             withTicks
           >
-            <div style={{ textAlign: "center", padding: "0 8px" }}>
-              <div
-                style={{
-                  fontFamily: SERIF,
-                  fontSize: 38,
-                  fontWeight: 400,
-                  color: tRun ? vars.typography.primary : vars.typography.tertiary,
-                  letterSpacing: -1.5,
-                  lineHeight: 0.95,
-                  fontVariantNumeric: "tabular-nums",
-                }}
+            <prim.Stack className={s.dialCenter}>
+              <prim.Text
+                as="div"
+                className={cx(
+                  s.dialClockBase,
+                  s.dialClockColor[tRun ? "running" : "paused"],
+                )}
               >
                 {fmtClock(tSec)}
-              </div>
-              <div
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 8,
-                  color: tRun ? vars.typography.pink : vars.typography.faint,
-                  fontWeight: 700,
-                  letterSpacing: 2,
-                  textTransform: "uppercase",
-                  marginTop: 8,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
+              </prim.Text>
+              <prim.Text
+                as="div"
+                className={cx(
+                  s.dialStatusBase,
+                  s.dialStatusColor[tRun ? "running" : "idle"],
+                )}
               >
                 {tRun && (
-                  <span
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: vars.typography.pink,
-                      animation: "pulse 1.2s ease-in-out infinite",
-                    }}
+                  <prim.LivePulseDot
+                    size={5}
+                    background={vars.typography.pink}
+                    ringColor="rgba(244,114,182,.5)"
                   />
                 )}
                 {tRun
@@ -241,194 +222,96 @@ export function TimerView({
                   : tSec > 0
                     ? t("status.paused")
                     : t("status.idle")}
-              </div>
-            </div>
+              </prim.Text>
+            </prim.Stack>
           </prim.ActivityRing>
-        </div>
+        </prim.Stack>
         {tRun && (
-          <div className={s.dialControls}>
-            <button
-              type="button"
+          <prim.Stack direction="row" align="center" justify="center" className={s.dialControls}>
+            <prim.Button
+              variant="link"
               onClick={() => setTRun(false)}
               aria-label={t("timer.pause")}
               title={t("timer.pause")}
-              className={s.dialBtn}
-              style={{
-                background: vars.background.surface,
-                border: `1px solid ${vars.border.soft}`,
-                color: vars.typography.primary,
-              }}
+              className={cx(s.dialBtnBase, s.dialBtnTone.pause)}
             >
               <PauseIcon size={22} />
-            </button>
-            <button
-              type="button"
+            </prim.Button>
+            <prim.Button
+              variant="link"
               onClick={stop}
               aria-label={t("timer.stopLog")}
               title={t("timer.stopLog")}
-              className={s.dialBtn}
-              style={{
-                background: vars.background.button,
-                color: vars.typography.onAccent,
-                boxShadow: vars.shadow.button,
-              }}
+              className={cx(s.dialBtnBase, s.dialBtnTone.stop)}
             >
               <StopIcon size={22} />
-            </button>
-          </div>
+            </prim.Button>
+          </prim.Stack>
         )}
-      </div>
+      </prim.Stack>
 
       {!tRun &&
         (() => {
           const v = getTimerVibe(tSec, tRun, lang);
           return (
-            <div
-              style={{
-                textAlign: "center",
-                fontFamily: SERIF,
-                fontStyle: "italic",
-                fontSize: 15,
-                color: vars.typography.tertiary,
-                lineHeight: 1.3,
-                padding: "0 8px",
-              }}
-            >
+            <prim.Text as="div" className={s.vibe}>
               {v.text}
-              {v.icon && <span style={{ marginLeft: 6 }}>{v.icon}</span>}
-            </div>
+              {v.icon && (
+                <prim.Text as="span" className={s.vibeIcon}>
+                  {v.icon}
+                </prim.Text>
+              )}
+            </prim.Text>
           );
         })()}
       {!tRun && timerInsight && (
-        <div
-          style={{
-            textAlign: "center",
-            fontFamily: SERIF,
-            fontStyle: "italic",
-            fontSize: 13,
-            color: vars.typography.faint,
-            padding: "0 18px",
-            lineHeight: 1.4,
-          }}
-        >
+        <prim.Text as="div" className={s.insight}>
           {timerInsight}
-        </div>
+        </prim.Text>
       )}
 
       {(!tRun || !hasCtx || timerFormOpen) && (
-        <div
-          style={{
-            padding: "4px 0 0",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
+        <prim.Stack className={s.formColumn}>
           {tRun && !canStart && (
-            <div
-              style={{
-                fontFamily: SERIF,
-                fontStyle: "italic",
-                fontSize: 14,
-                color: vars.typography.pink,
-                textAlign: "center",
-                padding: "4px 8px",
-                lineHeight: 1.4,
-              }}
-            >
+            <prim.Text as="div" className={s.needFields}>
               {t("timer.runningNeedFields")}
-            </div>
+            </prim.Text>
           )}
           {!tRun &&
             (tSec > 0 && canStart ? (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 8,
-                }}
-              >
-                <button
+              <prim.Grid columns={2} gap="sm">
+                <prim.Button
+                  variant="link"
                   onClick={() => setTRun(true)}
-                  style={{
-                    height: 44,
-                    background: "transparent",
-                    border: `1px solid ${vars.border.soft}`,
-                    borderRadius: 999,
-                    color: vars.typography.primary,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: 1.4,
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                  }}
+                  className={s.resumeBtn}
                 >
                   {t("timer.resume")}
-                </button>
-                <button
+                </prim.Button>
+                <prim.Button
+                  variant="link"
                   onClick={() => void stopAndLogCurrent()}
-                  style={{
-                    height: 44,
-                    background: vars.background.button,
-                    border: "1px solid transparent",
-                    borderRadius: 999,
-                    color: vars.typography.onAccent,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    letterSpacing: 1.4,
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                    boxShadow: vars.shadow.button,
-                  }}
+                  className={s.stopLogBtn}
                 >
                   {t("timer.stopLog")}
-                </button>
-              </div>
+                </prim.Button>
+              </prim.Grid>
             ) : (
-              <button
+              <prim.Button
+                variant="link"
                 data-tour="timer-start"
                 onClick={() => setTRun(true)}
-                style={{
-                  width: "100%",
-                  height: 44,
-                  background: vars.background.button,
-                  border: "1px solid transparent",
-                  borderRadius: 999,
-                  color: vars.typography.onAccent,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: 1.4,
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  boxShadow: vars.shadow.button,
-                }}
+                className={s.startBtn}
               >
                 {tSec > 0 ? t("timer.resume") : t("timer.start")}
-              </button>
+              </prim.Button>
             ))}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              margin: "20px 0 14px",
-            }}
-          >
+          <prim.Stack direction="row" className={s.ctxRow}>
             <prim.Divider grow />
-            <span
-              style={{
-                fontSize: 10,
-                color: vars.typography.secondary,
-                fontWeight: 700,
-                letterSpacing: 1.4,
-                textTransform: "uppercase",
-                whiteSpace: "nowrap",
-              }}
-            >
+            <prim.Text as="span" className={s.ctxLabel}>
               {t("timer.whatWorking")}
-            </span>
+            </prim.Text>
             <prim.Divider grow />
-          </div>
+          </prim.Stack>
 
           {companies.error && companies.list.length === 0 && (
             <RetryStrip
@@ -436,7 +319,7 @@ export function TimerView({
               onRetry={companies.reload}
             />
           )}
-          <div data-tour="timer-company">
+          <prim.Stack data-tour="timer-company">
             <Combobox
               value={tCo}
               items={companies.list}
@@ -448,7 +331,7 @@ export function TimerView({
                 if (id) await companies.ensure(id);
               }}
             />
-          </div>
+          </prim.Stack>
 
           {tCo &&
             (companies.projectErrors[tCo] && prList.length === 0 ? (
@@ -457,7 +340,7 @@ export function TimerView({
                 onRetry={() => void companies.ensure(tCo)}
               />
             ) : (
-              <div data-tour="timer-project">
+              <prim.Stack data-tour="timer-project">
                 <Combobox
                   value={tPr}
                   items={prList}
@@ -468,27 +351,17 @@ export function TimerView({
                   }
                   onChange={setTPr}
                 />
-              </div>
+              </prim.Stack>
             ))}
 
           {tCo && tPr && (
             <>
-              <input
+              <prim.TextInput
                 data-tour="timer-description"
                 value={tD}
                 onChange={(e) => setTD(e.target.value)}
                 placeholder={t("timer.taskDescription")}
-                style={{
-                  padding: "8px 6px",
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: `1px solid ${tD.trim() ? vars.typography.accent : vars.border.soft}`,
-                  borderRadius: 8,
-                  color: vars.typography.primary,
-                  fontSize: 14,
-                  outline: "none",
-                  width: "100%",
-                }}
+                className={cx(s.inlineDesc, tD.trim() && s.inlineInputFocused)}
               />
               {(() => {
                 const recentDescs = Array.from(
@@ -500,190 +373,88 @@ export function TimerView({
                 ).slice(0, 3);
                 if (recentDescs.length === 0) return null;
                 return (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: -2 }}>
+                  <prim.Stack direction="row" className={s.recentDescChips}>
                     {recentDescs.map((d) => (
-                      <button
+                      <prim.Button
                         key={d}
-                        type="button"
+                        variant="link"
                         onClick={() => setTD(d)}
                         title={d}
-                        style={{
-                          display: "inline-flex",
-                          padding: "4px 10px",
-                          borderRadius: 999,
-                          background: "transparent",
-                          border: `1px solid ${vars.border.soft}`,
-                          color: vars.typography.tertiary,
-                          fontFamily: SERIF,
-                          fontStyle: "italic",
-                          fontSize: 12,
-                          cursor: "pointer",
-                          maxWidth: 220,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          lineHeight: 1.2,
-                        }}
+                        className={s.recentDescChip}
                       >
                         &ldquo;{d}&rdquo;
-                      </button>
+                      </prim.Button>
                     ))}
-                  </div>
+                  </prim.Stack>
                 );
               })()}
-              <textarea
+              <prim.TextArea
                 data-tour="timer-note"
                 value={tNote}
                 onChange={(e) => setTNote(e.target.value)}
                 placeholder={t("timer.internalNotes")}
                 rows={2}
-                style={{
-                  padding: "8px 6px",
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: `1px solid ${vars.border.soft}`,
-                  borderRadius: 8,
-                  color: vars.typography.primary,
-                  fontSize: 13,
-                  outline: "none",
-                  width: "100%",
-                  resize: "none",
-                  fontFamily: "inherit",
-                }}
+                className={s.inlineNote}
               />
-              <button
-                type="button"
+              <prim.Button
+                variant="link"
                 data-tour="timer-invoiceable"
                 role="switch"
                 aria-checked={tInv}
                 aria-label={t("timer.invoiceable")}
                 onClick={() => setTInv((v) => !v)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  padding: "8px 2px",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  font: "inherit",
-                  color: "inherit",
-                }}
+                className={s.invoiceableToggleBtn}
               >
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: vars.typography.secondary,
-                    textTransform: "uppercase",
-                    letterSpacing: 1.4,
-                    fontWeight: 600,
-                  }}
-                >
+                <prim.Text as="span" className={s.invoiceableLabel}>
                   {t("timer.invoiceable")}
-                </span>
-                <div
-                  style={{
-                    width: 28,
-                    height: 16,
-                    borderRadius: 999,
-                    background: tInv ? vars.typography.accent : vars.border.soft,
-                    display: "flex",
-                    alignItems: "center",
-                    padding: 2,
-                    transition: "background .2s",
-                  }}
+                </prim.Text>
+                <prim.Stack
+                  as="span"
+                  inline
+                  direction="row"
+                  align="center"
+                  className={cx(s.switchTrackBase, tInv ? s.switchTrackOn : s.switchTrackOff)}
                 >
-                  <div
-                    style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: vars.typography.onAccent,
-                      transform: `translateX(${tInv ? 12 : 0}px)`,
-                      transition: "transform .2s",
-                    }}
-                  />
-                </div>
-              </button>
+                  <prim.Stack
+                    as="span"
+                    inline
+                    className={cx(s.switchThumbBase, tInv ? s.switchThumbOn : s.switchThumbOff)}
+                  >
+                    {null}
+                  </prim.Stack>
+                </prim.Stack>
+              </prim.Button>
             </>
           )}
           {tRun && canStart && (
-            <button
-              type="button"
+            <prim.Button
+              variant="link"
               data-tour="timer-done"
               onClick={() => setTimerFormOpen(false)}
-              style={{
-                alignSelf: "center",
-                marginTop: 8,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "10px 22px",
-                borderRadius: 999,
-                background: vars.background.button,
-                border: "none",
-                color: vars.typography.onAccent,
-                cursor: "pointer",
-                fontFamily: MONO,
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 1.4,
-                textTransform: "uppercase",
-                boxShadow: vars.shadow.button,
-              }}
+              className={s.formDoneBtn}
             >
               {t("timer.formDone")}
-            </button>
+            </prim.Button>
           )}
-        </div>
+        </prim.Stack>
       )}
 
       {tRun && hasCtx && !timerFormOpen && (
-        <div style={{ textAlign: "center", padding: "4px 14px" }}>
-          <div
-            style={{
-              fontFamily: SERIF,
-              fontSize: 24,
-              color: vars.typography.primary,
-              letterSpacing: -0.3,
-              lineHeight: 1.1,
-            }}
-          >
+        <prim.Stack className={s.ctxBlock}>
+          <prim.Text as="div" className={s.ctxClient}>
             {coObj?.name}
-          </div>
+          </prim.Text>
           {prObj?.name && (
-            <div
-              style={{
-                fontFamily: MONO,
-                fontSize: 10,
-                color: vars.typography.faint,
-                textTransform: "uppercase",
-                letterSpacing: 1.8,
-                fontWeight: 600,
-                marginTop: 6,
-              }}
-            >
+            <prim.Text as="div" className={s.ctxProject}>
               {prObj.name}
-            </div>
+            </prim.Text>
           )}
           {tD && (
-            <div
-              style={{
-                fontFamily: SERIF,
-                fontStyle: "italic",
-                fontSize: 15,
-                color: vars.typography.tertiary,
-                marginTop: 14,
-                padding: "0 6px",
-                lineHeight: 1.45,
-              }}
-            >
+            <prim.Text as="div" className={s.ctxDesc}>
               &ldquo;{tD}&rdquo;
-            </div>
+            </prim.Text>
           )}
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
+          <prim.Stack direction="row" className={s.ctxActionsRow}>
             <prim.Button
               data-tour="timer-switch"
               variant="ghost"
@@ -695,124 +466,57 @@ export function TimerView({
               {t("timer.switchTask")}
             </prim.Button>
             {tRun && !stashedTimer && (
-              <button
-                type="button"
+              <prim.Button
+                variant="link"
                 data-tour="timer-sidequest"
                 onClick={startSideQuest}
                 title={t("timer.sideQuestHint")}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 999,
-                  background: "transparent",
-                  border: `1px solid color-mix(in srgb, ${vars.typography.accent} 33%, transparent)`,
-                  color: vars.typography.accent,
-                  fontFamily: MONO,
-                  fontSize: 9,
-                  fontWeight: 700,
-                  letterSpacing: 1.6,
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  transition: "all .15s ease",
-                }}
+                className={s.sideQuestBtn}
               >
                 ↯ {t("timer.sideQuest")}
-              </button>
+              </prim.Button>
             )}
-          </div>
-        </div>
+          </prim.Stack>
+        </prim.Stack>
       )}
 
       {tRun && (
-        <div
-          data-tour="timer-controls"
-          style={{
-            marginTop: "auto",
-            display: "flex",
-            justifyContent: "center",
-            gap: 18,
-            paddingBottom: 16,
-          }}
-        >
-          <button
-            type="button"
+        <prim.Stack direction="row" data-tour="timer-controls" className={s.runningControls}>
+          <prim.Button
+            variant="link"
             onClick={() => setTRun(false)}
             aria-label={t("timer.pause")}
             title={t("timer.pause")}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              background: "transparent",
-              border: `1px solid ${vars.border.soft}`,
-              color: vars.typography.primary,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all .15s ease",
-            }}
+            className={s.ctrlPause}
           >
             <PauseIcon size={16} />
-          </button>
-          <button
-            type="button"
+          </prim.Button>
+          <prim.Button
+            variant="link"
             onClick={stop}
             aria-label={t("timer.stopLog")}
             title={t("timer.stopLog")}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              background: vars.background.button,
-              border: "none",
-              color: vars.typography.onAccent,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: vars.shadow.button,
-              transition: "all .15s ease",
-            }}
+            className={s.ctrlStop}
           >
             <StopIcon size={16} />
-          </button>
-          <button
-            type="button"
+          </prim.Button>
+          <prim.Button
+            variant="link"
             onClick={() => setPendingCancelTimer((v) => !v)}
             aria-label={t("timer.cancel")}
             title={t("timer.cancel")}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              background: pendingCancelTimer
-                ? `color-mix(in srgb, ${vars.typography.error} 12%, transparent)`
-                : "transparent",
-              border: pendingCancelTimer
-                ? `1px solid ${vars.typography.error}`
-                : `1px solid ${vars.border.soft}`,
-              color: pendingCancelTimer ? vars.typography.error : vars.typography.tertiary,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all .15s ease",
-            }}
+            className={cx(
+              s.ctrlCancelBase,
+              s.ctrlCancelTone[pendingCancelTimer ? "armed" : "idle"],
+            )}
           >
             <XIcon size={14} />
-          </button>
-        </div>
+          </prim.Button>
+        </prim.Stack>
       )}
 
       {tRun && pendingCancelTimer && (
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            padding: "0 0 12px",
-            justifyContent: "center",
-          }}
-        >
+        <prim.Stack direction="row" className={s.cancelConfirmRow}>
           <prim.Button
             variant="ghost"
             size="sm"
@@ -831,146 +535,66 @@ export function TimerView({
           >
             {t("timer.cancelDiscard")}
           </prim.Button>
-        </div>
+        </prim.Stack>
       )}
 
       {tRun && (
-        <div
-          data-tour="timer-stats"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 8,
-            paddingTop: 18,
-            borderTop: `1px solid ${vars.border.soft}`,
-            textAlign: "center",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontFamily: SERIF,
-                fontSize: 24,
-                color: vars.typography.primary,
-                lineHeight: 1,
-                letterSpacing: -0.4,
-              }}
-            >
+        <prim.Grid columns={3} gap="sm" data-tour="timer-stats" className={s.statsGrid}>
+          <prim.Stack>
+            <prim.Text as="div" className={cx(s.statBig, s.statBigPrimary)}>
               +{sessXP}
-            </div>
-            <div
-              style={{
-                fontFamily: MONO,
-                fontSize: 8,
-                color: vars.typography.faint,
-                textTransform: "uppercase",
-                letterSpacing: 1.6,
-                fontWeight: 600,
-                marginTop: 3,
-              }}
-            >
+            </prim.Text>
+            <prim.Text as="div" className={s.statLabel}>
               {t("timer.statSessionXp")}
-            </div>
-          </div>
-          <div>
-            <div
-              style={{
-                fontFamily: SERIF,
-                fontSize: 24,
-                color: done ? vars.typography.green : vars.typography.primary,
-                lineHeight: 1,
-                letterSpacing: -0.4,
-              }}
+            </prim.Text>
+          </prim.Stack>
+          <prim.Stack>
+            <prim.Text
+              as="div"
+              className={cx(s.statBig, done ? s.statBigGreen : s.statBigPrimary)}
             >
               {fmtHours(todayH)}
-            </div>
-            <div
-              style={{
-                fontFamily: MONO,
-                fontSize: 8,
-                color: vars.typography.faint,
-                textTransform: "uppercase",
-                letterSpacing: 1.6,
-                fontWeight: 600,
-                marginTop: 3,
-              }}
-            >
+            </prim.Text>
+            <prim.Text as="div" className={s.statLabel}>
               {t("timer.statToday")}
-            </div>
-          </div>
-          <div>
-            <div
-              style={{
-                fontFamily: SERIF,
-                fontSize: 24,
-                color: vars.typography.pink,
-                lineHeight: 1,
-                letterSpacing: -0.4,
-              }}
-            >
+            </prim.Text>
+          </prim.Stack>
+          <prim.Stack>
+            <prim.Text as="div" className={cx(s.statBig, s.statBigPink)}>
               {streak}
-              <span style={{ fontSize: 16, opacity: 0.7 }}>d</span>
-            </div>
-            <div
-              style={{
-                fontFamily: MONO,
-                fontSize: 8,
-                color: vars.typography.faint,
-                textTransform: "uppercase",
-                letterSpacing: 1.6,
-                fontWeight: 600,
-                marginTop: 3,
-              }}
-            >
+              <prim.Text as="span" className={s.statStreakUnit}>
+                d
+              </prim.Text>
+            </prim.Text>
+            <prim.Text as="div" className={s.statLabel}>
               {t("timer.statStreak")}
-            </div>
-          </div>
-        </div>
+            </prim.Text>
+          </prim.Stack>
+        </prim.Grid>
       )}
 
       {!tRun && tSec > 0 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: 14,
-            paddingTop: 4,
-          }}
-        >
-          <button
-            type="button"
+        <prim.Stack direction="row" className={s.idleCancelRow}>
+          <prim.Button
+            variant="link"
             onClick={() => setPendingCancelTimer((v) => !v)}
             aria-label={t("timer.cancel")}
             title={t("timer.cancel")}
-            style={{
-              width: 32,
-              height: 32,
-              padding: 0,
-              borderRadius: "50%",
-              background: pendingCancelTimer
-                ? `color-mix(in srgb, ${vars.typography.error} 10%, transparent)`
-                : "transparent",
-              border: pendingCancelTimer
-                ? `1px solid ${vars.typography.error}`
-                : `1px solid ${vars.border.soft}`,
-              color: pendingCancelTimer ? vars.typography.error : vars.typography.faint,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all .15s ease",
-            }}
+            className={cx(
+              s.idleCancelBase,
+              s.idleCancelTone[pendingCancelTimer ? "armed" : "idle"],
+            )}
           >
             <XIcon size={14} />
-          </button>
-        </div>
+          </prim.Button>
+        </prim.Stack>
       )}
 
-      <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+      <prim.Stack direction="row" className={s.absenceRow}>
         <prim.Button variant="ghost" size="sm" shape="pill" mono onClick={openAbsence}>
           {t("absence.button")}
         </prim.Button>
-      </div>
+      </prim.Stack>
     </Page>
   );
 }

@@ -2,18 +2,22 @@ import { style } from "@vanilla-extract/css";
 import { fontSize, fontWeight, vars } from "../theme";
 
 export const banner = style({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 10,
-  padding: "9px 12px",
-  borderRadius: 12,
   background: vars.background.accent,
   border: `1px solid ${vars.border.soft}`,
   cursor: "pointer",
   textAlign: "left",
   width: "100%",
   boxShadow: "none",
+  selectors: {
+    "&&": {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
+      padding: "9px 12px",
+      borderRadius: 12,
+    },
+  },
 });
 
 export const label = style({
