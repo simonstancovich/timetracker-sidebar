@@ -8,6 +8,7 @@ import { vars, chart } from "../theme";
 import { MONO, SERIF } from "../lib/fonts";
 import * as prim from "../primitives";
 import { FlameIcon } from "../icons/FlameIcon";
+import { CheckIcon } from "../icons/CheckIcon";
 import { bloom as goalBloomClass } from "../styles/celebration.css";
 import { PlusIcon } from "../icons/PlusIcon";
 import type { TimeEntry } from "../api";
@@ -295,21 +296,7 @@ export function TodayView({
             />
             <StatChip
               tone="green"
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  width="11"
-                  height="11"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              }
+              icon={<CheckIcon size={11} strokeWidth={2.5} />}
               value={`${todayBillablePct}%`}
               label={t("today.stat.billable")}
             />
