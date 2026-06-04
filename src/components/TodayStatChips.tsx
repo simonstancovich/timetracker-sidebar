@@ -15,8 +15,8 @@ interface Props {
 export function TodayStatChips({ streak, streakPopped, billablePercent, xp }: Props) {
   const { t } = useTranslation();
   return (
-    <prim.Stack className={s.wrap}>
-      <prim.Stack className={s.row}>
+    <prim.Stack align="center" className={s.wrap}>
+      <prim.Stack direction="row" justify="center" className={s.row}>
         <StatChip
           tone="pink"
           icon={<FlameIcon size={11} />}

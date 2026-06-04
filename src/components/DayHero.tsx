@@ -24,7 +24,7 @@ export function DayHero({
   const [whole = "0", frac = "00"] = fmtHours(hours).split(":");
   const tone = goalReached ? "goal" : "inProgress";
   return (
-    <prim.Stack data-tour={dataTour} className={cx(s.wrap, s.wrapPadding[variant])}>
+    <prim.Stack align="center" data-tour={dataTour} className={cx(s.wrap, s.wrapPadding[variant])}>
       <prim.Text
         as="span"
         className={cx(
