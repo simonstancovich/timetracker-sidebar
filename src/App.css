@@ -109,21 +109,6 @@ input, textarea, select {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.entry-card {
-  box-shadow: var(--shadow-engrave);
-  transition:
-    transform 160ms cubic-bezier(.22,1,.36,1),
-    border-color 150ms ease,
-    box-shadow 180ms ease;
-}
-.entry-card:hover {
-  transform: translateY(-1px);
-}
-.entry-card:active {
-  transform: scale(0.985);
-  transition-duration: 90ms;
-}
-
 .engrave-card {
   box-shadow: var(--shadow-engrave);
 }
