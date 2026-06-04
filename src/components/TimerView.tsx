@@ -14,6 +14,7 @@ import { Combobox } from "./Combobox";
 import { RetryStrip } from "./RetryStrip";
 import type { TimeEntry } from "../api";
 import type { HeaderTab } from "./AppHeader";
+import { StashedTimerBanner } from "./StashedTimerBanner";
 import * as s from "./TimerView.css";
 
 interface Item {
@@ -180,94 +181,11 @@ export function TimerView({
   return (
     <Page title={t("page.timer")} hint={timerHint} gap="sm" fullHeight>
       {stashedTimer && (
-        <button
-          type="button"
-          onClick={restoreStashedTimer}
-          title={t("timer.returnToMain")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            padding: "9px 12px",
-            borderRadius: 12,
-            background: vars.background.accent,
-            border: `1px solid ${vars.border.soft}`,
-            cursor: "pointer",
-            textAlign: "left",
-            width: "100%",
-          }}
-        >
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "baseline",
-              gap: 8,
-              minWidth: 0,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: MONO,
-                fontSize: 8,
-                fontWeight: 700,
-                color: vars.typography.faint,
-                textTransform: "uppercase",
-                letterSpacing: 1.6,
-                flexShrink: 0,
-              }}
-            >
-              {t("timer.mainPaused")}
-            </span>
-            <span
-              style={{
-                fontFamily: SERIF,
-                fontStyle: "italic",
-                fontSize: 15,
-                color: vars.typography.accentInk,
-                letterSpacing: -0.1,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                minWidth: 0,
-              }}
-            >
-              {stashedTimer.coName}
-            </span>
-          </span>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              flexShrink: 0,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: MONO,
-                fontSize: 11,
-                fontWeight: 700,
-                color: vars.typography.secondary,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {fmtClock(stashedTimer.sec)}
-            </span>
-            <span
-              style={{
-                fontFamily: MONO,
-                fontSize: 8,
-                fontWeight: 700,
-                color: vars.typography.accent,
-                textTransform: "uppercase",
-                letterSpacing: 1.4,
-              }}
-            >
-              {t("timer.returnShort")} ↩
-            </span>
-          </span>
-        </button>
+        <StashedTimerBanner
+          coName={stashedTimer.coName}
+          seconds={stashedTimer.sec}
+          onReturn={restoreStashedTimer}
+        />
       )}
 
       <div className={s.dialZone} style={{ padding: "12px 0 6px" }}>
