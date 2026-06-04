@@ -6,7 +6,6 @@ import { chapterRoman } from '../lib/roman'
 import { type Mode } from '../theme'
 import * as prim from '../primitives'
 import { Spotlight } from './Spotlight'
-import { TourTooltip } from './TourTooltip'
 import { IntroDial } from './IntroDial'
 import { fadeUp, delay } from '../styles/intro.css'
 import { darkGlow } from '../styles/app.css'
@@ -205,7 +204,7 @@ export function IntroOverlay({
         onDismiss={swallow}
       />
 
-      <TourTooltip
+      <prim.TourTooltip
         ref={modalRef}
         role="dialog"
         aria-modal="true"
@@ -258,7 +257,7 @@ export function IntroOverlay({
             </prim.Button>
           )}
         </prim.Stack>
-      </TourTooltip>
+      </prim.TourTooltip>
     </>
   )
 }

@@ -1,6 +1,6 @@
 import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
-import { cx } from "../lib/cx";
-import { fadeUp } from "../styles/intro.css";
+import { cx } from "../../lib/cx";
+import { fadeUp } from "../../styles/intro.css";
 import * as s from "./TourTooltip.css";
 
 interface Props extends Omit<HTMLAttributes<HTMLDivElement>, "style"> {

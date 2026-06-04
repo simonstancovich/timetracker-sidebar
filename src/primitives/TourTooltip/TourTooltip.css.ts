@@ -1,5 +1,5 @@
 import { style } from "@vanilla-extract/css";
-import { radii, vars, zIndex } from "../theme";
+import { radii, vars, zIndex } from "../../theme";
 
 export const root = style({
   position: "fixed",

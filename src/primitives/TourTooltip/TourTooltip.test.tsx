@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createRef } from "react";
-import { TourTooltip } from "../TourTooltip";
+import { TourTooltip } from "./TourTooltip";
 import { fadeUp } from "../../styles/intro.css";
 
 describe("<TourTooltip />", () => {
