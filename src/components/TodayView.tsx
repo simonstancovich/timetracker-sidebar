@@ -9,8 +9,8 @@ import { MONO, SERIF } from "../lib/fonts";
 import * as prim from "../primitives";
 import { FlameIcon } from "../icons/FlameIcon";
 import { CheckIcon } from "../icons/CheckIcon";
-import { bloom as goalBloomClass } from "../styles/celebration.css";
 import { PlusIcon } from "../icons/PlusIcon";
+import { DayHero } from "./DayHero";
 import type { TimeEntry } from "../api";
 import type { HeaderTab } from "./AppHeader";
 import { StatChip } from "./StatChip";
@@ -197,86 +197,18 @@ export function TodayView({
           gap: 11,
         }}
       >
-        <div
+        <DayHero
           data-tour="today-stats"
-          style={{ textAlign: "center", padding: "20px 0 22px" }}
-        >
-          <div
-            className={justHitGoal ? goalBloomClass : undefined}
-            style={{
-              fontFamily: SERIF,
-              fontSize: 90,
-              fontWeight: 400,
-              color: liveDone ? vars.typography.green : vars.typography.primary,
-              letterSpacing: -3,
-              lineHeight: 0.9,
-              display: "inline-block",
-              textDecoration: "none",
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {fmtHours(liveTodayH).split(":")[0]}
-            <span
-              aria-hidden
-              style={{
-                display: "inline-flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                gap: "0.13em",
-                height: "0.65em",
-                verticalAlign: "0.18em",
-                margin: "0 0.12em",
-              }}
-            >
-              <span
-                style={{
-                  width: "0.085em",
-                  height: "0.085em",
-                  borderRadius: "50%",
-                  background: "currentColor",
-                }}
-              />
-              <span
-                style={{
-                  width: "0.085em",
-                  height: "0.085em",
-                  borderRadius: "50%",
-                  background: "currentColor",
-                }}
-              />
-            </span>
-            {fmtHours(liveTodayH).split(":")[1]}
-            <span
-              style={{
-                fontStyle: "italic",
-                fontSize: 40,
-                color: liveDone ? vars.typography.green : vars.typography.accent,
-                marginLeft: 4,
-              }}
-            >
-              h
-            </span>
-          </div>
-          <div
-            style={{
-              marginTop: 16,
-              fontFamily: MONO,
-              fontSize: 12,
-              color: vars.typography.tertiary,
-              lineHeight: 1.4,
-              textTransform: "uppercase",
-              letterSpacing: 2.4,
-              fontWeight: 500,
-              textDecoration: "none",
-            }}
-          >
-            {liveDone
+          variant="today"
+          bloom={justHitGoal}
+          hours={liveTodayH}
+          goalReached={liveDone}
+          subtitle={
+            liveDone
               ? t("today.dayDoneSubtitle", { extra: fmtHours(liveTodayH - goal) })
-              : t("today.toGoSubtitle", {
-                  remaining: fmtHours(Math.max(0, goal - liveTodayH)),
-                })}
-          </div>
-        </div>
+              : t("today.toGoSubtitle", { remaining: fmtHours(Math.max(0, goal - liveTodayH)) })
+          }
+        />
 
         <div
           style={{

@@ -3,17 +3,24 @@ import { fontSize, fontWeight, vars } from "../theme";
 
 export const wrap = style({
   textAlign: "center",
-  padding: "6px 0 8px",
+});
+
+export const wrapPadding = styleVariants({
+  day: { padding: "6px 0 8px" },
+  today: { padding: "20px 0 22px" },
 });
 
 export const numberBase = style({
   fontFamily: vars.font.display,
-  fontSize: 74,
   fontWeight: fontWeight.normal,
-  letterSpacing: -2.4,
   lineHeight: 0.9,
   fontVariantNumeric: "tabular-nums",
   display: "inline-block",
+});
+
+export const numberSize = styleVariants({
+  day: { fontSize: 74, letterSpacing: -2.4 },
+  today: { fontSize: 90, letterSpacing: -3 },
 });
 
 export const numberColor = styleVariants({
@@ -40,8 +47,12 @@ export const dot = style({
 
 export const suffixBase = style({
   fontStyle: "italic",
-  fontSize: 34,
   marginLeft: 4,
+});
+
+export const suffixSize = styleVariants({
+  day: { fontSize: 34 },
+  today: { fontSize: 40 },
 });
 
 export const suffixColor = styleVariants({
@@ -49,12 +60,14 @@ export const suffixColor = styleVariants({
   inProgress: { color: vars.typography.accent },
 });
 
-export const subtitle = style({
-  marginTop: 10,
+export const subtitleBase = style({
   fontFamily: vars.font.mono,
-  fontSize: fontSize.xs,
   color: vars.typography.tertiary,
   textTransform: "uppercase",
-  letterSpacing: 2.2,
   fontWeight: fontWeight.medium,
+});
+
+export const subtitleSize = styleVariants({
+  day: { fontSize: fontSize.xs, marginTop: 10, letterSpacing: 2.2 },
+  today: { fontSize: fontSize.base, marginTop: 16, letterSpacing: 2.4 },
 });
