@@ -64,48 +64,6 @@ input, textarea, select {
   transition-duration: 80ms;
 }
 
-/* Hover-over-dial controls (running-timer mode) */
-.timer-dial-zone {
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
-.timer-dial-content {
-  transition: opacity 220ms cubic-bezier(.22,1,.36,1);
-}
-.timer-dial-controls {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 220ms cubic-bezier(.22,1,.36,1);
-}
-.timer-dial-zone:hover .timer-dial-content,
-.timer-dial-zone:focus-within .timer-dial-content {
-  opacity: 0.18;
-}
-.timer-dial-zone:hover .timer-dial-controls,
-.timer-dial-zone:focus-within .timer-dial-controls {
-  opacity: 1;
-  pointer-events: auto;
-}
-.timer-dial-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  transition: transform 140ms cubic-bezier(.22,1,.36,1), background 160ms ease;
-}
-.timer-dial-btn:hover { transform: scale(1.06); }
-.timer-dial-btn:active { transform: scale(0.94); transition-duration: 80ms; }
 @keyframes topShimmer {
   0% { background-position: -150% 0; }
   100% { background-position: 250% 0; }

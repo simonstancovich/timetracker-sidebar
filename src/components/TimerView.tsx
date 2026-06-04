@@ -14,6 +14,7 @@ import { Combobox } from "./Combobox";
 import { RetryStrip } from "./RetryStrip";
 import type { TimeEntry } from "../api";
 import type { HeaderTab } from "./AppHeader";
+import * as s from "./TimerView.css";
 
 interface Item {
   id: string;
@@ -269,8 +270,8 @@ export function TimerView({
         </button>
       )}
 
-      <div className="timer-dial-zone" style={{ padding: "12px 0 6px" }}>
-        <div className="timer-dial-content">
+      <div className={s.dialZone} style={{ padding: "12px 0 6px" }}>
+        <div className={s.dialContent}>
           <prim.ActivityRing
             progress={goal > 0 ? todayH / goal : 0}
             done={done}
@@ -327,13 +328,13 @@ export function TimerView({
           </prim.ActivityRing>
         </div>
         {tRun && (
-          <div className="timer-dial-controls">
+          <div className={s.dialControls}>
             <button
               type="button"
               onClick={() => setTRun(false)}
               aria-label={t("timer.pause")}
               title={t("timer.pause")}
-              className="timer-dial-btn"
+              className={s.dialBtn}
               style={{
                 background: vars.background.surface,
                 border: `1px solid ${vars.border.soft}`,
@@ -347,7 +348,7 @@ export function TimerView({
               onClick={stop}
               aria-label={t("timer.stopLog")}
               title={t("timer.stopLog")}
-              className="timer-dial-btn"
+              className={s.dialBtn}
               style={{
                 background: vars.background.button,
                 color: vars.typography.onAccent,
