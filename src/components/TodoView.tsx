@@ -8,6 +8,7 @@ import { MONO, SERIF } from "../lib/fonts";
 import { Combobox } from "./Combobox";
 import { Page } from "./Page";
 import * as prim from "../primitives";
+import { livePulseAnim } from "../styles/celebration.css";
 
 interface Item {
   id: string;
@@ -400,7 +401,7 @@ function TodoRow({ todo,
               textTransform: "uppercase",
             }}
           >
-            <span className="todo-live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: vars.typography.onAccent, ["--todo-live-ring" as string]: "rgba(255,255,255,.6)" } as CSSProperties} />
+            <prim.LivePulseDot size={5} background={vars.typography.onAccent} ringColor="rgba(255,255,255,.6)" />
             {t("todo.running")}
           </span>
         ) : (
@@ -612,7 +613,7 @@ function TodoCompactRow({ todo,
         )}
         {active ? (
           <span
-            className="todo-live-dot"
+            className={livePulseAnim}
             style={
               {
                 flexShrink: 0,
@@ -628,7 +629,7 @@ function TodoCompactRow({ todo,
                 fontWeight: 700,
                 letterSpacing: 1,
                 textTransform: "uppercase",
-                "--todo-live-ring": `color-mix(in srgb, ${vars.typography.accent} 40%, transparent)`,
+                "--live-pulse-ring": `color-mix(in srgb, ${vars.typography.accent} 40%, transparent)`,
               } as CSSProperties
             }
           >

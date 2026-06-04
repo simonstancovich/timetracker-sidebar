@@ -1,5 +1,26 @@
 import { keyframes, style } from "@vanilla-extract/css";
 
+const livePulse = keyframes({
+  "0%":   { boxShadow: "0 0 0 0 var(--live-pulse-ring)" },
+  "70%":  { boxShadow: "0 0 0 6px transparent" },
+  "100%": { boxShadow: "0 0 0 0 transparent" },
+});
+
+export const livePulseAnim = style({
+  animationName: livePulse,
+  animationDuration: "1.6s",
+  animationTimingFunction: "ease-out",
+  animationIterationCount: "infinite",
+});
+
+export const livePulseDot = style([
+  livePulseAnim,
+  {
+    display: "inline-block",
+    borderRadius: "50%",
+  },
+]);
+
 const streakPopAnim = keyframes({
   "0%":   { transform: "rotate(-10deg) scale(1)" },
   "22%":  { transform: "rotate(8deg) scale(1.18)" },

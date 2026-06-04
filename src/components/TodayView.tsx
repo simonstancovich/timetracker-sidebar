@@ -15,6 +15,7 @@ import type { TimeEntry } from "../api";
 import type { HeaderTab } from "./AppHeader";
 import { StatChip } from "./StatChip";
 import { MeetingsWidget } from "./MeetingsWidget";
+import { livePulseAnim } from "../styles/celebration.css";
 
 // Lazy-import TodoCompactList via the barrel so we don't introduce a sibling
 // cycle. (Components only depend on primitives; barrel-only consumers are fine.)
@@ -507,7 +508,7 @@ export function TodayView({
                               ))}
                             {(isLive || (tRun && draftId === e.id)) && (
                               <span
-                                className={tRun ? "todo-live-dot" : undefined}
+                                className={tRun ? livePulseAnim : undefined}
                                 style={
                                   {
                                     display: "inline-flex",
@@ -522,7 +523,7 @@ export function TodayView({
                                     background: tRun ? `color-mix(in srgb, ${vars.typography.pink} 15%, transparent)` : vars.background.raised,
                                     color: tRun ? vars.typography.pink : vars.typography.tertiary,
                                     border: `1px solid ${tRun ? `color-mix(in srgb, ${vars.typography.pink} 33%, transparent)` : vars.border.soft}`,
-                                    "--todo-live-ring": `color-mix(in srgb, ${vars.typography.pink} 40%, transparent)`,
+                                    "--live-pulse-ring": `color-mix(in srgb, ${vars.typography.pink} 40%, transparent)`,
                                   } as CSSProperties
                                 }
                               >

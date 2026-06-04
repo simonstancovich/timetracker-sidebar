@@ -23,12 +23,6 @@ input, textarea, select {
   0%, 100% { opacity: 1; }
   50% { opacity: .55; }
 }
-@keyframes todoLivePulse {
-  0% { box-shadow: 0 0 0 0 var(--todo-live-ring); }
-  70% { box-shadow: 0 0 0 6px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
-}
-.todo-live-dot { animation: todoLivePulse 1.6s ease-out infinite; }
 @keyframes marqueeX {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
