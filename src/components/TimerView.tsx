@@ -1,7 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "../lib/i18n";
 import { useAppContext } from "../lib/AppContext";
-import { fmtClock, fmtHours } from "../lib/hours";
 import { getTimerVibe } from "../lib/timerVibe";
 import { cx } from "../lib/cx";
 import { vars } from "../theme";
@@ -15,6 +14,10 @@ import { RetryStrip } from "./RetryStrip";
 import type { TimeEntry } from "../api";
 import type { HeaderTab } from "./AppHeader";
 import { StashedTimerBanner } from "./StashedTimerBanner";
+import { TimerDial } from "./TimerDial";
+import { TimerStatsStrip } from "./TimerStatsStrip";
+import { InvoiceableToggle } from "./InvoiceableToggle";
+import { RunningTaskDisplay } from "./RunningTaskDisplay";
 import * as s from "./TimerView.css";
 
 interface Item {
@@ -184,71 +187,14 @@ export function TimerView({
         />
       )}
 
-      <prim.Stack direction="row" justify="center" className={cx(s.dialZone, s.dialZonePad)}>
-        <prim.Stack className={s.dialContent}>
-          <prim.ActivityRing
-            progress={goal > 0 ? todayH / goal : 0}
-            done={done}
-            size={210}
-            stroke={3}
-            withTicks
-          >
-            <prim.Stack className={s.dialCenter}>
-              <prim.Text
-                as="div"
-                className={cx(
-                  s.dialClockBase,
-                  s.dialClockColor[tRun ? "running" : "paused"],
-                )}
-              >
-                {fmtClock(tSec)}
-              </prim.Text>
-              <prim.Text
-                as="div"
-                className={cx(
-                  s.dialStatusBase,
-                  s.dialStatusColor[tRun ? "running" : "idle"],
-                )}
-              >
-                {tRun && (
-                  <prim.LivePulseDot
-                    size={5}
-                    background={vars.typography.pink}
-                    ringColor="rgba(244,114,182,.5)"
-                  />
-                )}
-                {tRun
-                  ? t("timer.recording")
-                  : tSec > 0
-                    ? t("status.paused")
-                    : t("status.idle")}
-              </prim.Text>
-            </prim.Stack>
-          </prim.ActivityRing>
-        </prim.Stack>
-        {tRun && (
-          <prim.Stack direction="row" align="center" justify="center" className={s.dialControls}>
-            <prim.Button
-              variant="link"
-              onClick={() => setTRun(false)}
-              aria-label={t("timer.pause")}
-              title={t("timer.pause")}
-              className={cx(s.dialBtnBase, s.dialBtnTone.pause)}
-            >
-              <PauseIcon size={22} />
-            </prim.Button>
-            <prim.Button
-              variant="link"
-              onClick={stop}
-              aria-label={t("timer.stopLog")}
-              title={t("timer.stopLog")}
-              className={cx(s.dialBtnBase, s.dialBtnTone.stop)}
-            >
-              <StopIcon size={22} />
-            </prim.Button>
-          </prim.Stack>
-        )}
-      </prim.Stack>
+      <TimerDial
+        progress={goal > 0 ? todayH / goal : 0}
+        done={done}
+        running={tRun}
+        seconds={tSec}
+        onPause={() => setTRun(false)}
+        onStop={stop}
+      />
 
       {!tRun &&
         (() => {
@@ -396,34 +342,7 @@ export function TimerView({
                 rows={2}
                 className={s.inlineNote}
               />
-              <prim.Button
-                variant="link"
-                data-tour="timer-invoiceable"
-                role="switch"
-                aria-checked={tInv}
-                aria-label={t("timer.invoiceable")}
-                onClick={() => setTInv((v) => !v)}
-                className={s.invoiceableToggleBtn}
-              >
-                <prim.Text as="span" className={s.invoiceableLabel}>
-                  {t("timer.invoiceable")}
-                </prim.Text>
-                <prim.Stack
-                  as="span"
-                  inline
-                  direction="row"
-                  align="center"
-                  className={cx(s.switchTrackBase, tInv ? s.switchTrackOn : s.switchTrackOff)}
-                >
-                  <prim.Stack
-                    as="span"
-                    inline
-                    className={cx(s.switchThumbBase, tInv ? s.switchThumbOn : s.switchThumbOff)}
-                  >
-                    {null}
-                  </prim.Stack>
-                </prim.Stack>
-              </prim.Button>
+              <InvoiceableToggle value={tInv} onToggle={() => setTInv((v) => !v)} />
             </>
           )}
           {tRun && canStart && (
@@ -440,44 +359,13 @@ export function TimerView({
       )}
 
       {tRun && hasCtx && !timerFormOpen && (
-        <prim.Stack className={s.ctxBlock}>
-          <prim.Text as="div" className={s.ctxClient}>
-            {coObj?.name}
-          </prim.Text>
-          {prObj?.name && (
-            <prim.Text as="div" className={s.ctxProject}>
-              {prObj.name}
-            </prim.Text>
-          )}
-          {tD && (
-            <prim.Text as="div" className={s.ctxDesc}>
-              &ldquo;{tD}&rdquo;
-            </prim.Text>
-          )}
-          <prim.Stack direction="row" className={s.ctxActionsRow}>
-            <prim.Button
-              data-tour="timer-switch"
-              variant="ghost"
-              size="xs"
-              shape="pill"
-              mono
-              onClick={() => setTimerFormOpen(true)}
-            >
-              {t("timer.switchTask")}
-            </prim.Button>
-            {tRun && !stashedTimer && (
-              <prim.Button
-                variant="link"
-                data-tour="timer-sidequest"
-                onClick={startSideQuest}
-                title={t("timer.sideQuestHint")}
-                className={s.sideQuestBtn}
-              >
-                ↯ {t("timer.sideQuest")}
-              </prim.Button>
-            )}
-          </prim.Stack>
-        </prim.Stack>
+        <RunningTaskDisplay
+          coName={coObj?.name}
+          prName={prObj?.name}
+          description={tD}
+          onSwitchTask={() => setTimerFormOpen(true)}
+          onSideQuest={stashedTimer ? null : startSideQuest}
+        />
       )}
 
       {tRun && (
@@ -539,38 +427,12 @@ export function TimerView({
       )}
 
       {tRun && (
-        <prim.Grid columns={3} gap="sm" data-tour="timer-stats" className={s.statsGrid}>
-          <prim.Stack>
-            <prim.Text as="div" className={cx(s.statBig, s.statBigPrimary)}>
-              +{sessXP}
-            </prim.Text>
-            <prim.Text as="div" className={s.statLabel}>
-              {t("timer.statSessionXp")}
-            </prim.Text>
-          </prim.Stack>
-          <prim.Stack>
-            <prim.Text
-              as="div"
-              className={cx(s.statBig, done ? s.statBigGreen : s.statBigPrimary)}
-            >
-              {fmtHours(todayH)}
-            </prim.Text>
-            <prim.Text as="div" className={s.statLabel}>
-              {t("timer.statToday")}
-            </prim.Text>
-          </prim.Stack>
-          <prim.Stack>
-            <prim.Text as="div" className={cx(s.statBig, s.statBigPink)}>
-              {streak}
-              <prim.Text as="span" className={s.statStreakUnit}>
-                d
-              </prim.Text>
-            </prim.Text>
-            <prim.Text as="div" className={s.statLabel}>
-              {t("timer.statStreak")}
-            </prim.Text>
-          </prim.Stack>
-        </prim.Grid>
+        <TimerStatsStrip
+          sessXP={sessXP}
+          todayHours={todayH}
+          streak={streak}
+          goalReached={done}
+        />
       )}
 
       {!tRun && tSec > 0 && (
