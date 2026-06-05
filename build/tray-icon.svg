@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="DevCore Time Tracker">
+  <style>
+    :root {
+      --ink:  #0E1B2E;
+      --blue: #2B5BE3;
+      --teal: #27D3C4;
+    }
+    .blue { fill: var(--blue, #2B5BE3); }
+    .teal { fill: var(--teal, #27D3C4); }
+  </style>
+
+  <!-- Solid blue hexagon: contrasts on BOTH dark (#202020/#0E1B2E) and light taskbars.
+       Bigger fill ratio than the full mark so the silhouette stays bold at 16px. -->
+  <path class="blue"
+        d="M128 16
+           L225 72
+           L225 184
+           L128 240
+           L31 184
+           L31 72
+           Z"/>
+
+  <!-- Inner dial: light disc knocked into the blue so the clock reading survives in mono.
+       Light fill reads as "face"; the surrounding blue carries the silhouette on dark bg. -->
+  <circle cx="128" cy="128" r="66" fill="#E9F0FF"/>
+
+  <!-- Bold clock hands in deep blue on the light dial -> high internal contrast, no thin lines. -->
+  <g fill="#1E47C4">
+    <!-- minute hand ~2 o'clock -->
+    <rect x="122" y="66" width="12" height="68" rx="6" transform="rotate(62 128 128)"/>
+    <!-- hour hand ~11 o'clock -->
+    <rect x="121" y="92" width="14" height="44" rx="7" transform="rotate(-38 128 128)"/>
+  </g>
+
+  <!-- Signature teal node at 12 o'clock, sitting on the blue ring (survives at 16px). -->
+  <circle cx="128" cy="44" r="15" class="teal"/>
+  <circle cx="128" cy="44" r="15" fill="none" stroke="#0E1B2E" stroke-width="3" opacity="0.25"/>
+
+  <!-- Teal pivot to echo the node and anchor the hands. -->
+  <circle cx="128" cy="128" r="13" class="teal"/>
+  <circle cx="128" cy="128" r="13" fill="none" stroke="#1E47C4" stroke-width="3"/>
+</svg>

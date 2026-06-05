@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="DevCore Time Tracker">
+  <style>
+    :root {
+      --ink:  #0E1B2E;
+      --blue: #2B5BE3;
+      --teal: #27D3C4;
+    }
+    .ink  { fill: var(--ink,  #0E1B2E); }
+    .blue { fill: var(--blue, #2B5BE3); }
+    .teal { fill: var(--teal, #27D3C4); }
+  </style>
+  <defs>
+    <!-- Subtle vertical sheen on the hex body for a "blue-LED core" read -->
+    <linearGradient id="hexFill" x1="128" y1="20" x2="128" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3568F2"/>
+      <stop offset="1" stop-color="#1E47C4"/>
+    </linearGradient>
+    <linearGradient id="faceFill" x1="128" y1="52" x2="128" y2="204" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#13284A"/>
+      <stop offset="1" stop-color="#0E1B2E"/>
+    </linearGradient>
+    <radialGradient id="nodeGlow" cx="128" cy="60" r="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7BFFF4"/>
+      <stop offset="0.55" stop-color="#27D3C4"/>
+      <stop offset="1" stop-color="#16A99C"/>
+    </radialGradient>
+  </defs>
+
+  <!-- ============ HEX CORE BODY (outer) ============ -->
+  <!-- Pointy-top hexagon, centred, ~14% safe margin. Vertices computed for r=108 about (128,128). -->
+  <path class="blue" fill="url(#hexFill)"
+        d="M128 20
+           L221.5 74
+           L221.5 182
+           L128 236
+           L34.5 182
+           L34.5 74
+           Z"/>
+
+  <!-- Inner hex bevel ring (gives the "core" depth without thin lines) -->
+  <path fill="#0E1B2E" opacity="0.18"
+        d="M128 36
+           L207.6 82
+           L207.6 174
+           L128 220
+           L48.4 174
+           L48.4 82
+           Z"/>
+
+  <!-- ============ CLOCK FACE (implied dark dial inside the core) ============ -->
+  <circle cx="128" cy="128" r="80" fill="url(#faceFill)"/>
+  <circle cx="128" cy="128" r="80" fill="none" stroke="#2B5BE3" stroke-width="4" opacity="0.55"/>
+
+  <!-- Hour tick marks (bold blocks so they survive scaling). 12 / 3 / 6 / 9 emphasised. -->
+  <g class="blue" opacity="0.9">
+    <!-- 3 o'clock -->
+    <rect x="190" y="124" width="14" height="8" rx="2"/>
+    <!-- 6 o'clock -->
+    <rect x="124" y="190" width="8" height="14" rx="2"/>
+    <!-- 9 o'clock -->
+    <rect x="52" y="124" width="14" height="8" rx="2"/>
+  </g>
+  <!-- Minor ticks (small, dropped at tiny sizes anyway) -->
+  <g fill="#2B5BE3" opacity="0.5">
+    <rect x="160.5" y="64.8"  width="6" height="11" rx="2" transform="rotate(30 163.5 70.3)"/>
+    <rect x="186.7" y="91"    width="11" height="6" rx="2" transform="rotate(60 192.2 94)"/>
+    <rect x="186.7" y="159"   width="11" height="6" rx="2" transform="rotate(-60 192.2 162)"/>
+    <rect x="160.5" y="180.2" width="6" height="11" rx="2" transform="rotate(-30 163.5 185.7)"/>
+    <rect x="89.5"  y="180.2" width="6" height="11" rx="2" transform="rotate(30 92.5 185.7)"/>
+    <rect x="58.3"  y="159"   width="11" height="6" rx="2" transform="rotate(60 63.8 162)"/>
+    <rect x="58.3"  y="91"    width="11" height="6" rx="2" transform="rotate(-60 63.8 94)"/>
+    <rect x="89.5"  y="64.8"  width="6" height="11" rx="2" transform="rotate(-30 92.5 70.3)"/>
+  </g>
+
+  <!-- ============ 12 o'clock TEAL NODE (signature DevCore accent) ============ -->
+  <circle cx="128" cy="60" r="11" fill="url(#nodeGlow)"/>
+  <circle cx="128" cy="60" r="11" fill="none" stroke="#0E1B2E" stroke-width="2.5" opacity="0.35"/>
+
+  <!-- ============ CLOCK HANDS (focal mark) ============ -->
+  <g>
+    <!-- Hour hand (short, thick) -> ~11 o'clock, blue-tinted light bar -->
+    <rect x="121" y="86" width="14" height="50" rx="7" fill="#EAF1FF"
+          transform="rotate(-38 128 128)"/>
+    <!-- Minute hand (long, thick) -> ~2 o'clock, teal -->
+    <rect class="teal" x="122.5" y="58" width="11" height="76" rx="5.5"
+          transform="rotate(62 128 128)"/>
+  </g>
+
+  <!-- Center pivot (teal node echo) -->
+  <circle cx="128" cy="128" r="13" fill="#0E1B2E"/>
+  <circle cx="128" cy="128" r="9"  class="teal"/>
+  <circle cx="128" cy="128" r="3.5" fill="#0E1B2E"/>
+</svg>
