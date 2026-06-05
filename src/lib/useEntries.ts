@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { loadTimeEntries } from "../api";
 import type { TimeEntry } from "../api";
 
@@ -11,7 +11,8 @@ interface UseEntriesArgs {
 // Storage and today-load for the user's time entries. The save flow (orchestrated
 // in App with achievements/XP/weekH/queues) writes through `setEntries`. Other
 // effects react to `entries` to keep derived state (weekH, todoTrackedH) in sync.
-// `nowTick` re-runs the today-load at local midnight so the day rolls over cleanly.
+// nowTick bumps every minute; we derive a per-day key from it so the effect only
+// re-runs on local midnight rollover (the original intent), not every minute.
 export function useEntries({
   authed,
   nowTick,
@@ -20,6 +21,8 @@ export function useEntries({
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [entriesLoading, setEntriesLoading] = useState(true);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const dayKey = useMemo(() => new Date().toDateString(), [nowTick]);
 
   useEffect(() => {
     if (!authed) return;
@@ -39,7 +42,7 @@ export function useEntries({
     return () => {
       cancelled = true;
     };
-  }, [authed, nowTick, onUnauthenticated]);
+  }, [authed, dayKey, onUnauthenticated]);
 
   return {
     entries, setEntries,

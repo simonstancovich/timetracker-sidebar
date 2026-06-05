@@ -720,17 +720,48 @@ export function AppShell({
 
     const savedDateISO = formatLocalDate(entryDate);
     const todayISOStr = formatLocalDate(new Date());
+    const savedRow: TimeEntry = {
+      id: saved.id ?? existingId ?? "",
+      _user_id: currentUser._user_id,
+      _company_id: cid,
+      _project_id: prid,
+      company: co.name,
+      project: pr.name,
+      task_date: savedDateISO,
+      description: desc || pr.name,
+      internal_description: internalNote,
+      hour: String(hours),
+      invoice_hours: String(hours),
+      invoice: inv ? "1" : "0",
+      no_flex: "0",
+      hour_price: pr.hour_price || "0",
+      username: currentUser.username,
+      create_date: new Date().toISOString().slice(0, 19),
+    };
     if (savedDateISO === todayISOStr) {
-      const fresh = await loadTimeEntries(new Date());
-      setEntries(fresh);
+      setEntries((prev) => {
+        const idx = prev.findIndex((e) => e.id === savedRow.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = savedRow;
+          return next;
+        }
+        return [...prev, savedRow];
+      });
     }
     if (
       savedDateISO === formatLocalDate(selectedDate) &&
       historyScale === "day"
     ) {
-      loadTimeEntries(selectedDate)
-        .then(setDayEntries)
-        .catch(() => {});
+      setDayEntries((prev) => {
+        const idx = prev.findIndex((e) => e.id === savedRow.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = savedRow;
+          return next;
+        }
+        return [...prev, savedRow];
+      });
     }
     setWeekH((w) => {
       if (savedDateISO !== todayISOStr) return w;

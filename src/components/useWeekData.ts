@@ -95,6 +95,7 @@ export function useWeekData(
   }, [weekDates]);
 
   useEffect(() => {
+    if (!loaded) return;
     let cancelled = false;
     Promise.all(
       prevWeekDates.map((d) => loadTimeEntries(d).catch(() => [] as TimeEntry[])),
@@ -108,7 +109,7 @@ export function useWeekData(
     return () => {
       cancelled = true;
     };
-  }, [prevWeekDates]);
+  }, [prevWeekDates, loaded]);
 
   useEffect(() => {
     if (!monthClosure) return;

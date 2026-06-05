@@ -141,12 +141,22 @@ async function call<T>(params: Record<string, string>, body?: Record<string, str
   return result.data as T
 }
 
+const inflightTimeLoads = new Map<string, Promise<TimeEntry[]>>()
+
 export async function loadTimeEntries(date: Date): Promise<TimeEntry[]> {
-  const res = await call<{ count: number; rows: TimeEntry[] }>(
+  const key = formatLocalDate(date)
+  const existing = inflightTimeLoads.get(key)
+  if (existing) return existing
+  const promise = call<{ count: number; rows: TimeEntry[] }>(
     { c: 'time', m: 'load' },
-    { date: formatLocalDate(date) }
+    { date: key }
   )
-  return res.rows
+    .then((res) => res.rows)
+    .finally(() => {
+      inflightTimeLoads.delete(key)
+    })
+  inflightTimeLoads.set(key, promise)
+  return promise
 }
 
 export async function saveTimeEntry(payload: SaveEntryPayload): Promise<{ success: boolean; id?: string }> {
