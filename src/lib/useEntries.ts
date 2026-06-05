@@ -22,7 +22,10 @@ export function useEntries({
   const [entriesLoading, setEntriesLoading] = useState(true);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-  const dayKey = useMemo(() => new Date().toDateString(), [nowTick]);
+  const dayKey = useMemo(() => {
+    void nowTick;
+    return new Date().toDateString();
+  }, [nowTick]);
 
   useEffect(() => {
     if (!authed) return;
