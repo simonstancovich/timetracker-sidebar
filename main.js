@@ -650,6 +650,13 @@ if (!process.env.PLAYWRIGHT_TEST && !app.requestSingleInstanceLock()) {
 }
 
 app.whenReady().then(() => {
+  if (app.isPackaged) {
+    app.setLoginItemSettings({
+      openAtLogin: true,
+      path: process.execPath,
+      args: [],
+    });
+  }
   createMainWindow();
   createTray();
   updater.init({ getMainWindow: () => mainWindow, isPackaged: app.isPackaged });
