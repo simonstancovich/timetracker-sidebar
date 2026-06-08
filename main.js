@@ -653,7 +653,7 @@ app.whenReady().then(() => {
   if (app.isPackaged) {
     app.setLoginItemSettings({
       openAtLogin: true,
-      path: process.execPath,
+      path: process.env.PORTABLE_EXECUTABLE_FILE || process.execPath,
       args: [],
     });
   }

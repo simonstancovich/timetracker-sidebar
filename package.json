@@ -1,6 +1,6 @@
 {
   "name": "timetracker-sidebar",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "DevCore TimeTracker sidebar app",
   "main": "main.js",
   "scripts": {
@@ -57,19 +57,19 @@
     "appId": "se.devcore.timetracker",
     "productName": "DevCore TimeTracker",
     "directories": {
-      "output": "release"
+      "output": "C:/Users/Stasi/AppData/Local/Programs/DevCore TimeTracker"
     },
     "files": [
       "**/*",
       "!dist"
     ],
     "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
+      "target": "portable",
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
     },
-    "nsis": {
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
+    "portable": {
+      "artifactName": "DevCore-TimeTracker-${version}.exe"
     },
     "publish": {
       "provider": "github",

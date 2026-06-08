@@ -1,12 +1,19 @@
+const { app } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const log = require("electron-log/main");
+const fs = require("node:fs");
+
+const PORTABLE_EXE = process.env.PORTABLE_EXECUTABLE_FILE || null;
 
 autoUpdater.logger = log;
 autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = true;
+// Portable target: we do the on-disk swap ourselves when the update finishes
+// downloading (electron-updater's auto-install path assumes an NSIS installer).
+autoUpdater.autoInstallOnAppQuit = !PORTABLE_EXE;
 
 let mainWindowGetter = () => null;
 let initIsPackaged = false;
+let portableSwapDone = false;
 
 function send(channel, payload) {
   const win = mainWindowGetter();
@@ -30,6 +37,15 @@ autoUpdater.on("download-progress", (p) => {
 });
 autoUpdater.on("update-downloaded", (info) => {
   log.info("[updater] update downloaded", info.version);
+  if (PORTABLE_EXE && info.downloadedFile) {
+    try {
+      fs.copyFileSync(info.downloadedFile, PORTABLE_EXE);
+      portableSwapDone = true;
+      log.info(`[updater] portable exe swapped at ${PORTABLE_EXE}`);
+    } catch (err) {
+      log.error("[updater] portable swap failed", err);
+    }
+  }
   send("update-status", { state: "ready", version: info.version });
 });
 autoUpdater.on("error", (err) => {
@@ -62,6 +78,11 @@ function checkNow() {
 }
 
 function quitAndInstall() {
+  if (PORTABLE_EXE) {
+    if (portableSwapDone) app.relaunch({ execPath: PORTABLE_EXE });
+    app.exit(0);
+    return;
+  }
   autoUpdater.quitAndInstall(false, true);
 }
 
