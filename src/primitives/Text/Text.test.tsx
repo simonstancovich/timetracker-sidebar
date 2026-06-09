@@ -25,13 +25,21 @@ describe('<Text />', () => {
     expect(el.getAttribute('aria-label')).toBe('bar')
   })
 
-  it('defaults to size=base, weight=normal, color=primary, align=left', () => {
+  it('defaults to size=base, weight=normal, color=primary, and inherits text-align', () => {
     const { container } = render(<Text>x</Text>)
     const el = container.firstChild as HTMLElement
     expect(el.className).toContain(s.size.base)
     expect(el.className).toContain(s.weight.normal)
     expect(el.className).toContain(s.color.primary)
-    expect(el.className).toContain(s.align.left)
+    expect(el.className).not.toContain(s.align.left)
+    expect(el.className).not.toContain(s.align.center)
+    expect(el.className).not.toContain(s.align.right)
+  })
+
+  it('applies explicit align when set', () => {
+    const { container } = render(<Text align="center">x</Text>)
+    const el = container.firstChild as HTMLElement
+    expect(el.className).toContain(s.align.center)
   })
 
   it('respects size and weight props', () => {

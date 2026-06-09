@@ -12,7 +12,7 @@ interface Props {
 
 export function Page({ title, hint, gap = "lg", fullHeight = false, children }: Props) {
   return (
-    <prim.Stack gap={gap} fullHeight={fullHeight} className={s.root}>
+    <prim.Stack gap={gap} flex1={fullHeight} className={s.root}>
       <prim.Stack className={s.eyebrowBleed}>
         <prim.PageEyebrow title={title} hint={hint} />
       </prim.Stack>

@@ -27,7 +27,14 @@ const checkDraw = keyframes({
 });
 
 export const backdrop = style({
-  inset: 0,
+  position: "fixed",
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
   background: vars.background.saveScrim,
   zIndex: zIndex.saveToast,
   pointerEvents: "none",

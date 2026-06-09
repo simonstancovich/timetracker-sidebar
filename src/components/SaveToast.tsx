@@ -15,14 +15,7 @@ interface Props {
 export function SaveToast({ toast }: Props) {
   if (!toast) return null;
   return (
-    <prim.Stack
-      role="status"
-      aria-live="polite"
-      position="absolute"
-      align="center"
-      justify="center"
-      className={s.backdrop}
-    >
+    <prim.Stack role="status" aria-live="polite" className={s.backdrop}>
       <prim.Stack align="center" className={s.card}>
         <SuccessCheckIcon ringClassName={s.ring} checkClassName={s.check} />
         <prim.Stack align="center">

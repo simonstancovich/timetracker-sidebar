@@ -28,24 +28,32 @@ export const cardBody = style({
   selectors: {
     "&&": {
       display: "flex",
+      flexDirection: "column",
+      gap: 6,
+    },
+  },
+});
+
+export const headerRow = style({
+  selectors: {
+    "&&": {
+      display: "flex",
       flexDirection: "row",
-      alignItems: "flex-start",
+      alignItems: "baseline",
       justifyContent: "space-between",
       gap: 8,
     },
   },
 });
 
-export const cardMain = style({
-  flex: 1,
-  minWidth: 0,
-});
-
 export const project = style({
   fontSize: 10,
   fontWeight: 600,
   color: vars.typography.tertiary,
-  marginBottom: 2,
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 });
 
 export const description = style({
@@ -58,12 +66,36 @@ export const description = style({
 export const internalNote = style({
   fontSize: 11,
   color: vars.typography.tertiary,
-  marginTop: 4,
   fontStyle: "italic",
 });
 
+export const metaRow = style({
+  selectors: {
+    "&&": {
+      display: "flex",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+      marginTop: 2,
+    },
+  },
+});
+
+export const badges = style({
+  selectors: {
+    "&&": {
+      display: "flex",
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 6,
+      minWidth: 0,
+    },
+  },
+});
+
 export const actions = style({
-  paddingTop: 1,
   selectors: {
     "&&": {
       display: "flex",
@@ -77,9 +109,10 @@ export const actions = style({
 
 export const hours = style({
   fontFamily: vars.font.mono,
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 700,
   color: vars.typography.accent,
+  flexShrink: 0,
 });
 
 export const deleteBtn = style({
