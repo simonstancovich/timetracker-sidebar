@@ -2,6 +2,8 @@ import { useTranslation } from "../lib/i18n";
 import { ChevronDownIcon } from "../icons/ChevronDownIcon";
 import * as prim from "../primitives";
 import { HoursRingButton } from "./HoursRingButton";
+import { WanderingPet } from "./WanderingPet";
+import * as s from "./AppHeader.css";
 
 export type HeaderTab = "today" | "todo" | "timer" | "history" | "xp";
 
@@ -18,6 +20,8 @@ interface Props {
   clockTime: string;
   showTodo?: boolean;
   onMinimize: () => void;
+  petId: string;
+  onCyclePet: () => void;
 }
 
 const TABS: ReadonlyArray<readonly [HeaderTab, string]> = [
@@ -41,6 +45,8 @@ export function AppHeader({
   clockTime,
   showTodo = false,
   onMinimize,
+  petId,
+  onCyclePet,
 }: Props) {
   const { t } = useTranslation();
   const tabs = TABS.filter(([v]) => v !== "todo" || showTodo);
@@ -54,13 +60,17 @@ export function AppHeader({
       gap="md"
     >
       <prim.Stack direction="row" align="center" justify="spaceBetween" gap="sm">
-        <prim.Stack direction="column" gap="none" minWidth0>
+        <prim.Stack direction="column" gap="none" noShrink>
           <prim.DisplayText size="2xl" italic truncate>
             {clockDate}
           </prim.DisplayText>
           <prim.MonoText size="md" weight="medium">
             {clockTime}
           </prim.MonoText>
+        </prim.Stack>
+
+        <prim.Stack position="relative" flex1 minWidth0 className={s.petLane}>
+          <WanderingPet petId={petId} onCyclePet={onCyclePet} />
         </prim.Stack>
 
         <prim.Stack direction="row" align="center" gap="sm" noShrink>

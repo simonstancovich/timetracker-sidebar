@@ -5,6 +5,7 @@ export * from "./AppHeader";
 export * from "./AppLayout";
 export * from "./AppTopBar";
 export * from "./AppViews";
+export * from "./WanderingPet";
 export * from "./ChapterHeading";
 export * from "./Combobox";
 export * from "./ConfettiBurst";

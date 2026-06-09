@@ -1,4 +1,6 @@
 import * as prim from "../primitives";
+import { cx } from "../lib/cx";
+import { layer as overlayLayer } from "../primitives/Overlay/Overlay.css";
 import { SuccessCheckIcon } from "../icons/SuccessCheckIcon";
 import * as s from "./SaveToast.css";
 
@@ -15,7 +17,13 @@ interface Props {
 export function SaveToast({ toast }: Props) {
   if (!toast) return null;
   return (
-    <prim.Stack role="status" aria-live="polite" className={s.backdrop}>
+    <prim.Stack
+      role="status"
+      aria-live="polite"
+      align="center"
+      justify="center"
+      className={cx(overlayLayer, s.backdrop)}
+    >
       <prim.Stack align="center" className={s.card}>
         <SuccessCheckIcon ringClassName={s.ring} checkClassName={s.check} />
         <prim.Stack align="center">

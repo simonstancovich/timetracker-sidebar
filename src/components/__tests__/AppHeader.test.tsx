@@ -18,6 +18,8 @@ function baseProps(overrides: Partial<Parameters<typeof AppHeader>[0]> = {}) {
     clockTime: '08:34',
     showTodo: false,
     onMinimize: vi.fn(),
+    petId: 'chick',
+    onCyclePet: vi.fn(),
     ...overrides,
   }
 }

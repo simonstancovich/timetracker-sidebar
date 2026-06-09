@@ -76,6 +76,7 @@ import { useSimonMode } from "./lib/useSimonMode";
 import { useAppUpdater } from "./lib/useAppUpdater";
 import { useAbsence } from "./lib/useAbsence";
 import { useMonthClosure } from "./lib/useMonthClosure";
+import { useCurrentPet } from "./lib/useCurrentPet";
 import { useConnection } from "./lib/useConnection";
 import { useWindowFocus } from "./lib/useWindowFocus";
 import { useGlobalErrorLogging } from "./lib/useGlobalErrorLogging";
@@ -178,6 +179,7 @@ export function AppShell({
   } = useCompanies({ authed, onOnlineChange: setOnline });
   const { simonMode, tapCorner: tapSimonCorner } = useSimonMode(addFloat);
   useAppUpdater(addFloat);
+  const { petId, cyclePet } = useCurrentPet();
   const {
     pendingQueue, setPendingQueue,
     failedQueue, setFailedQueue,
@@ -962,6 +964,8 @@ export function AppShell({
       clockTime={clockTime}
       showTodo={simonMode}
       onMinimize={() => goSize("top")}
+      petId={petId}
+      onCyclePet={cyclePet}
     />
   );
 
@@ -1001,6 +1005,8 @@ export function AppShell({
         tPr={tPr}
         topEstTodo={topEstTodo}
         topEstLiveH={topEstLiveH}
+        petId={petId}
+        onCyclePet={cyclePet}
       />
     );
   }

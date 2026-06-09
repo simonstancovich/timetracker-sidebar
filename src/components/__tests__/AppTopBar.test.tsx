@@ -35,6 +35,8 @@ function baseProps(overrides: Partial<Parameters<typeof AppTopBar>[0]> = {}) {
     tCo: '',
     tPr: '',
     topEstLiveH: 0,
+    petId: 'chick',
+    onCyclePet: vi.fn(),
     ...overrides,
   }
 }

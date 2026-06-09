@@ -127,3 +127,25 @@ export const streakGroup = style({
   gap: 3,
   color: vars.typography.pink,
 })
+
+export const petBtn = style({
+  selectors: {
+    '&&': {
+      padding: 0,
+      borderRadius: 4,
+      background: 'transparent',
+      border: 'none',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      lineHeight: 0,
+      cursor: 'pointer',
+    },
+    '&&:hover': {
+      transform: 'translateY(-1px)',
+    },
+    '&&:active': {
+      transform: 'scale(0.95)',
+    },
+  },
+})

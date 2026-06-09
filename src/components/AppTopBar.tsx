@@ -10,6 +10,8 @@ import { MoonIcon } from '../icons/MoonIcon'
 import { PlayIcon } from '../icons/PlayIcon'
 import { PauseIcon } from '../icons/PauseIcon'
 import type { Todo } from '../lib/todos'
+import { PetSprite } from './PetSprite'
+import { getCreature } from '../sprites/petSprites'
 import * as s from './AppTopBar.css'
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr']
@@ -51,6 +53,8 @@ interface Props {
   tPr: string
   topEstTodo?: Todo
   topEstLiveH: number
+  petId: string
+  onCyclePet: () => void
 }
 
 function buildMarquee(msg: string): string {
@@ -85,12 +89,18 @@ export function AppTopBar({
   tPr,
   topEstTodo,
   topEstLiveH,
+  petId,
+  onCyclePet,
 }: Props) {
   void _lang
   const { t } = useTranslation()
   const coObj = companies.find((c) => c.id === tCo)
   const prObj = (projectCache[tCo] || []).find((p) => p.id === tPr)
   const displaySessionXp = sessionXp + (tRun ? Math.floor(tSec / 60) : 0)
+  const petCreature = getCreature(petId)
+  const petTitle = petCreature
+    ? `${petCreature.name} — click to cycle (${petCreature.rarity})`
+    : 'Pet'
 
   const leftBgClass = tRun
     ? s.leftBg.running
@@ -213,6 +223,15 @@ export function AppTopBar({
         </prim.Stack>
 
         <prim.Stack direction="row" align="center" className={s.rightPane}>
+          <prim.Button
+            variant="link"
+            onClick={onCyclePet}
+            title={petTitle}
+            aria-label={petTitle}
+            className={s.petBtn}
+          >
+            <PetSprite creature={petId} size="xs" />
+          </prim.Button>
           <prim.Stack direction="row" align="center" className={s.weekDots}>
             {weekH.map((h, i) => {
               const p = Math.min(1, h / goal)
