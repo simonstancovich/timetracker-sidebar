@@ -1,12 +1,11 @@
 import { useTranslation, achName, type Lang } from "../lib/i18n";
 import { fmtHours } from "../lib/hours";
 import { ACHS } from "../lib/achievements";
-import { vars } from "../theme";
-import { useAppContext } from "../lib/AppContext";
-import { MONO, SERIF } from "../lib/fonts";
+import { cx } from "../lib/cx";
 import * as prim from "../primitives";
 import { Page } from "./Page";
 import { ChapterHeading } from "./ChapterHeading";
+import * as s from "./XpView.css";
 
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr"];
 
@@ -22,341 +21,156 @@ interface Props {
 
 export function XpView({ xp, xpCoach, weekTotal, weekH, todayI, unlocked, goal }: Props) {
   const { t, i18n } = useTranslation();
-  const { mode } = useAppContext();
   const lang = i18n.language as Lang;
   const level = Math.floor(xp / 1000) + 1;
-  const xpBase = (level - 1) * 1000;
   const xpNext = level * 1000;
-  const pct = Math.min(((xp - xpBase) / (xpNext - xpBase)) * 100, 100);
+  const pct = (xp - (level - 1) * 1000) / 1000;
+  const title =
+    level >= 5 ? t("xp.titlePrincipal") : level >= 3 ? t("xp.titleSenior") : t("xp.titleDev");
 
   return (
     <Page title={t("page.progress")} hint={`${t("page.level")} ${level}`} gap="sm">
-      {/* Level hero */}
-      <div
-        data-tour="xp-level"
-        style={{
-          textAlign: "center",
-          padding: "8px 0 10px",
-        }}
-      >
-        <div
-          style={{
-            fontFamily: MONO,
-            fontSize: 9,
-            fontWeight: 700,
-            color: vars.typography.faint,
-            letterSpacing: 3,
-            textTransform: "uppercase",
-          }}
-        >
+      <prim.Stack data-tour="xp-level" align="center" gap="xs" paddingY="xs">
+        <prim.MonoText size="2xs" weight="bold" color="faint" tracking="loosest" transform="uppercase">
           {t("page.level")}
-        </div>
-        <div
-          style={{
-            fontFamily: SERIF,
-            fontSize: 92,
-            fontWeight: 400,
-            color: vars.typography.primary,
-            letterSpacing: -3,
-            lineHeight: 0.9,
-            margin: "4px 0 4px",
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
+        </prim.MonoText>
+        <prim.DisplayText tabular align="center" className={s.levelNumber}>
           {level}
-        </div>
-        <div
-          style={{
-            fontFamily: SERIF,
-            fontStyle: "italic",
-            fontSize: 16,
-            color: vars.typography.tertiary,
-            lineHeight: 1.3,
-            letterSpacing: -0.1,
-          }}
-        >
-          {level >= 5
-            ? t("xp.titlePrincipal")
-            : level >= 3
-              ? t("xp.titleSenior")
-              : t("xp.titleDev")}
-        </div>
-      </div>
+        </prim.DisplayText>
+        <prim.DisplayText italic size="xl" align="center" color="tertiary" leading="snug">
+          {title}
+        </prim.DisplayText>
+      </prim.Stack>
 
-      {/* XP progress bar */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <prim.ProgressBar value={pct / 100} size="thin" tone="gradient" />
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            fontFamily: MONO,
-            fontSize: 10,
-            color: vars.typography.tertiary,
-            fontWeight: 600,
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          <span>{xp.toLocaleString()} XP</span>
-          <span style={{ color: vars.typography.faint }}>
+      <prim.Stack gap="xs">
+        <prim.ProgressBar value={pct} size="thin" tone="gradient" />
+        <prim.Stack direction="row" justify="spaceBetween">
+          <prim.MonoText size="xs" weight="semibold" color="tertiary" tabular>
+            {xp.toLocaleString()} XP
+          </prim.MonoText>
+          <prim.MonoText size="xs" weight="semibold" color="faint" tabular>
             {(xpNext - xp).toLocaleString()} {t("xp.toNext")}
-          </span>
-        </div>
-      </div>
+          </prim.MonoText>
+        </prim.Stack>
+      </prim.Stack>
 
       {xpCoach && (
-        <div
-          style={{
-            fontFamily: SERIF,
-            fontStyle: "italic",
-            fontSize: 14,
-            color: vars.typography.tertiary,
-            lineHeight: 1.4,
-            textAlign: "center",
-            padding: "0 8px",
-          }}
+        <prim.DisplayText
+          italic
+          size="lg"
+          align="center"
+          color="tertiary"
+          leading="relaxed"
+          className={s.coach}
         >
           {xpCoach}
-        </div>
+        </prim.DisplayText>
       )}
 
-      {/* Week bar chart */}
-      <div
-        style={{
-          paddingTop: 14,
-          borderTop: `1px solid ${vars.border.soft}`,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: MONO,
-              fontSize: 9,
-              fontWeight: 600,
-              color: vars.typography.tertiary,
-              letterSpacing: 2.2,
-              textTransform: "uppercase",
-            }}
+      <prim.Divider />
+
+      <prim.Stack gap="md">
+        <prim.Stack direction="row" justify="spaceBetween" align="baseline">
+          <prim.MonoText
+            size="2xs"
+            weight="semibold"
+            color="tertiary"
+            tracking="loosest"
+            transform="uppercase"
           >
             {t("xp.thisWeek")}
-          </span>
-          <span
-            style={{
-              fontFamily: MONO,
-              fontSize: 10,
-              color: vars.typography.accent,
-              fontWeight: 700,
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
+          </prim.MonoText>
+          <prim.MonoText size="xs" weight="bold" color="accent" tabular>
             +{Math.round(weekTotal * 8).toLocaleString()} XP
-          </span>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "flex-end",
-            height: 90,
-          }}
-        >
+          </prim.MonoText>
+        </prim.Stack>
+
+        <prim.Stack direction="row" gap="sm" className={s.chart}>
           {weekH.map((h, i) => {
-            const isFut = i > todayI,
-              isToday = i === todayI,
-              empty = !isFut && h === 0;
-            const p2 = isFut ? 0 : Math.min((h / goal) * 100, 100);
-            const bc = h >= goal ? vars.typography.green : isToday ? vars.typography.accent : "#d97706";
+            const isFut = i > todayI;
+            const isToday = i === todayI;
+            const empty = !isFut && h === 0;
+            const tone: prim.BarFillTone = h >= goal ? "met" : isToday ? "today" : "partial";
             return (
-              <div
-                key={i}
-                style={{
-                  flex: 1,
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <div
-                  style={{
-                    flex: 1,
-                    width: "100%",
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "flex-end",
-                  }}
+              <prim.Stack key={i} flex1 align="center" gap="xs">
+                <prim.Stack
+                  flex1
+                  fullWidth
+                  justify="end"
+                  className={cx(s.bar, isFut && s.barFuture, empty && s.barMissed)}
                 >
-                  {isFut ? (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        border: `1px dashed ${vars.border.soft}`,
-                        borderRadius: 4,
-                      }}
-                    />
-                  ) : empty ? (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        border: "1px dashed rgba(239, 68, 68, 0.35)",
-                        background: "rgba(239, 68, 68, 0.05)",
-                        borderRadius: 4,
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: `${p2}%`,
-                        background: bc,
-                        borderRadius: 4,
-                        minHeight: 6,
-                        outline: isToday ? `1.5px solid ${vars.typography.accent}` : "none",
-                        outlineOffset: 1,
-                      }}
-                    />
+                  {isFut || empty ? null : (
+                    <prim.BarFill fraction={h / goal} tone={tone} active={isToday} />
                   )}
-                </div>
-                <span
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 8,
-                    fontWeight: 700,
-                    color: empty
-                      ? vars.typography.error
-                      : isToday
-                        ? vars.typography.accent
-                        : isFut
-                          ? vars.typography.faint
-                          : vars.typography.secondary,
-                    letterSpacing: 0.2,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
+                </prim.Stack>
+                <prim.MonoText
+                  size="3xs"
+                  weight="bold"
+                  tabular
+                  color={empty ? "error" : isToday ? "accent" : isFut ? "faint" : "secondary"}
                 >
                   {isFut ? "—" : fmtHours(h)}
-                </span>
-                <span
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 8,
-                    fontWeight: isToday ? 700 : 600,
-                    color: isToday ? vars.typography.accent : vars.typography.tertiary,
-                    letterSpacing: 1.4,
-                    textTransform: "uppercase",
-                  }}
+                </prim.MonoText>
+                <prim.MonoText
+                  size="3xs"
+                  weight={isToday ? "bold" : "semibold"}
+                  tracking="looser"
+                  transform="uppercase"
+                  color={isToday ? "accent" : "tertiary"}
                 >
                   {DAYS[i]}
-                </span>
-              </div>
+                </prim.MonoText>
+              </prim.Stack>
             );
           })}
-        </div>
-        <div
-          style={{
-            fontFamily: SERIF,
-            fontStyle: "italic",
-            fontSize: 13,
-            color: vars.typography.tertiary,
-            textAlign: "center",
-            lineHeight: 1.4,
-          }}
-        >
-          {t("xp.thisWeekLine", { hours: fmtHours(weekTotal) })}
-        </div>
-      </div>
+        </prim.Stack>
 
-      <div style={{ paddingTop: 14, borderTop: `1px solid ${vars.border.soft}` }}>
-        <ChapterHeading
-          title={t("xp.achievements")}
-          hint={`${unlocked.length} / ${ACHS.length}`}
-        />
-      </div>
-      <div
-        data-tour="xp-achievements"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 8,
-        }}
-      >
+        <prim.DisplayText italic size="md" align="center" color="tertiary" leading="relaxed">
+          {t("xp.thisWeekLine", { hours: fmtHours(weekTotal) })}
+        </prim.DisplayText>
+      </prim.Stack>
+
+      <prim.Divider />
+
+      <ChapterHeading title={t("xp.achievements")} hint={`${unlocked.length} / ${ACHS.length}`} />
+
+      <prim.Grid columns={3} gap="sm" data-tour="xp-achievements">
         {ACHS.map((a) => {
           const got = unlocked.includes(a.id);
           return (
-            <div
+            <prim.ColorScope
               key={a.id}
-              className="engrave-card"
-              style={{
-                background: got
-                  ? mode === "dark"
-                    ? `${a.co}14`
-                    : `${a.co}0d`
-                  : "transparent",
-                border: got
-                  ? `1px solid ${a.co}55`
-                  : `1px solid ${vars.border.soft}`,
-                borderRadius: 10,
-                padding: "12px 6px 10px",
-                textAlign: "center",
-                opacity: got ? 1 : 0.45,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-              }}
+              color={a.co}
+              className={cx("engrave-card", s.achCard, got && s.achCardOn)}
             >
-              <div
-                style={{
-                  fontSize: 22,
-                  lineHeight: 1,
-                  filter: got ? "none" : "grayscale(1)",
-                }}
-              >
+              <prim.Text as="span" className={cx(s.achEmoji, !got && s.achEmojiMuted)}>
                 {a.e}
-              </div>
-              <div
-                style={{
-                  fontFamily: SERIF,
-                  fontSize: 13,
-                  color: got ? a.co : vars.typography.tertiary,
-                  lineHeight: 1.15,
-                  letterSpacing: -0.1,
-                  marginTop: 2,
-                }}
+              </prim.Text>
+              <prim.DisplayText
+                size="md"
+                align="center"
+                leading="snug"
+                color="tertiary"
+                className={got ? s.achName : undefined}
               >
                 {got ? achName(a.id, lang) : t("xp.locked")}
-              </div>
+              </prim.DisplayText>
               {got && (
-                <div
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 8,
-                    fontWeight: 700,
-                    color: a.co,
-                    letterSpacing: 1.4,
-                    textTransform: "uppercase",
-                    marginTop: 2,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
+                <prim.MonoText
+                  size="3xs"
+                  weight="bold"
+                  tracking="looser"
+                  transform="uppercase"
+                  tabular
+                  className={s.achXp}
                 >
                   +{a.xp} XP
-                </div>
+                </prim.MonoText>
               )}
-            </div>
+            </prim.ColorScope>
           );
         })}
-      </div>
+      </prim.Grid>
     </Page>
   );
 }
