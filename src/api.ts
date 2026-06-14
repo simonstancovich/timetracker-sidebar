@@ -160,10 +160,14 @@ export async function loadTimeEntries(date: Date): Promise<TimeEntry[]> {
 }
 
 export async function saveTimeEntry(payload: SaveEntryPayload): Promise<{ success: boolean; id?: string }> {
-  return call<{ success: boolean; id?: string }>(
+  const raw = await call<{ success: boolean; id?: string | number }>(
     { c: 'time', m: 'save' },
     payload as unknown as Record<string, string>,
   )
+  return {
+    success: raw.success,
+    id: raw.id != null ? String(raw.id) : undefined,
+  }
 }
 
 export async function deleteTimeEntry(id: string): Promise<void> {
