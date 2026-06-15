@@ -1,73 +1,86 @@
+import { vars } from "../theme";
+
 const GOAL = 8;
+
+export type AchTone = "milestone" | "streak" | "hours" | "time";
+
+// Achievement accent mapped onto the brand token ramp (not ad-hoc hex) so the
+// unlocked grid reads as one collection and themes with light/dark.
+export const ACH_TONE_COLOR: Record<AchTone, string> = {
+  milestone: vars.typography.accent,
+  streak: vars.typography.pink,
+  hours: vars.typography.green,
+  time: vars.typography.warning,
+};
 
 export const ACHS = [
   // First-time milestones
-  { id: "first", e: "🎯", xp: 50, co: "#7c3aed" },
-  { id: "rookie", e: "📋", xp: 75, co: "#8b5cf6" },
-  { id: "novice", e: "📝", xp: 150, co: "#6366f1" },
-  { id: "veteran", e: "🎖️", xp: 250, co: "#4f46e5" },
-  { id: "prolific", e: "📚", xp: 750, co: "#3730a3" },
+  { id: "first", e: "🎯", xp: 50, tone: "milestone" },
+  { id: "rookie", e: "📋", xp: 75, tone: "milestone" },
+  { id: "novice", e: "📝", xp: 150, tone: "milestone" },
+  { id: "veteran", e: "🎖️", xp: 250, tone: "milestone" },
+  { id: "prolific", e: "📚", xp: 750, tone: "milestone" },
 
   // Streaks
-  { id: "warmup", e: "☕", xp: 50, co: "#f97316" },
-  { id: "fire", e: "🔥", xp: 100, co: "#ea580c" },
-  { id: "habit", e: "🔗", xp: 175, co: "#dc2626" },
-  { id: "lockin", e: "🔒", xp: 300, co: "#b91c1c" },
-  { id: "disciplined", e: "🧘", xp: 500, co: "#991b1b" },
-  { id: "obsessed", e: "⚡", xp: 800, co: "#eab308" },
-  { id: "unstoppable", e: "🚀", xp: 1200, co: "#ca8a04" },
-  { id: "legend", e: "👑", xp: 2500, co: "#a16207" },
+  { id: "warmup", e: "☕", xp: 50, tone: "streak" },
+  { id: "fire", e: "🔥", xp: 100, tone: "streak" },
+  { id: "habit", e: "🔗", xp: 175, tone: "streak" },
+  { id: "lockin", e: "🔒", xp: 300, tone: "streak" },
+  { id: "disciplined", e: "🧘", xp: 500, tone: "streak" },
+  { id: "obsessed", e: "⚡", xp: 800, tone: "streak" },
+  { id: "unstoppable", e: "🚀", xp: 1200, tone: "streak" },
+  { id: "legend", e: "👑", xp: 2500, tone: "streak" },
 
   // Hours accumulated
-  { id: "quarter", e: "🌱", xp: 100, co: "#22c55e" },
-  { id: "flow", e: "🌊", xp: 150, co: "#0ea5e9" },
-  { id: "cent", e: "💯", xp: 300, co: "#0891b2" },
-  { id: "dedicated", e: "💪", xp: 500, co: "#0e7490" },
-  { id: "halfgrand", e: "🏅", xp: 750, co: "#155e75" },
-  { id: "grand", e: "🏆", xp: 1250, co: "#be185d" },
-  { id: "mythic", e: "💎", xp: 2500, co: "#9f1239" },
-  { id: "legacy", e: "🗿", xp: 5000, co: "#881337" },
+  { id: "quarter", e: "🌱", xp: 100, tone: "hours" },
+  { id: "flow", e: "🌊", xp: 150, tone: "hours" },
+  { id: "cent", e: "💯", xp: 300, tone: "hours" },
+  { id: "dedicated", e: "💪", xp: 500, tone: "hours" },
+  { id: "halfgrand", e: "🏅", xp: 750, tone: "hours" },
+  { id: "grand", e: "🏆", xp: 1250, tone: "hours" },
+  { id: "mythic", e: "💎", xp: 2500, tone: "hours" },
+  { id: "legacy", e: "🗿", xp: 5000, tone: "hours" },
 
   // Daily peaks
-  { id: "solid", e: "📈", xp: 50, co: "#14b8a6" },
-  { id: "full", e: "✅", xp: 80, co: "#059669" },
-  { id: "goal", e: "⭐", xp: 120, co: "#16a34a" },
-  { id: "lord", e: "⏰", xp: 175, co: "#15803d" },
-  { id: "midnight", e: "🌙", xp: 275, co: "#166534" },
-  { id: "impossible", e: "🤯", xp: 500, co: "#14532d" },
+  { id: "solid", e: "📈", xp: 50, tone: "hours" },
+  { id: "full", e: "✅", xp: 80, tone: "hours" },
+  { id: "goal", e: "⭐", xp: 120, tone: "hours" },
+  { id: "lord", e: "⏰", xp: 175, tone: "hours" },
+  { id: "midnight", e: "🌙", xp: 275, tone: "hours" },
+  { id: "impossible", e: "🤯", xp: 500, tone: "hours" },
 
   // Time of day
-  { id: "early", e: "🌅", xp: 75, co: "#f59e0b" },
-  { id: "dawn", e: "🌄", xp: 150, co: "#d97706" },
-  { id: "night", e: "🦉", xp: 75, co: "#6366f1" },
-  { id: "vampire", e: "🦇", xp: 125, co: "#4f46e5" },
-  { id: "twilight", e: "🌇", xp: 40, co: "#c026d3" },
-  { id: "lunch", e: "🥪", xp: 50, co: "#db2777" },
+  { id: "early", e: "🌅", xp: 75, tone: "time" },
+  { id: "dawn", e: "🌄", xp: 150, tone: "time" },
+  { id: "night", e: "🦉", xp: 75, tone: "time" },
+  { id: "vampire", e: "🦇", xp: 125, tone: "time" },
+  { id: "twilight", e: "🌇", xp: 40, tone: "time" },
+  { id: "lunch", e: "🥪", xp: 50, tone: "time" },
 
   // Variety
-  { id: "multi", e: "🎭", xp: 100, co: "#9333ea" },
-  { id: "collector", e: "🗂️", xp: 250, co: "#7e22ce" },
-  { id: "hopper", e: "🐸", xp: 125, co: "#6b21a8" },
-  { id: "renaissance", e: "🎨", xp: 400, co: "#581c87" },
-  { id: "focused", e: "🎯", xp: 100, co: "#0d9488" },
+  { id: "multi", e: "🎭", xp: 100, tone: "milestone" },
+  { id: "collector", e: "🗂️", xp: 250, tone: "milestone" },
+  { id: "hopper", e: "🐸", xp: 125, tone: "milestone" },
+  { id: "renaissance", e: "🎨", xp: 400, tone: "milestone" },
+  { id: "focused", e: "🎯", xp: 100, tone: "milestone" },
 
   // Weekly / monthly
-  { id: "perfectweek", e: "🌟", xp: 350, co: "#fbbf24" },
-  { id: "perfectmonth", e: "✨", xp: 1500, co: "#f59e0b" },
-  { id: "king", e: "♛", xp: 1000, co: "#d97706" },
-  { id: "comeback", e: "💫", xp: 75, co: "#06b6d4" },
-  { id: "weekend", e: "🌴", xp: 60, co: "#10b981" },
-  { id: "break", e: "🏖️", xp: 25, co: "#22d3ee" },
+  { id: "perfectweek", e: "🌟", xp: 350, tone: "streak" },
+  { id: "perfectmonth", e: "✨", xp: 1500, tone: "streak" },
+  { id: "king", e: "♛", xp: 1000, tone: "streak" },
+  { id: "comeback", e: "💫", xp: 75, tone: "streak" },
+  { id: "weekend", e: "🌴", xp: 60, tone: "streak" },
+  { id: "break", e: "🏖️", xp: 25, tone: "streak" },
 
   // Billing
-  { id: "firstinv", e: "💰", xp: 50, co: "#84cc16" },
-  { id: "bigweek", e: "💵", xp: 300, co: "#65a30d" },
-  { id: "moneymaker", e: "💸", xp: 1750, co: "#4d7c0f" },
+  { id: "firstinv", e: "💰", xp: 50, tone: "hours" },
+  { id: "bigweek", e: "💵", xp: 300, tone: "hours" },
+  { id: "moneymaker", e: "💸", xp: 1750, tone: "hours" },
 
   // Quirky
-  { id: "speed", e: "⚡", xp: 80, co: "#a855f7" },
-  { id: "overachiever", e: "🔥", xp: 600, co: "#ef4444" },
-  { id: "editor", e: "✏️", xp: 50, co: "#64748b" },
+  { id: "speed", e: "⚡", xp: 80, tone: "time" },
+  { id: "overachiever", e: "🔥", xp: 600, tone: "time" },
+  { id: "editor", e: "✏️", xp: 50, tone: "time" },
 ] as const;
 export type Ach = (typeof ACHS)[number];
 

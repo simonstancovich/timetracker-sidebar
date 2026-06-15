@@ -334,7 +334,9 @@
     "titleDev": "Utvecklare",
     "titleSenior": "Senior utvecklare",
     "titlePrincipal": "Lead utvecklare",
-    "toNext": "till nästa"
+    "toNext": "till nästa",
+    "nextUp": "Härnäst",
+    "moreToDiscover": "{{n}} fler att låsa upp"
   },
   "cal": {
     "notConfigured": "Kalenderintegrationen är inte konfigurerad än. Lägg till AZURE_CLIENT_ID för att aktivera.",

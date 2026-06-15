@@ -3,8 +3,9 @@ import { render, screen } from '@testing-library/react'
 import i18n from 'i18next'
 import { AchievementToast } from '../AchievementToast'
 import type { Ach } from '../../lib/achievements'
+import * as s from '../AchievementToast.css'
 
-const ach: Ach = { id: 'first', e: '🎯', xp: 50, co: '#7c3aed' }
+const ach: Ach = { id: 'first', e: '🎯', xp: 50, tone: 'milestone' }
 
 describe('<AchievementToast />', () => {
   afterEach(async () => {
@@ -29,9 +30,9 @@ describe('<AchievementToast />', () => {
     expect(screen.getByText('+50 XP')).toBeInTheDocument()
   })
 
-  it('passes the achievement colour as a CSS custom property', () => {
+  it('applies the brand tone class that drives its accent colour', () => {
     render(<AchievementToast ach={ach} lang="en" />)
     const el = screen.getByRole('status')
-    expect(el.style.getPropertyValue('--ach-co')).toBe('#7c3aed')
+    expect(el.className).toContain(s.tone.milestone)
   })
 })

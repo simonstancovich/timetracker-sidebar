@@ -1,10 +1,13 @@
-import { keyframes, style } from '@vanilla-extract/css'
+import { keyframes, style, styleVariants } from '@vanilla-extract/css'
 import { vars, fontSize, fontWeight, letterSpacing, radii, spacing } from '../theme'
+import { ACH_TONE_COLOR } from '../lib/achievements'
 
 const achIn = keyframes({
   '0%': { opacity: 0, transform: 'translateY(18px) scale(.95)' },
   '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },
 })
+
+export const tone = styleVariants(ACH_TONE_COLOR, (c) => ({ vars: { '--ach-co': c } }))
 
 export const root = style({
   position: 'absolute',

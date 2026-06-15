@@ -1,5 +1,6 @@
 import { achDescription, achName, useTranslation, type Lang } from '../lib/i18n'
 import * as prim from '../primitives'
+import { cx } from '../lib/cx'
 import type { Ach } from '../lib/achievements'
 import * as s from './AchievementToast.css'
 
@@ -12,12 +13,7 @@ export function AchievementToast({ ach, lang }: Props) {
   const { t } = useTranslation()
   if (!ach) return null
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={s.root}
-      style={{ '--ach-co': ach.co } as React.CSSProperties}
-    >
+    <div role="status" aria-live="polite" className={cx(s.root, s.tone[ach.tone])}>
       <div className={s.iconCircle}>{ach.e}</div>
       <prim.Stack gap="none" minWidth0>
         <span className={s.eyebrow}>{t('xp.achievementUnlocked')}</span>

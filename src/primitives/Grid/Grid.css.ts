@@ -4,12 +4,12 @@ import { spacing, vars } from "../../theme";
 export const root = style({ display: "grid" });
 
 export const columns = styleVariants({
-  2: { gridTemplateColumns: "repeat(2, 1fr)" },
-  3: { gridTemplateColumns: "repeat(3, 1fr)" },
-  4: { gridTemplateColumns: "repeat(4, 1fr)" },
-  5: { gridTemplateColumns: "repeat(5, 1fr)" },
-  6: { gridTemplateColumns: "repeat(6, 1fr)" },
-  7: { gridTemplateColumns: "repeat(7, 1fr)" },
+  2: { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
+  3: { gridTemplateColumns: "repeat(3, minmax(0, 1fr))" },
+  4: { gridTemplateColumns: "repeat(4, minmax(0, 1fr))" },
+  5: { gridTemplateColumns: "repeat(5, minmax(0, 1fr))" },
+  6: { gridTemplateColumns: "repeat(6, minmax(0, 1fr))" },
+  7: { gridTemplateColumns: "repeat(7, minmax(0, 1fr))" },
 });
 
 export const gap = styleVariants(spacing, (v) => ({ gap: v }));

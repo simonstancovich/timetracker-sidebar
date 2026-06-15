@@ -22,7 +22,7 @@ export const colors = {
     // Light stack: near-neutral with a barely-warm undertone. Stops the
     // "sandy" effect (warm chrome + warm accent = dune wash) by pulling
     // chrome off the warm axis while the accent stays warm.
-    inkFaint: "#8e8a85", // light faint
+    inkFaint: "#75706a", // light faint (>=4.5:1 on pageLight for WCAG AA)
     inkMuted: "#686561", // light tertiary
     inkSoft: "#484340", // light secondary
     ink: "#1e1a17", // light primary

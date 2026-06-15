@@ -334,7 +334,9 @@
     "titleDev": "Developer",
     "titleSenior": "Senior Developer",
     "titlePrincipal": "Principal Developer",
-    "toNext": "to next"
+    "toNext": "to next",
+    "nextUp": "Next up",
+    "moreToDiscover": "{{n}} more to discover"
   },
   "cal": {
     "notConfigured": "Calendar integration not yet configured. Add AZURE_CLIENT_ID to enable.",
